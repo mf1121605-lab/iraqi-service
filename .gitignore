@@ -1,2 +1,13 @@
 __pycache__/
 *.pyc
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+npm-debug.log*
+
+# Env secrets — never commit real credentials
+.env
+.env.local
+.env.*.local
