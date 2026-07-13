@@ -55,7 +55,7 @@ const dictionaries = {
       resendCta: 'إعادة إرسال الرمز',
       orDivider: 'أو',
       continueWithFacebook: 'متابعة عبر فيسبوك',
-G
+      continueWithGoogle: 'تسجيل الدخول وإنشاء حساب عبر Google',
       errorInvalidPhone: 'رقم الهاتف غير صحيح، تأكد من الصيغة العراقية',
       backCta: 'رجوع',
     },
