@@ -55,6 +55,7 @@ const dictionaries = {
       resendCta: 'إعادة إرسال الرمز',
       orDivider: 'أو',
       continueWithFacebook: 'متابعة عبر فيسبوك',
+G
       errorInvalidPhone: 'رقم الهاتف غير صحيح، تأكد من الصيغة العراقية',
       backCta: 'رجوع',
     },
@@ -255,6 +256,7 @@ const dictionaries = {
       resendCta: 'دووبارە ناردنەوەی کۆد',
       orDivider: 'یان',
       continueWithFacebook: 'بەردەوامبوون لەڕێگەی فەیسبووک',
+      continueWithGoogle: 'چوونەژوورەوە و دروستکردنی هەژمار لەڕێگەی گووگڵ',
       errorInvalidPhone: 'ژمارەی مۆبایل هەڵەیە، دڵنیابەرەوە لە فۆرماتی عێراقی',
       backCta: 'گەڕانەوە',
     },
