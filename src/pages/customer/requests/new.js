@@ -4,16 +4,20 @@ import AppShell, { useLocale } from '../../../components/Layout/AppShell';
 import { supabaseClient } from '../../../lib/supabaseClient';
 import { useRequireRole } from '../../../utils/useSession';
 import { translate } from '../../../utils/i18n';
-
-const VALID_CATEGORIES = ['military', 'education', 'welfare', 'general'];
+import { categoryLabel, useCategories } from '../../../utils/useCategories';
 
 export default function NewRequest() {
   const { profile, loading, signOut } = useRequireRole(['customer']);
   const router = useRouter();
   const locale = useLocale();
   const t = (path) => translate(locale, path);
+  const categories = useCategories();
 
-  const category = VALID_CATEGORIES.includes(router.query.category) ? router.query.category : 'general';
+  // Categories are founder-editable now, so validity is whatever's
+  // currently in the table, not a fixed list — the requests.category
+  // foreign key is the actual backstop against a stale/bad query param.
+  const selectedCategory = categories?.find((category) => category.key === router.query.category);
+  const category = selectedCategory?.key ?? router.query.category ?? 'general';
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -52,7 +56,7 @@ export default function NewRequest() {
       <div className="mx-auto max-w-xl rounded-3xl border border-black/5 bg-white/60 p-8 shadow-soft dark:border-white/10 dark:bg-surface-dark-alt/60">
         <h2 className="font-display text-xl font-bold">{t('requestForm.title')}</h2>
         <p className="mt-1 text-sm text-ink-muted dark:text-ink-dark-muted">
-          {t(`customerHub.category${category.charAt(0).toUpperCase()}${category.slice(1)}`)}
+          {selectedCategory ? categoryLabel(selectedCategory, locale) : category}
         </p>
 
         {success ? (

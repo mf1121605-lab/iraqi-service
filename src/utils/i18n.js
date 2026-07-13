@@ -10,14 +10,6 @@ export const LOCALE_META = [
 export const locales = LOCALE_META.map((meta) => meta.code);
 export const defaultLocale = 'ar';
 
-// Mirrors the `service_category` Postgres enum exactly.
-export const SERVICE_CATEGORIES = [
-  { value: 'military', labelKey: 'categoryMilitary' },
-  { value: 'education', labelKey: 'categoryEducation' },
-  { value: 'welfare', labelKey: 'categoryWelfare' },
-  { value: 'general', labelKey: 'categoryGeneral' },
-];
-
 const STORAGE_KEY = 'iraqi-services:locale';
 
 const dictionaries = {
@@ -80,10 +72,6 @@ const dictionaries = {
       heroFallbackTitle: 'منصة الخدمات العراقية',
       heroFallbackSubtitle: 'روابط التقديم العاجلة تظهر هنا',
       categoriesTitle: 'الخدمات',
-      categoryMilitary: 'الخدمات العسكرية',
-      categoryEducation: 'الخدمات الدراسية',
-      categoryWelfare: 'الرعاية الاجتماعية',
-      categoryGeneral: 'خدمات أخرى تهم المواطن',
       dealsTitle: 'عروض الكتب الدراسية',
       dealsEmpty: 'لا توجد عروض متاحة حاليًا',
       orderCta: 'اطلب الآن',
@@ -144,6 +132,17 @@ const dictionaries = {
       activateCta: 'تفعيل الحساب',
       assignCoAdminCta: 'تعيين كمشرف مساعد',
       removeCoAdminCta: 'إزالة صلاحية المشرف المساعد',
+    },
+    founderCategories: {
+      title: 'إدارة الأقسام',
+      addCta: 'إضافة قسم جديد',
+      keyLabel: 'المعرّف (بالإنجليزية، بدون مسافات)',
+      keyPlaceholder: 'housing',
+      labelArLabel: 'الاسم بالعربية',
+      labelCkbLabel: 'الاسم بالكردية',
+      activeLabel: 'مفعّل',
+      deleteCta: 'حذف',
+      deleteBlockedMessage: 'لا يمكن حذف هذا القسم لوجود طلبات مرتبطة به، يمكنك تعطيله بدلاً من ذلك',
     },
     founderStats: {
       title: 'الإحصائيات',
@@ -273,10 +272,6 @@ const dictionaries = {
       heroFallbackTitle: 'پلاتفۆرمی خزمەتگوزاریی عێراقی',
       heroFallbackSubtitle: 'بەستەرە پەلەکان لێرە دەردەکەون',
       categoriesTitle: 'خزمەتگوزارییەکان',
-      categoryMilitary: 'خزمەتگوزارییە سەربازییەکان',
-      categoryEducation: 'خزمەتگوزارییە خوێندنییەکان',
-      categoryWelfare: 'چاودێری کۆمەڵایەتی',
-      categoryGeneral: 'خزمەتگوزارییە ترەکان',
       dealsTitle: 'ئۆفەری کتێبی خوێندن',
       dealsEmpty: 'لە ئێستادا هیچ ئۆفەرێک بەردەست نییە',
       orderCta: 'ئێستا داوا بکە',
@@ -337,6 +332,17 @@ const dictionaries = {
       activateCta: 'چالاککردنی هەژمار',
       assignCoAdminCta: 'کردن بە یاریدەدەری بەڕێوەبەر',
       removeCoAdminCta: 'لابردنی دەسەڵاتی یاریدەدەری بەڕێوەبەر',
+    },
+    founderCategories: {
+      title: 'بەڕێوەبردنی بەشەکان',
+      addCta: 'زیادکردنی بەشێکی نوێ',
+      keyLabel: 'ناسنامە (بە ئینگلیزی، بێ بۆشایی)',
+      keyPlaceholder: 'housing',
+      labelArLabel: 'ناو بە عەرەبی',
+      labelCkbLabel: 'ناو بە کوردی',
+      activeLabel: 'چالاکە',
+      deleteCta: 'سڕینەوە',
+      deleteBlockedMessage: 'ناتوانرێت ئەم بەشە بسڕدرێتەوە چونکە داواکاری پەیوەستی هەیە، لەبری ئەوە دەتوانیت ناچالاکی بکەیت',
     },
     founderStats: {
       title: 'ئامارەکان',

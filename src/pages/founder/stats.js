@@ -4,12 +4,16 @@ import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
 import { translate } from '../../utils/i18n';
+import { categoryLabel, useCategories } from '../../utils/useCategories';
 
 export default function FounderStats() {
   const { profile, loading, signOut } = useRequireRole(['founder']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'stats');
+  // All categories, including deactivated ones — historical stats can
+  // still reference a category the founder has since turned off.
+  const categories = useCategories({ activeOnly: false });
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
@@ -63,10 +67,13 @@ export default function FounderStats() {
             <div className="rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft dark:border-white/10 dark:bg-surface-dark-alt/60">
               <h3 className="font-semibold">{t('founderStats.byCategory')}</h3>
               <ul className="mt-3 space-y-1 text-sm">
-                {Object.entries(stats.requests_by_category ?? {}).map(([category, count]) => (
-                  <li key={category} className="flex justify-between">
+                {Object.entries(stats.requests_by_category ?? {}).map(([categoryKey, count]) => (
+                  <li key={categoryKey} className="flex justify-between">
                     <span>
-                      {t(`customerHub.category${category.charAt(0).toUpperCase()}${category.slice(1)}`)}
+                      {(() => {
+                        const match = categories?.find((category) => category.key === categoryKey);
+                        return match ? categoryLabel(match, locale) : categoryKey;
+                      })()}
                     </span>
                     <span className="font-semibold">{count}</span>
                   </li>

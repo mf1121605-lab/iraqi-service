@@ -70,6 +70,17 @@ export default function ChatRoom() {
           { event: 'UPDATE', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${roomRow.id}` },
           (payload) => setMessages((current) => current.map((m) => (m.id === payload.new.id ? payload.new : m)))
         )
+        // Founder changing the ambient audio track or background, or
+        // reassigning this room's moderator, should apply to an
+        // already-open room instantly.
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'founder_settings' }, (payload) =>
+          setSettings(payload.new)
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${roomRow.id}` },
+          (payload) => setRoom(payload.new)
+        )
         .subscribe();
     }
 

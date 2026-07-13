@@ -5,7 +5,8 @@ import AttachmentUploader from '../../components/Chat/AttachmentUploader';
 import MessageAttachment from '../../components/Chat/MessageAttachment';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
-import { SERVICE_CATEGORIES, translate } from '../../utils/i18n';
+import { translate } from '../../utils/i18n';
+import { categoryLabel, useCategories } from '../../utils/useCategories';
 
 const STATUS_OPTIONS = ['in_review', 'needs_changes', 'approved', 'rejected'];
 
@@ -16,6 +17,7 @@ export default function EmployeeDashboard() {
 
   const [specialization, setSpecialization] = useState('');
   const [activeServices, setActiveServices] = useState([]);
+  const categories = useCategories();
   const [savingProfile, setSavingProfile] = useState(false);
 
   const [queue, setQueue] = useState(null);
@@ -173,15 +175,15 @@ export default function EmployeeDashboard() {
           <section className="rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft dark:border-white/10 dark:bg-surface-dark-alt/60">
             <h3 className="font-semibold">{t('employeeDesk.activeServicesTitle')}</h3>
             <div className="mt-3 space-y-2">
-              {SERVICE_CATEGORIES.map((category) => (
-                <label key={category.value} className="flex items-center gap-2 text-sm">
+              {(categories ?? []).map((category) => (
+                <label key={category.key} className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
-                    checked={activeServices.includes(category.value)}
-                    onChange={() => toggleService(category.value)}
+                    checked={activeServices.includes(category.key)}
+                    onChange={() => toggleService(category.key)}
                     className="h-4 w-4 rounded border-black/20"
                   />
-                  {t(`customerHub.${category.labelKey}`)}
+                  {categoryLabel(category, locale)}
                 </label>
               ))}
             </div>

@@ -27,10 +27,20 @@ export default function FounderDashboard() {
   }
 
   useEffect(() => {
-    if (profile) {
-      loadSettings();
-      loadBanners();
-    }
+    if (!profile) return undefined;
+    loadSettings();
+    loadBanners();
+
+    // Keeps this screen in sync if edited from another tab/session (e.g. a
+    // co_admin), not just this one's own optimistic local updates.
+    const channel = supabaseClient
+      .channel('founder-dashboard-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'founder_settings' }, loadSettings)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_links' }, loadBanners)
+      .subscribe();
+
+    return () => supabaseClient.removeChannel(channel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
   async function saveSettings(event) {

@@ -5,7 +5,8 @@ import AppShell from '../../components/Layout/AppShell';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useLocale } from '../../components/Layout/AppShell';
-import { SERVICE_CATEGORIES, translate } from '../../utils/i18n';
+import { translate } from '../../utils/i18n';
+import { categoryLabel, useCategories } from '../../utils/useCategories';
 
 export default function CustomerDashboard() {
   const { profile, loading, signOut } = useRequireRole(['customer']);
@@ -17,21 +18,40 @@ export default function CustomerDashboard() {
   const [slide, setSlide] = useState(0);
   const [products, setProducts] = useState([]);
   const [orderMessage, setOrderMessage] = useState('');
+  const categories = useCategories();
 
   useEffect(() => {
-    if (!profile) return;
-    supabaseClient
-      .from('service_links')
-      .select('id, title, subtitle, url, image_path')
-      .eq('is_active', true)
-      .order('sort_order')
-      .then(({ data }) => setBanners(data ?? []));
+    if (!profile) return undefined;
 
-    supabaseClient
-      .from('products')
-      .select('id, title, description, price, discount_price, image_path')
-      .eq('is_active', true)
-      .then(({ data }) => setProducts(data ?? []));
+    function loadBanners() {
+      supabaseClient
+        .from('service_links')
+        .select('id, title, subtitle, url, image_path')
+        .eq('is_active', true)
+        .order('sort_order')
+        .then(({ data }) => setBanners(data ?? []));
+    }
+
+    function loadProducts() {
+      supabaseClient
+        .from('products')
+        .select('id, title, description, price, discount_price, image_path')
+        .eq('is_active', true)
+        .then(({ data }) => setProducts(data ?? []));
+    }
+
+    loadBanners();
+    loadProducts();
+
+    // A founder editing banners/products/settings must reach this screen
+    // instantly if it's already open, not just on the next reload.
+    const channel = supabaseClient
+      .channel('customer-hub-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_links' }, loadBanners)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, loadProducts)
+      .subscribe();
+
+    return () => supabaseClient.removeChannel(channel);
   }, [profile]);
 
   useEffect(() => {
@@ -113,13 +133,13 @@ export default function CustomerDashboard() {
       <section className="mt-10">
         <h3 className="font-display text-xl font-bold">{t('customerHub.categoriesTitle')}</h3>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {SERVICE_CATEGORIES.map((category) => (
+          {(categories ?? []).map((category) => (
             <Link
-              key={category.value}
-              href={`/customer/requests/new?category=${category.value}`}
+              key={category.key}
+              href={`/customer/requests/new?category=${category.key}`}
               className="glass-panel-dark rounded-xl2 p-6 text-center font-semibold shadow-soft transition hover:scale-[1.02]"
             >
-              {t(`customerHub.${category.labelKey}`)}
+              {categoryLabel(category, locale)}
             </Link>
           ))}
         </div>

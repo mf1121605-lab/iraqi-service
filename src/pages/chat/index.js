@@ -12,12 +12,26 @@ export default function ChatRooms() {
   const [rooms, setRooms] = useState(null);
 
   useEffect(() => {
-    if (!profile) return;
-    supabaseClient
-      .from('chat_rooms')
-      .select('id, slug, name_ar, name_ckb')
-      .eq('is_active', true)
-      .then(({ data }) => setRooms(data ?? []));
+    if (!profile) return undefined;
+
+    function loadRooms() {
+      supabaseClient
+        .from('chat_rooms')
+        .select('id, slug, name_ar, name_ckb')
+        .eq('is_active', true)
+        .then(({ data }) => setRooms(data ?? []));
+    }
+
+    loadRooms();
+
+    // A founder adding/renaming/deactivating a room should show up here
+    // without a reload.
+    const channel = supabaseClient
+      .channel('chat-rooms-list-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_rooms' }, loadRooms)
+      .subscribe();
+
+    return () => supabaseClient.removeChannel(channel);
   }, [profile]);
 
   if (loading || !profile) {
