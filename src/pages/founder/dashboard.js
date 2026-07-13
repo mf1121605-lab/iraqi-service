@@ -79,7 +79,7 @@ export default function FounderDashboard() {
   }
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut}>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
       <section className="rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft dark:border-white/10 dark:bg-surface-dark-alt/60">
         <h2 className="font-display text-lg font-bold">{t('founderPanel.settingsTitle')}</h2>
         {settings && (

@@ -29,7 +29,7 @@ export default function ChatRooms() {
   }
 
   return (
-    <AppShell onSignOut={signOut}>
+    <AppShell onSignOut={signOut} userId={profile.id}>
       <h2 className="font-display text-xl font-bold">{t('chat.roomsTitle')}</h2>
       {rooms === null ? (
         <p className="mt-4 text-sm">{t('common.loading')}</p>

@@ -83,7 +83,7 @@ export default function FounderUsers() {
   }
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut}>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
       <h2 className="font-display text-lg font-bold">{t('founderUsers.title')}</h2>
 
       {employees === null ? (

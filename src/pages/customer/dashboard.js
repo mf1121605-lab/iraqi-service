@@ -82,7 +82,7 @@ export default function CustomerDashboard() {
   const currentBanner = banners[slide];
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut}>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
       <section className="relative overflow-hidden rounded-3xl bg-gradient-hero p-10 text-white shadow-glass">
         {currentBanner ? (
           <a href={currentBanner.url} className="block">

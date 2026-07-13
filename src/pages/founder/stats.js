@@ -26,7 +26,7 @@ export default function FounderStats() {
   }
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut}>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
       <h2 className="font-display text-lg font-bold">{t('founderStats.title')}</h2>
 
       {!stats ? (

@@ -7,6 +7,7 @@ import {
   setStoredLocale,
   translate,
 } from '../../utils/i18n';
+import NotificationBell from '../UI/NotificationBell';
 
 const THEME_KEY = 'iraqi-services:theme';
 
@@ -15,7 +16,7 @@ function getStoredTheme() {
   return window.localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
 }
 
-export default function AppShell({ title, navItems, onSignOut, children }) {
+export default function AppShell({ title, navItems, onSignOut, userId, children }) {
   const [locale, setLocale] = useState(defaultLocale);
   const [theme, setTheme] = useState('light');
 
@@ -70,6 +71,7 @@ export default function AppShell({ title, navItems, onSignOut, children }) {
         )}
 
         <div className="flex items-center gap-2 text-sm">
+          {userId && <NotificationBell userId={userId} locale={locale} />}
           <button
             type="button"
             onClick={toggleLocale}

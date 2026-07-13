@@ -206,6 +206,13 @@ const dictionaries = {
       backToDashboard: 'العودة إلى الرئيسية',
       tryAgainCta: 'إعادة المحاولة',
     },
+    notifications: {
+      title: 'الإشعارات',
+      empty: 'لا توجد إشعارات بعد',
+      markAllRead: 'تعليم الكل كمقروء',
+      enablePush: 'تفعيل الإشعارات الفورية',
+      pushError: 'تعذّر تفعيل الإشعارات الفورية',
+    },
   },
   ckb: {
     common: {
@@ -391,6 +398,13 @@ const dictionaries = {
       resultFailedBody: 'پارەدانەکە تەواو نەبوو، دەتوانیت دووبارە هەوڵبدەیتەوە',
       backToDashboard: 'گەڕانەوە بۆ سەرەکی',
       tryAgainCta: 'دووبارە هەوڵدان',
+    },
+    notifications: {
+      title: 'ئاگادارییەکان',
+      empty: 'هێشتا هیچ ئاگاداریەک نییە',
+      markAllRead: 'هەمووی وەک خوێندراوە نیشانە بکە',
+      enablePush: 'چالاککردنی ئاگاداریی خێرا',
+      pushError: 'چالاککردنی ئاگاداریی خێرا سەرکەوتوو نەبوو',
     },
   },
 };

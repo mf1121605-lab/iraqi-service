@@ -131,6 +131,7 @@ export default function EmployeeDashboard() {
   return (
     <AppShell
       onSignOut={signOut}
+      userId={profile.id}
       navItems={[
         { href: '/employee/dashboard', label: t('employeeDesk.queueTitle'), active: true },
         { href: '/chat', label: t('chat.roomsTitle') },

@@ -48,7 +48,7 @@ export default function NewRequest() {
   }
 
   return (
-    <AppShell onSignOut={signOut}>
+    <AppShell onSignOut={signOut} userId={profile.id}>
       <div className="mx-auto max-w-xl rounded-3xl border border-black/5 bg-white/60 p-8 shadow-soft dark:border-white/10 dark:bg-surface-dark-alt/60">
         <h2 className="font-display text-xl font-bold">{t('requestForm.title')}</h2>
         <p className="mt-1 text-sm text-ink-muted dark:text-ink-dark-muted">

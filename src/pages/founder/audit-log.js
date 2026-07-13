@@ -31,7 +31,7 @@ export default function FounderAuditLog() {
   }
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut}>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
       <h2 className="font-display text-lg font-bold">{t('founderAuditLog.title')}</h2>
 
       {entries === null ? (

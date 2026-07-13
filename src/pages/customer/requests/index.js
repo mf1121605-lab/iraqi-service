@@ -34,7 +34,7 @@ export default function CustomerRequests() {
   ];
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut}>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
       <h2 className="font-display text-xl font-bold">{t('customerHub.myRequestsCta')}</h2>
       {requests === null ? (
         <p className="mt-4 text-sm">{t('common.loading')}</p>
