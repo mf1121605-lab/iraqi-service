@@ -29,9 +29,6 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: 'account not found' });
   }
 
-  // Mirrors the RLS boundary: co_admin can never touch the founder's own
-  // account (no suspending/demoting the primary founder), even through
-  // this service-role route.
   if (target.role === 'founder') {
     return res.status(403).json({ error: "the founder's own account cannot be modified this way" });
   }

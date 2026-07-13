@@ -25,8 +25,6 @@ export default function ChatRooms() {
 
     loadRooms();
 
-    // A founder adding/renaming/deactivating a room should show up here
-    // without a reload.
     const channel = supabaseClient
       .channel('chat-rooms-list-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_rooms' }, loadRooms)

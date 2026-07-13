@@ -1,14 +1,15 @@
-import { BarChart3, LayoutDashboard, MessageCircle, ScrollText, Tags, Users } from 'lucide-react';
 import { translate } from './i18n';
 
-export function useFounderNav(locale, active) {
+export function useFounderNav(locale, activePage) {
   const t = (path) => translate(locale, path);
   return [
-    { href: '/founder/dashboard', label: t('founderPanel.navDashboard'), active: active === 'dashboard', icon: LayoutDashboard },
-    { href: '/founder/categories', label: t('founderCategories.title'), active: active === 'categories', icon: Tags },
-    { href: '/founder/users', label: t('founderPanel.navUsers'), active: active === 'users', icon: Users },
-    { href: '/founder/stats', label: t('founderPanel.navStats'), active: active === 'stats', icon: BarChart3 },
-    { href: '/founder/audit-log', label: t('founderPanel.navAuditLog'), active: active === 'audit-log', icon: ScrollText },
-    { href: '/chat', label: t('chat.roomsTitle'), icon: MessageCircle },
+    { href: '/founder/dashboard', label: t('founderNav.dashboard'), active: activePage === 'dashboard' },
+    { href: '/founder/categories', label: t('founderNav.categories'), active: activePage === 'categories' },
+    { href: '/founder/banners', label: t('founderNav.banners'), active: activePage === 'banners' },
+    { href: '/founder/products', label: t('founderNav.products'), active: activePage === 'products' },
+    { href: '/founder/chat-rooms', label: t('founderNav.chatRooms'), active: activePage === 'chat-rooms' },
+    { href: '/founder/employees', label: t('founderNav.employees'), active: activePage === 'employees' },
+    { href: '/founder/settings', label: t('founderNav.settings'), active: activePage === 'settings' },
+    { href: '/founder/audit-log', label: t('founderNav.auditLog'), active: activePage === 'audit-log' },
   ];
 }

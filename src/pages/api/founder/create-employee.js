@@ -37,8 +37,6 @@ export default async function handler(req, res) {
     password,
     phone_confirm: Boolean(phone),
     email_confirm: Boolean(email),
-    // handle_new_auth_user reads this to create the profile with the
-    // right role in the same trigger that fires on signup.
     user_metadata: { role: 'employee', phone: phone ? toE164(phone) : undefined },
   });
 

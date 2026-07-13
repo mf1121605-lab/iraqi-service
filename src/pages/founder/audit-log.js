@@ -15,20 +15,11 @@ export default function FounderAuditLog() {
 
   useEffect(() => {
     if (!profile) return;
-    supabaseClient
-      .from('audit_log')
-      .select('id, actor_id, action, table_name, record_id, created_at')
-      .order('created_at', { ascending: false })
-      .limit(200)
-      .then(({ data }) => setEntries(data ?? []));
+    supabaseClient.from('audit_log').select('id, actor_id, action, table_name, record_id, created_at').order('created_at', { ascending: false }).limit(200).then(({ data }) => setEntries(data ?? []));
   }, [profile]);
 
   if (loading || !profile) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
-        {t('common.loading')}
-      </main>
-    );
+    return <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">{t('common.loading')}</main>;
   }
 
   return (
@@ -55,13 +46,8 @@ export default function FounderAuditLog() {
             </thead>
             <tbody>
               {entries.map((entry) => (
-                <tr
-                  key={entry.id}
-                  className="border-t border-black/5 transition-colors hover:bg-black/[0.02] dark:border-white/10 dark:hover:bg-white/[0.03]"
-                >
-                  <td className="p-3 text-xs text-ink-muted dark:text-ink-dark-muted">
-                    {new Date(entry.created_at).toLocaleString(locale === 'ar' ? 'ar-IQ' : 'ckb')}
-                  </td>
+                <tr key={entry.id} className="border-t border-black/5 transition-colors hover:bg-black/[0.02] dark:border-white/10 dark:hover:bg-white/[0.03]">
+                  <td className="p-3 text-xs text-ink-muted dark:text-ink-dark-muted">{new Date(entry.created_at).toLocaleString(locale === 'ar' ? 'ar-IQ' : 'ckb')}</td>
                   <td className="p-3 text-xs">{entry.actor_id ?? '—'}</td>
                   <td className="p-3 text-xs">{entry.action}</td>
                   <td className="p-3 text-xs">{entry.table_name}</td>

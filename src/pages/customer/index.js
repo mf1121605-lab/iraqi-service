@@ -29,9 +29,6 @@ export default function CustomerAuth() {
     document.documentElement.lang = locale;
   }, [locale]);
 
-  // Already signed in (any role) -> bounce straight to their dashboard.
-  // A customer who never finished picking an avatar goes back through
-  // onboarding instead of straight to the dashboard.
   useEffect(() => {
     if (loading || !session || !profile) return;
     if (profile.role === 'customer' && !profile.avatar_key) {
@@ -83,9 +80,6 @@ export default function CustomerAuth() {
       provider,
       options: { redirectTo: `${window.location.origin}/customer/onboarding` },
     });
-    // signInWithOAuth only returns an error before the redirect happens
-    // (e.g. the provider isn't enabled/configured) — a successful call
-    // navigates the browser away, so there's nothing to set state for.
     if (oauthError) {
       setError(t('authCustomer.errorOAuth'));
     }

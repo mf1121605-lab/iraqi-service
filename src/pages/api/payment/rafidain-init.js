@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   const merchantId = process.env.RAFIDAIN_MERCHANT_ID;
   const payload = buildCheckoutSessionPayload({
     orderId: order.id,
-    amount: order.total_price, // server-recomputed — never trust a client-supplied amount
+    amount: order.total_price,
     returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/rafidain-callback?orderId=${order.id}`,
   });
 

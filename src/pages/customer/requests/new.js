@@ -14,9 +14,6 @@ export default function NewRequest() {
   const t = (path) => translate(locale, path);
   const categories = useCategories();
 
-  // Categories are founder-editable now, so validity is whatever's
-  // currently in the table, not a fixed list — the requests.category
-  // foreign key is the actual backstop against a stale/bad query param.
   const selectedCategory = categories?.find((category) => category.key === router.query.category);
   const category = selectedCategory?.key ?? router.query.category ?? 'general';
   const [title, setTitle] = useState('');

@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
   const baseUrl = zainCashBaseUrl(process.env.ZAINCASH_MODE);
   const token = buildZainCashInitToken({
-    amount: Number(order.total_price), // server-recomputed — never trust a client-supplied amount
+    amount: Number(order.total_price),
     orderId: order.id,
     redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/zaincash-callback`,
     msisdn: process.env.ZAINCASH_MSISDN,

@@ -39,10 +39,6 @@ export default function EmployeeAuth() {
     setError('');
     setSubmitting(true);
 
-    // The founder gives employees either a phone or an email; either works
-    // here (matches "Employee Login (requires Founder-provided phone/email
-    // + password)"). '077' inclusivity applies the same as everywhere
-    // else — no branch here treats a customer-shaped phone differently.
     const credentials = isValidIraqiPhone(identifier)
       ? { phone: toE164(identifier), password }
       : { email: identifier, password };

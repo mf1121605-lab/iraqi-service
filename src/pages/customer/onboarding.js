@@ -15,8 +15,6 @@ export default function CustomerOnboarding() {
   const [selected, setSelected] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  // Returning customers who already picked an avatar skip straight past
-  // this one-time onboarding step.
   useEffect(() => {
     if (!loading && profile?.avatar_key) {
       router.replace('/customer/dashboard');

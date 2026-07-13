@@ -21,7 +21,7 @@ import { categoryLabel, useCategories } from '../../utils/useCategories';
 const STATUS_OPTIONS = ['in_review', 'needs_changes', 'approved', 'rejected'];
 
 export default function EmployeeDashboard() {
-  const { profile, loading, signOut, refreshProfile } = useRequireRole(['employee']);
+  const { profile, loading, signOut } = useRequireRole(['employee']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
 
@@ -83,7 +83,6 @@ export default function EmployeeDashboard() {
     setSavingProfile(true);
     await supabaseClient.from('profiles').update({ active_services: next }).eq('id', profile.id);
     setSavingProfile(false);
-    refreshProfile();
     loadQueue();
   }
 
@@ -92,7 +91,6 @@ export default function EmployeeDashboard() {
     setSavingProfile(true);
     await supabaseClient.from('profiles').update({ specialization }).eq('id', profile.id);
     setSavingProfile(false);
-    refreshProfile();
   }
 
   async function claimRequest(requestId) {

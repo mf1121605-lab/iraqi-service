@@ -1,80 +1,86 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabaseClient } from '../lib/supabaseClient';
-
-export function dashboardPathForRole(role) {
-  if (role === 'founder') return '/founder/dashboard';
-  if (role === 'employee') return '/employee/dashboard';
-  return '/customer/dashboard';
-}
 
 export function useSession() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const loadProfile = useCallback(async (userId) => {
-    if (!userId) {
-      setProfile(null);
-      return;
-    }
-    const { data } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
-    setProfile(data ?? null);
-  }, []);
-
   useEffect(() => {
     let active = true;
 
-    supabaseClient.auth.getSession().then(({ data }) => {
+    supabaseClient.auth.getSession().then(({ data: { session: s } }) => {
       if (!active) return;
-      setSession(data.session);
-      loadProfile(data.session?.user?.id).finally(() => {
-        if (active) setLoading(false);
-      });
+      setSession(s);
+      if (!s) {
+        setLoading(false);
+        return;
+      }
+      supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', s.user.id)
+        .single()
+        .then(({ data: p }) => {
+          if (!active) return;
+          setProfile(p);
+          setLoading(false);
+        });
     });
 
-    const { data: subscription } = supabaseClient.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      loadProfile(newSession?.user?.id);
+    const { data: authListener } = supabaseClient.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+      if (!s) {
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+      supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', s.user.id)
+        .single()
+        .then(({ data: p }) => {
+          if (active) {
+            setProfile(p);
+            setLoading(false);
+          }
+        });
     });
 
     return () => {
       active = false;
-      subscription.subscription.unsubscribe();
+      authListener.subscription.unsubscribe();
     };
-  }, [loadProfile]);
-
-  const signOut = useCallback(async () => {
-    await supabaseClient.auth.signOut();
   }, []);
 
-  return { session, profile, loading, signOut, refreshProfile: () => loadProfile(session?.user?.id) };
+  async function signOut() {
+    await supabaseClient.auth.signOut();
+  }
+
+  return { session, profile, loading, signOut };
 }
 
-// Redirects unauthenticated visitors home, and authenticated users whose
-// role isn't in `allowedRoles` to their own dashboard instead — so a
-// customer can't just type /employee/dashboard into the address bar.
-export function useRequireRole(allowedRoles) {
+export function useRequireRole(roles) {
+  const { session, profile, loading, signOut } = useSession();
   const router = useRouter();
-  const { session, profile, loading, signOut, refreshProfile } = useSession();
-
-  // Depend on a stable string, not the `allowedRoles` array reference —
-  // callers typically pass an inline literal like useRequireRole(['founder']),
-  // which is a new array every render and would re-run this effect on
-  // every render otherwise.
-  const allowedRolesKey = allowedRoles.join(',');
 
   useEffect(() => {
     if (loading) return;
-    if (!session || !profile) {
+    if (!session) {
       router.replace('/');
       return;
     }
-    if (!allowedRolesKey.split(',').includes(profile.role)) {
+    if (profile && !roles.includes(profile.role)) {
       router.replace(dashboardPathForRole(profile.role));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, session, profile, allowedRolesKey, router]);
+  }, [loading, session, profile, roles, router]);
 
-  return { session, profile, loading, signOut, refreshProfile };
+  return { session, profile, loading, signOut };
+}
+
+export function dashboardPathForRole(role) {
+  if (role === 'founder' || role === 'employee') return '/employee/dashboard';
+  return '/customer/dashboard';
 }

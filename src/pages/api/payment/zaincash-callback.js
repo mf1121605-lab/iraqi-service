@@ -2,10 +2,6 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { verifyZainCashCallbackToken } from '../../../lib/paymentGateways/zaincash';
 import { resolvePaymentOutcome } from '../../../lib/paymentGateways/resolvePayment';
 
-// This is the redirectUrl ZainCash sends the customer's browser back to —
-// not a server-to-server webhook. The trust boundary is the JWT signature:
-// if it doesn't verify against our shared secret (or has expired), the
-// database is never touched, regardless of what the query string claims.
 export default async function handler(req, res) {
   const { token } = req.query;
   if (!token || Array.isArray(token)) {

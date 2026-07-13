@@ -1,17 +1,4 @@
 #!/usr/bin/env node
-// One-time bootstrap for the very first founder account. Every other
-// account (employees, co_admins) is created *by* a founder through the
-// dashboard/API routes — this script exists only because the very first
-// founder can't be created that way, since no founder exists yet.
-//
-// Usage:
-//   node scripts/create-founder.mjs --phone 07701234567 --password 'a-strong-password' \
-//     --given-name أحمد --father-name محمد --grandfather-name علي --family-name الجبوري
-//
-// Requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to be set
-// in the environment (e.g. `source .env.local` first, or prefix the
-// command with them inline).
-
 import { createClient } from '@supabase/supabase-js';
 import { isValidIraqiPhone, toE164 } from '../src/utils/phoneHelper.js';
 
@@ -61,11 +48,7 @@ async function main() {
     fail(`could not check for an existing founder: ${countError.message}`);
   }
   if (existingFounders > 0 && !force) {
-    fail(
-      `A founder account already exists (${existingFounders}). This is designed as a single-founder ` +
-        'system (see admin_level/co_admin in the schema) — pass --force if you really intend to create ' +
-        'another one.'
-    );
+    fail(`A founder account already exists (${existingFounders}). Pass --force if you really intend to create another one.`);
   }
 
   const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -74,8 +57,6 @@ async function main() {
     password,
     phone_confirm: true,
     email_confirm: Boolean(email),
-    // handle_new_auth_user reads this to set the profile's role in the
-    // same trigger that fires for every signup.
     user_metadata: { role: 'founder', phone: toE164(phone) },
   });
 

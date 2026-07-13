@@ -2,12 +2,6 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { buildRafidainAuthHeader, isOrderCaptured } from '../../../lib/paymentGateways/rafidainMastercard';
 import { resolvePaymentOutcome } from '../../../lib/paymentGateways/resolvePayment';
 
-// This is the interaction.returnUrl the customer's browser lands on after
-// the hosted checkout page. Unlike ZainCash, the base Hosted Checkout flow
-// carries no signed token here — so the query string is never trusted for
-// the actual result. Instead this independently re-queries the gateway's
-// own order-status endpoint and treats that response as the source of
-// truth.
 export default async function handler(req, res) {
   const { orderId } = req.query;
   if (!orderId || Array.isArray(orderId)) {

@@ -20,9 +20,6 @@ import { useLocale } from '../../components/Layout/AppShell';
 import { translate } from '../../utils/i18n';
 import { categoryLabel, useCategories } from '../../utils/useCategories';
 
-// Founders can add new service categories at any time (they're a DB table,
-// not a fixed enum) — known keys get a tailored icon, anything new falls
-// back to a generic one rather than rendering blank.
 const CATEGORY_ICONS = {
   military: ShieldHalf,
   education: GraduationCap,
@@ -34,9 +31,6 @@ function categoryIcon(key) {
   return CATEGORY_ICONS[key] ?? Sparkles;
 }
 
-// Kurdish text is optional on founder-authored banners/products (a founder
-// might not have filled it in yet) — fall back to Arabic rather than
-// rendering a blank line.
 function bilingualText(row, base, locale) {
   return (locale === 'ckb' ? row[`${base}_ckb`] : row[`${base}_ar`]) || row[`${base}_ar`] || '';
 }
@@ -76,8 +70,6 @@ export default function CustomerDashboard() {
     loadBanners();
     loadProducts();
 
-    // A founder editing banners/products/settings must reach this screen
-    // instantly if it's already open, not just on the next reload.
     const channel = supabaseClient
       .channel('customer-hub-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'service_links' }, loadBanners)

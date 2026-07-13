@@ -1,11 +1,6 @@
 import webpush from 'web-push';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 
-// Called by the fn_dispatch_push_notification Postgres trigger (via
-// pg_net) whenever a row is inserted into `notifications` — never by a
-// browser. The shared secret is the only thing standing between this
-// route and anyone on the internet being able to spam arbitrary users
-// with fake push notifications, so it's checked before anything else.
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -47,8 +42,6 @@ export default async function handler(req, res) {
           payload
         );
       } catch (err) {
-        // 404/410 means the browser unsubscribed or the endpoint expired —
-        // clean it up so future dispatches don't keep retrying a dead one.
         if (err.statusCode === 404 || err.statusCode === 410) {
           await supabaseAdmin.from('push_subscriptions').delete().eq('id', subscription.id);
         }
