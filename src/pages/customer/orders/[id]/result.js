@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { CheckCircle2, LayoutGrid, RotateCcw, XCircle } from 'lucide-react';
+import { CircleCheck as CheckCircle2, LayoutGrid, RotateCcw, Circle as XCircle } from 'lucide-react';
 import { useLocale } from '../../../../components/Layout/AppShell';
 import { useRequireRole } from '../../../../utils/useSession';
 import { translate } from '../../../../utils/i18n';

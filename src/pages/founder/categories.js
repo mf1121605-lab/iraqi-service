@@ -62,6 +62,7 @@ export default function FounderCategories() {
         </button>
       </form>
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-300">{error}</p>}
+      }
 
       {(categories ?? []).length === 0 ? (
         <p className="mt-6 text-sm text-ink-muted dark:text-ink-dark-muted">{t('founderCategories.empty')}</p>

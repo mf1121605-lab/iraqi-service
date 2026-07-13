@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { CheckCircle2, FileEdit } from 'lucide-react';
+import { CircleCheck as CheckCircle2, File as FileEdit } from 'lucide-react';
 import AppShell, { useLocale } from '../../../components/Layout/AppShell';
 import { supabaseClient } from '../../../lib/supabaseClient';
 import { useRequireRole } from '../../../utils/useSession';
@@ -98,6 +98,7 @@ export default function NewRequest() {
               />
             </div>
             {error && <p className="animate-slide-down text-sm text-red-600 dark:text-red-300">{error}</p>}
+            }
             <button
               type="submit"
               disabled={submitting}

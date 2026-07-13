@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Clock, Loader2, XCircle } from 'lucide-react';
+import { TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2, Clock, Loader as Loader2, Circle as XCircle } from 'lucide-react';
 import { translate } from '../../utils/i18n';
 
 const STATUS_STYLES = {

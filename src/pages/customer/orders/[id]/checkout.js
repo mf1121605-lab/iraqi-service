@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { CreditCard, Landmark, Loader2, Receipt, Smartphone } from 'lucide-react';
+import { CreditCard, Landmark, Loader as Loader2, Receipt, Smartphone } from 'lucide-react';
 import { useLocale } from '../../../../components/Layout/AppShell';
 import { supabaseClient } from '../../../../lib/supabaseClient';
 import { useRequireRole } from '../../../../utils/useSession';
@@ -157,6 +157,7 @@ export default function Checkout() {
           </p>
         )}
         {error && <p className="mt-4 animate-slide-down text-center text-sm text-red-200">{error}</p>}
+        }
       </div>
     </main>
   );

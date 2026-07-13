@@ -121,6 +121,7 @@ export default function CustomerAuth() {
               />
             </div>
             {error && <p className="animate-slide-down text-sm text-red-200">{error}</p>}
+            }
             <button
               type="submit"
               disabled={submitting}
@@ -175,6 +176,7 @@ export default function CustomerAuth() {
               />
             </div>
             {error && <p className="animate-slide-down text-sm text-red-200">{error}</p>}
+            }
             <button
               type="submit"
               disabled={submitting}
