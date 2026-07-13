@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import AppShell from '../../components/Layout/AppShell';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
@@ -8,6 +9,7 @@ import { SERVICE_CATEGORIES, translate } from '../../utils/i18n';
 
 export default function CustomerDashboard() {
   const { profile, loading, signOut } = useRequireRole(['customer']);
+  const router = useRouter();
   const locale = useLocale();
   const t = (path) => translate(locale, path);
 
@@ -50,14 +52,23 @@ export default function CustomerDashboard() {
   async function handleOrder(product) {
     setOrderMessage('');
     const price = product.discount_price ?? product.price;
-    const { error } = await supabaseClient.from('orders').insert({
-      customer_id: profile.id,
-      product_id: product.id,
-      quantity: 1,
-      unit_price: price,
-      total_price: price,
-    });
-    setOrderMessage(error ? error.message : t('customerHub.orderPlaced'));
+    const { data, error } = await supabaseClient
+      .from('orders')
+      .insert({
+        customer_id: profile.id,
+        product_id: product.id,
+        quantity: 1,
+        unit_price: price,
+        total_price: price,
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      setOrderMessage(error.message);
+      return;
+    }
+    router.push(`/customer/orders/${data.id}/checkout`);
   }
 
   if (loading || !profile) {
@@ -116,7 +127,7 @@ export default function CustomerDashboard() {
 
       <section className="mt-10">
         <h3 className="font-display text-xl font-bold">{t('customerHub.dealsTitle')}</h3>
-        {orderMessage && <p className="mt-2 text-sm text-brand-700 dark:text-brand-300">{orderMessage}</p>}
+        {orderMessage && <p className="mt-2 text-sm text-red-600 dark:text-red-300">{orderMessage}</p>}
         {products.length === 0 ? (
           <p className="mt-4 text-sm text-ink-muted dark:text-ink-dark-muted">{t('customerHub.dealsEmpty')}</p>
         ) : (
