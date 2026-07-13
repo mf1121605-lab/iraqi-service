@@ -7,5 +7,6 @@ export function useFounderNav(locale, active) {
     { href: '/founder/users', label: t('founderPanel.navUsers'), active: active === 'users' },
     { href: '/founder/stats', label: t('founderPanel.navStats'), active: active === 'stats' },
     { href: '/founder/audit-log', label: t('founderPanel.navAuditLog'), active: active === 'audit-log' },
+    { href: '/chat', label: t('chat.roomsTitle') },
   ];
 }

@@ -42,6 +42,7 @@ export default function CustomerDashboard() {
     () => [
       { href: '/customer/dashboard', label: t('customerHub.categoriesTitle'), active: true },
       { href: '/customer/requests', label: t('customerHub.myRequestsCta') },
+      { href: '/chat', label: t('chat.roomsTitle') },
     ],
     [locale] // eslint-disable-line react-hooks/exhaustive-deps
   );

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import StatusBadge from '../../components/UI/StatusBadge';
+import AttachmentUploader from '../../components/Chat/AttachmentUploader';
+import MessageAttachment from '../../components/Chat/MessageAttachment';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { SERVICE_CATEGORIES, translate } from '../../utils/i18n';
@@ -21,6 +23,7 @@ export default function EmployeeDashboard() {
   const [history, setHistory] = useState([]);
   const [messages, setMessages] = useState([]);
   const [messageBody, setMessageBody] = useState('');
+  const [pendingAttachment, setPendingAttachment] = useState(null);
   const [statusNote, setStatusNote] = useState('');
   const [nextStatus, setNextStatus] = useState('in_review');
 
@@ -52,7 +55,7 @@ export default function EmployeeDashboard() {
         .order('created_at'),
       supabaseClient
         .from('request_messages')
-        .select('id, sender_id, body, created_at')
+        .select('id, sender_id, body, attachment_url, created_at')
         .eq('request_id', requestId)
         .order('created_at'),
     ]);
@@ -100,13 +103,15 @@ export default function EmployeeDashboard() {
 
   async function handleSendMessage(event) {
     event.preventDefault();
-    if (!messageBody.trim()) return;
+    if (!messageBody.trim() && !pendingAttachment) return;
     await supabaseClient.from('request_messages').insert({
       request_id: selectedId,
       sender_id: profile.id,
-      body: messageBody,
+      body: messageBody.trim() || null,
+      attachment_url: pendingAttachment,
     });
     setMessageBody('');
+    setPendingAttachment(null);
     loadDetail(selectedId);
   }
 
@@ -124,7 +129,13 @@ export default function EmployeeDashboard() {
   const selectedRequest = queue?.find((request) => request.id === selectedId);
 
   return (
-    <AppShell onSignOut={signOut}>
+    <AppShell
+      onSignOut={signOut}
+      navItems={[
+        { href: '/employee/dashboard', label: t('employeeDesk.queueTitle'), active: true },
+        { href: '/chat', label: t('chat.roomsTitle') },
+      ]}
+    >
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <aside className="space-y-6">
           <section className="rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft dark:border-white/10 dark:bg-surface-dark-alt/60">
@@ -284,15 +295,26 @@ export default function EmployeeDashboard() {
                         }`}
                       >
                         {message.body}
+                        {message.attachment_url && <MessageAttachment path={message.attachment_url} />}
                       </li>
                     ))}
                   </ul>
-                  <form onSubmit={handleSendMessage} className="mt-3 flex gap-2">
+                  {pendingAttachment && (
+                    <p className="mt-1 text-xs text-ink-muted dark:text-ink-dark-muted">
+                      {pendingAttachment.split('-').slice(1).join('-')}
+                    </p>
+                  )}
+                  <form onSubmit={handleSendMessage} className="mt-3 flex items-center gap-2">
                     <input
                       value={messageBody}
                       onChange={(event) => setMessageBody(event.target.value)}
                       placeholder={t('employeeDesk.messagePlaceholder')}
                       className="flex-1 rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark"
+                    />
+                    <AttachmentUploader
+                      pathPrefix={`requests/${selectedId}`}
+                      locale={locale}
+                      onUploaded={setPendingAttachment}
                     />
                     <button
                       type="submit"

@@ -27,10 +27,15 @@ export default function CustomerAuth() {
   }, [locale]);
 
   // Already signed in (any role) -> bounce straight to their dashboard.
+  // A customer who never finished picking an avatar goes back through
+  // onboarding instead of straight to the dashboard.
   useEffect(() => {
-    if (!loading && session && profile) {
-      router.replace(dashboardPathForRole(profile.role));
+    if (loading || !session || !profile) return;
+    if (profile.role === 'customer' && !profile.avatar_key) {
+      router.replace('/customer/onboarding');
+      return;
     }
+    router.replace(dashboardPathForRole(profile.role));
   }, [loading, session, profile, router]);
 
   const t = (path) => translate(locale, path);
@@ -66,13 +71,13 @@ export default function CustomerAuth() {
       setError(verifyError.message);
       return;
     }
-    router.replace('/customer/dashboard');
+    router.replace('/customer/onboarding');
   }
 
   async function handleFacebookLogin() {
     await supabaseClient.auth.signInWithOAuth({
       provider: 'facebook',
-      options: { redirectTo: `${window.location.origin}/customer/dashboard` },
+      options: { redirectTo: `${window.location.origin}/customer/onboarding` },
     });
   }
 
