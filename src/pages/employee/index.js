@@ -94,7 +94,6 @@ export default function EmployeeAuth() {
             />
           </div>
           {error && <p className="animate-slide-down text-sm text-red-200">{error}</p>}
-          }
           <button
             type="submit"
             disabled={submitting}

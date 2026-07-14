@@ -302,7 +302,6 @@ export default function EmployeeDashboard() {
                           {new Date(entry.created_at).toLocaleString(locale === 'ar' ? 'ar-IQ' : 'ckb')}
                         </span>
                         {entry.note && <p className="text-ink-muted dark:text-ink-dark-muted">{entry.note}</p>}
-                        }
                       </li>
                     ))}
                   </ol>

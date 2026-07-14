@@ -54,7 +54,6 @@ export default function AttachmentUploader({ pathPrefix, onUploaded, locale }) {
       )}
       <span className="hidden sm:inline">{uploading ? t('chat.uploading') : t('chat.attachCta')}</span>
       {error && <span className="ms-2 text-xs font-normal text-red-600 dark:text-red-300">{error}</span>}
-      }
     </label>
   );
 }

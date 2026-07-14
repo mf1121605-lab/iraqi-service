@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Image, Plus } from 'lucide-react';
+import { ImageIcon, Plus } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
@@ -46,7 +46,7 @@ export default function FounderBanners() {
   return (
     <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
       <h2 className="flex items-center gap-2 font-display text-xl font-bold">
-        <Image className="h-5 w-5" aria-hidden="true" />
+        <ImageIcon className="h-5 w-5" aria-hidden="true" />
         {t('founderBanners.title')}
       </h2>
 
