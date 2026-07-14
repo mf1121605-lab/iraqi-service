@@ -157,7 +157,6 @@ export default function Checkout() {
           </p>
         )}
         {error && <p className="mt-4 animate-slide-down text-center text-sm text-red-200">{error}</p>}
-        }
       </div>
     </main>
   );

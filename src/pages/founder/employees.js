@@ -76,7 +76,6 @@ export default function FounderEmployees() {
         </button>
       </form>
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-300">{error}</p>}
-      }
 
       {(employees ?? []).length === 0 ? (
         <p className="mt-6 text-sm text-ink-muted dark:text-ink-dark-muted">{t('founderEmployees.empty')}</p>

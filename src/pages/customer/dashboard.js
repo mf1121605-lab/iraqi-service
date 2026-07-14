@@ -194,7 +194,6 @@ export default function CustomerDashboard() {
           {t('customerHub.dealsTitle')}
         </h3>
         {orderMessage && <p className="mt-2 animate-slide-down text-sm text-red-600 dark:text-red-300">{orderMessage}</p>}
-        }
         {products.length === 0 ? (
           <p className="mt-4 text-sm text-ink-muted dark:text-ink-dark-muted">{t('customerHub.dealsEmpty')}</p>
         ) : (

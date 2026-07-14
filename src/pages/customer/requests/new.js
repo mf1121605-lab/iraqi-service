@@ -98,7 +98,6 @@ export default function NewRequest() {
               />
             </div>
             {error && <p className="animate-slide-down text-sm text-red-600 dark:text-red-300">{error}</p>}
-            }
             <button
               type="submit"
               disabled={submitting}

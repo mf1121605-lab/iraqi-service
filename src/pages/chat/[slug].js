@@ -183,7 +183,6 @@ export default function ChatRoom() {
               ) : (
                 <>
                   {message.body && <p className="text-sm">{message.body}</p>}
-                  }
                   {message.attachment_url && <MessageAttachment path={message.attachment_url} />}
                 </>
               )}

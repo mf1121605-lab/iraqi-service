@@ -106,7 +106,6 @@ export default function NotificationBell({ userId, locale }) {
             </button>
           )}
           {pushError && <p className="mt-1 text-xs text-red-600 dark:text-red-300">{pushError}</p>}
-          }
 
           <ul className="mt-2 max-h-72 space-y-1 overflow-y-auto">
             {notifications.length === 0 ? (
