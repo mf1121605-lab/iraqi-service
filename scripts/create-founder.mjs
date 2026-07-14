@@ -48,7 +48,11 @@ async function main() {
     fail(`could not check for an existing founder: ${countError.message}`);
   }
   if (existingFounders > 0 && !force) {
-    fail(`A founder account already exists (${existingFounders}). Pass --force if you really intend to create another one.`);
+    fail(
+      `A founder account already exists (${existingFounders}). This is designed as a single-founder ` +
+        'system (see admin_level/co_admin in the schema) — pass --force if you really intend to create ' +
+        'another one.'
+    );
   }
 
   const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
