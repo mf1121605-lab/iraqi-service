@@ -2,43 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer utilities {
-  /* Deep mesh gradient for hero/auth pages */
-  .bg-mesh-hero {
-    background-image:
-      radial-gradient(ellipse at 65% 25%, rgba(47, 148, 128, 0.38) 0%, transparent 55%),
-      radial-gradient(ellipse at 15% 80%, rgba(211, 143, 29, 0.14) 0%, transparent 48%),
-      radial-gradient(ellipse at 90% 85%, rgba(30, 95, 85, 0.25) 0%, transparent 40%),
-      linear-gradient(150deg, #020908 0%, #091a17 35%, #0d2421 65%, #020908 100%);
-  }
+html {
+  scroll-behavior: smooth;
+}
 
-  /* Subtle dot grid for dashboard / light surface */
-  .bg-dot-grid-light {
-    background-image: radial-gradient(circle, rgba(47, 148, 128, 0.12) 1px, transparent 1px);
-    background-size: 28px 28px;
-  }
-
-  /* Subtle dot grid for dark surface */
-  .bg-dot-grid-dark {
-    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
-    background-size: 28px 28px;
-  }
-
-  /* Combined surface + dot-grid for AppShell light mode */
-  .bg-surface-patterned {
-    background-color: #f7f8fa;
-    background-image:
-      radial-gradient(circle, rgba(47, 148, 128, 0.11) 1px, transparent 1px),
-      linear-gradient(160deg, #f0f5f4 0%, #f7f8fa 60%, #eef4f2 100%);
-    background-size: 28px 28px, 100% 100%;
-  }
-
-  /* Combined surface + dot-grid for AppShell dark mode */
-  .dark-surface-patterned {
-    background-color: #12181b;
-    background-image:
-      radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-      linear-gradient(160deg, #0e1615 0%, #12181b 60%, #101a19 100%);
-    background-size: 28px 28px, 100% 100%;
-  }
+body {
+  @apply bg-surface-light text-ink-light dark:bg-surface-dark dark:text-ink-dark font-sans antialiased;
+  font-feature-settings: 'ss01' 1;
 }
