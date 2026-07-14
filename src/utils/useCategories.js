@@ -1,22 +1,39 @@
 import { useEffect, useState } from 'react';
 import { supabaseClient } from '../lib/supabaseClient';
-import { translate } from './i18n';
 
-export function useCategories() {
+const SELECT_COLUMNS = 'key, label_ar, label_ckb, is_active, sort_order';
+
+export function useCategories({ activeOnly = true } = {}) {
   const [categories, setCategories] = useState(null);
 
   useEffect(() => {
-    supabaseClient
-      .from('service_categories')
-      .select('id, key, label_ar, label_ckb, sort_order')
-      .order('sort_order')
-      .then(({ data }) => setCategories(data ?? []));
-  }, []);
+    let active = true;
+
+    function load() {
+      let query = supabaseClient.from('categories').select(SELECT_COLUMNS).order('sort_order');
+      if (activeOnly) query = query.eq('is_active', true);
+      query.then(({ data }) => {
+        if (active) setCategories(data ?? []);
+      });
+    }
+
+    load();
+
+    const channel = supabaseClient
+      .channel('categories-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, load)
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabaseClient.removeChannel(channel);
+    };
+  }, [activeOnly]);
 
   return categories;
 }
 
 export function categoryLabel(category, locale) {
   if (!category) return '';
-  return (locale === 'ckb' ? category.label_ckb : category.label_ar) || category.label_ar || category.key;
+  return locale === 'ar' ? category.label_ar : category.label_ckb;
 }
