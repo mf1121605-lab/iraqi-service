@@ -13,12 +13,19 @@ export function useSession() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const loadProfile = useCallback(async (userId) => {
+  const loadProfile = useCallback(async (userId, attempt = 0) => {
     if (!userId) {
       setProfile(null);
       return;
     }
     const { data } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
+    if (!data && attempt < 5) {
+      // A profile row is created by a DB trigger right after signup (e.g. a
+      // fresh Google OAuth account); it can lag a moment behind the redirect
+      // back to the app, so retry briefly instead of treating it as "signed out".
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      return loadProfile(userId, attempt + 1);
+    }
     setProfile(data ?? null);
   }, []);
 
