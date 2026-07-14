@@ -23,7 +23,7 @@ export default function FounderCategories() {
     event.preventDefault();
     setError('');
     if (!form.key || !form.labelAr || !form.labelCkb) return;
-    const { error: insertError } = await supabaseClient.from('service_categories').insert({
+    const { error: insertError } = await supabaseClient.from('categories').insert({
       key: form.key.trim(),
       label_ar: form.labelAr,
       label_ckb: form.labelCkb,
@@ -38,7 +38,7 @@ export default function FounderCategories() {
   }
 
   async function handleDelete(key) {
-    await supabaseClient.from('service_categories').delete().eq('key', key);
+    await supabaseClient.from('categories').delete().eq('key', key);
   }
 
   if (loading || !profile) {

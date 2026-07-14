@@ -29,7 +29,6 @@ export default function FounderChatRooms() {
       name_ar: form.nameAr,
       name_ckb: form.nameCkb || null,
       is_active: true,
-      created_by: profile.id,
     });
     setForm(emptyForm);
     supabaseClient.from('chat_rooms').select('*').order('created_at', { ascending: false }).then(({ data }) => setRooms(data ?? []));
