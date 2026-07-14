@@ -57,9 +57,11 @@ module.exports = {
         display: ['var(--font-cairo)', 'var(--font-noto-sans-arabic)', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
-        'gradient-hero': 'linear-gradient(135deg, #193f3b 0%, #227667 45%, #2f9480 100%)',
+        'gradient-hero': 'linear-gradient(150deg, #020908 0%, #091a17 35%, #0d2421 65%, #020908 100%)',
         'gradient-gold': 'linear-gradient(135deg, #d38f1d 0%, #edc151 100%)',
         'gradient-glass': 'linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 100%)',
+        'gradient-surface': 'linear-gradient(160deg, #f0f5f4 0%, #f7f8fa 60%, #eef4f2 100%)',
+        'gradient-surface-dark': 'linear-gradient(160deg, #0e1615 0%, #12181b 60%, #101a19 100%)',
       },
       boxShadow: {
         glass: '0 8px 32px 0 rgba(10, 36, 34, 0.18)',
