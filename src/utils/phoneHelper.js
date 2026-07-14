@@ -1,5 +1,3 @@
-import { normalizeIraqiPhone, toLocalFormat } from '../utils/phoneHelper';
-
 const IRAQ_COUNTRY_CODE = '964';
 const LOCAL_PATTERN = /^07\d{9}$/;
 
