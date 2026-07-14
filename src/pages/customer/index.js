@@ -89,9 +89,11 @@ export default function CustomerAuth() {
   const handleGoogleLogin = () => handleOAuthLogin('google');
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-hero p-6 text-white">
-      <div className="pointer-events-none absolute -left-16 top-16 h-56 w-56 animate-float rounded-full bg-white/10 blur-3xl" />
-      <div className="pointer-events-none absolute -right-10 bottom-16 h-72 w-72 animate-float rounded-full bg-gold-400/20 blur-3xl [animation-delay:1.5s]" />
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-mesh-hero p-6 text-white">
+      <div className="pointer-events-none absolute inset-0 bg-dot-grid-dark opacity-60" />
+      <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 animate-float rounded-full bg-brand-500/20 blur-3xl" />
+      <div className="pointer-events-none absolute -right-16 bottom-10 h-96 w-96 animate-float rounded-full bg-gold-400/15 blur-3xl [animation-delay:1.5s]" />
+      <div className="pointer-events-none absolute left-1/2 top-1/3 h-48 w-48 -translate-x-1/2 animate-pulse-soft rounded-full bg-brand-400/10 blur-2xl" />
 
       <div className="glass-panel relative w-full max-w-md animate-scale-in rounded-4xl p-10 shadow-elevate-lg">
         <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 shadow-inner-glass">

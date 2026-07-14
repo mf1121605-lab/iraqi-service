@@ -19,10 +19,15 @@ export default function LandingPage() {
   const t = (path) => translate(locale, path);
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-hero p-6 text-white">
-      <div className="pointer-events-none absolute -left-16 top-16 h-56 w-56 animate-float rounded-full bg-white/10 blur-3xl" />
-      <div className="pointer-events-none absolute -right-10 bottom-16 h-72 w-72 animate-float rounded-full bg-gold-400/20 blur-3xl [animation-delay:1.5s]" />
-      <div className="pointer-events-none absolute left-1/3 top-1/2 h-40 w-40 animate-pulse-soft rounded-full bg-white/5 blur-2xl" />
+    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-mesh-hero p-6 text-white">
+      {/* Dot-grid texture overlay */}
+      <div className="pointer-events-none absolute inset-0 bg-dot-grid-dark opacity-60" />
+
+      {/* Decorative glow blobs */}
+      <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 animate-float rounded-full bg-brand-500/20 blur-3xl" />
+      <div className="pointer-events-none absolute -right-16 bottom-10 h-96 w-96 animate-float rounded-full bg-gold-400/15 blur-3xl [animation-delay:1.5s]" />
+      <div className="pointer-events-none absolute left-1/2 top-1/3 h-56 w-56 -translate-x-1/2 animate-pulse-soft rounded-full bg-brand-400/10 blur-2xl" />
+      <div className="pointer-events-none absolute bottom-1/4 left-1/4 h-40 w-40 animate-float rounded-full bg-gold-300/10 blur-2xl [animation-delay:3s]" />
 
       <div className="relative z-10 flex flex-col items-center text-center">
         <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 shadow-inner-glass">

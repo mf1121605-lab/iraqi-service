@@ -57,7 +57,7 @@ module.exports = {
         display: ['var(--font-cairo)', 'var(--font-noto-sans-arabic)', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
-        'gradient-hero': 'linear-gradient(135deg, #193f3b 0%, #227667 45%, #2f9480 100%)',
+        'gradient-hero': 'linear-gradient(150deg, #020908 0%, #091a17 35%, #0d2421 65%, #020908 100%)',
         'gradient-gold': 'linear-gradient(135deg, #d38f1d 0%, #edc151 100%)',
         'gradient-glass': 'linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 100%)',
       },

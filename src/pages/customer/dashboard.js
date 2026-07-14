@@ -118,7 +118,7 @@ export default function CustomerDashboard() {
 
   if (loading || !profile) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
+      <main className="flex min-h-screen items-center justify-center bg-mesh-hero text-white">
         {t('common.loading')}
       </main>
     );

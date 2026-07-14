@@ -79,7 +79,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
   );
 
   return (
-    <div className="min-h-screen bg-surface-light text-ink-light dark:bg-surface-dark dark:text-ink-dark">
+    <div className="min-h-screen bg-surface-patterned text-ink-light dark:dark-surface-patterned dark:text-ink-dark">
       <header className="sticky top-0 z-30 glass-nav border-b border-black/5 shadow-soft transition-colors dark:glass-nav-dark dark:border-white/5">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <div className="flex items-center gap-2">
