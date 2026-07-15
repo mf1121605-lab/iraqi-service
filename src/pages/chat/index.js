@@ -43,8 +43,8 @@ export default function ChatRooms() {
 
   return (
     <AppShell onSignOut={signOut} userId={profile.id}>
-      <h2 className="flex items-center gap-2 font-display text-xl font-bold">
-        <MessagesSquare className="h-5 w-5" aria-hidden="true" />
+      <h2 className="section-title-cinematic font-display text-xl font-bold">
+        <MessagesSquare className="h-5 w-5 text-gold-400" aria-hidden="true" />
         {t('chat.roomsTitle')}
       </h2>
       {rooms === null ? (
@@ -56,9 +56,9 @@ export default function ChatRooms() {
               key={room.id}
               href={`/chat/${room.slug}`}
               style={{ animationDelay: `${index * 60}ms` }}
-              className="glass-panel-dark group flex animate-slide-up items-center gap-3 rounded-2xl p-6 font-semibold shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-elevate"
+              className="glass-panel-dark group flex animate-slide-up items-center gap-3 rounded-2xl p-6 font-semibold text-white shadow-soft transition-all duration-300 hover:-translate-y-1 hover:border-gold-400/30 hover:shadow-elevate"
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 transition-transform duration-300 group-hover:scale-110">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold-400/10 text-gold-300 ring-1 ring-inset ring-gold-400/25 transition-transform duration-300 group-hover:scale-110">
                 <MessageCircle className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
               </span>
               {locale === 'ar' ? room.name_ar : room.name_ckb}

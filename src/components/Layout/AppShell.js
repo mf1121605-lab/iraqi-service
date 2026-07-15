@@ -83,10 +83,11 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
       <a href="#main-content" className="skip-link">
         {t('common.skipToContent')}
       </a>
-      <header className="sticky top-0 z-30 glass-nav border-b border-black/5 shadow-soft transition-colors dark:glass-nav-dark dark:border-white/5">
+      <header className="sticky top-0 z-30 glass-nav relative border-b border-black/5 shadow-soft transition-colors dark:glass-nav-dark dark:border-gold-400/10">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-px bg-gradient-to-r from-transparent via-gold-400/50 to-transparent dark:block" />
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-hero text-white shadow-glow">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-hero text-white shadow-glow dark:bg-none dark:bg-gold-400/15 dark:text-gold-300 dark:shadow-[0_0_0_1px_rgba(230,171,44,0.35),0_4px_16px_-4px_rgba(230,171,44,0.4)]">
               <ShieldCheck className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />
             </span>
             <h1 className="font-display text-lg font-bold tracking-tight">{title ?? t('common.platformName')}</h1>

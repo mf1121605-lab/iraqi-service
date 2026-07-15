@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { ArrowLeft, KeyRound, Phone } from 'lucide-react';
+import { ArrowLeft, KeyRound, Phone, ShieldCheck } from 'lucide-react';
 import FacebookGlyph from '../../components/UI/FacebookGlyph';
 import GoogleGlyph from '../../components/UI/GoogleGlyph';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -89,59 +89,61 @@ export default function CustomerAuth() {
   const handleGoogleLogin = () => handleOAuthLogin('google');
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-mesh-hero p-6 text-white">
-      <div className="pointer-events-none absolute inset-0 bg-dot-grid-dark opacity-60" />
-      <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 animate-float rounded-full bg-brand-500/20 blur-3xl" />
-      <div className="pointer-events-none absolute -right-16 bottom-10 h-96 w-96 animate-float rounded-full bg-gold-400/15 blur-3xl [animation-delay:1.5s]" />
-      <div className="pointer-events-none absolute left-1/2 top-1/3 h-48 w-48 -translate-x-1/2 animate-pulse-soft rounded-full bg-brand-400/10 blur-2xl" />
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-6 text-white">
+      <div className="pointer-events-none absolute left-1/2 top-0 h-[36rem] w-[36rem] -translate-x-1/2 animate-spotlight-sweep rounded-full bg-gold-400/10 blur-[100px]" />
+      <div className="pointer-events-none absolute -left-24 bottom-10 h-72 w-72 animate-float rounded-full bg-brand-500/15 blur-3xl" />
+      <div className="pointer-events-none absolute -right-16 bottom-0 h-80 w-80 animate-float rounded-full bg-gold-400/10 blur-3xl [animation-delay:1.5s]" />
 
-      <div className="glass-panel relative w-full max-w-md animate-scale-in rounded-4xl p-10 shadow-elevate-lg">
-        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 shadow-inner-glass">
+      <div className="cinematic-card relative z-10 w-full max-w-md animate-scale-in p-10">
+        <span className="cinematic-emblem mx-auto h-16 w-16">
           {step === 'otp' ? (
-            <KeyRound className="h-7 w-7" strokeWidth={2} aria-hidden="true" />
+            <KeyRound className="h-7 w-7 text-gold-300" strokeWidth={2} aria-hidden="true" />
           ) : (
-            <Phone className="h-7 w-7" strokeWidth={2} aria-hidden="true" />
+            <Phone className="h-7 w-7 text-gold-300" strokeWidth={2} aria-hidden="true" />
           )}
         </span>
-        <h1 className="mt-4 text-center font-display text-2xl font-bold">{t('authCustomer.title')}</h1>
+        <div className="mt-5 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-gold-300/80">
+          <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+          {t('common.platformName')}
+        </div>
+        <h1 className="mt-2 text-center font-display text-3xl font-bold tracking-tight">{t('authCustomer.title')}</h1>
 
         {step === 'phone' && (
           <form onSubmit={handleSendCode} className="mt-8 space-y-4">
             <div>
-              <label htmlFor="phone" className="mb-1 block text-sm text-white/80">
+              <label htmlFor="phone" className="mb-1.5 block text-sm text-white/80">
                 {t('authCustomer.phoneLabel')}
               </label>
-              <input
-                id="phone"
-                type="tel"
-                inputMode="numeric"
-                dir="ltr"
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                placeholder={t('authCustomer.phonePlaceholder')}
-                className="w-full rounded-xl2 border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-white/50 transition-all focus:outline-none focus:ring-2 focus:ring-gold-300"
-              />
+              <div className="relative">
+                <Phone className="pointer-events-none absolute inset-y-0 start-4 my-auto h-4 w-4 text-white/40" aria-hidden="true" />
+                <input
+                  id="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  dir="ltr"
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                  placeholder={t('authCustomer.phonePlaceholder')}
+                  className="input-cinematic ps-11"
+                />
+              </div>
             </div>
-            {error && <p className="animate-slide-down text-sm text-red-200">{error}</p>}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-xl2 bg-gradient-gold px-4 py-3 font-bold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.01] hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-900 disabled:opacity-50 disabled:hover:scale-100"
-            >
+            {error && <p className="animate-slide-down text-sm text-red-300">{error}</p>}
+            <button type="submit" disabled={submitting} className="btn-cinematic-gold w-full px-4 py-3.5 disabled:opacity-50">
               {t('authCustomer.sendCodeCta')}
             </button>
 
-            <div className="flex items-center gap-3 text-xs text-white/60">
-              <span className="h-px flex-1 bg-white/20" />
+            <div className="flex items-center gap-3 text-xs text-white/50">
+              <span className="h-px flex-1 bg-gradient-to-r from-transparent via-white/25 to-transparent" />
               {t('authCustomer.orDivider')}
-              <span className="h-px flex-1 bg-white/20" />
+              <span className="h-px flex-1 bg-gradient-to-r from-transparent via-white/25 to-transparent" />
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={handleFacebookLogin}
-                className="glass-panel flex w-full items-center justify-center gap-2 rounded-xl2 px-4 py-3 font-semibold text-white transition-all duration-300 hover:scale-[1.01] hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-gold-300"
+                className="btn-cinematic-outline px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gold-300"
               >
                 <FacebookGlyph className="h-4 w-4" />
                 {t('authCustomer.continueWithFacebook')}
@@ -149,7 +151,7 @@ export default function CustomerAuth() {
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="glass-panel flex w-full items-center justify-center gap-2 rounded-xl2 bg-white/95 px-4 py-3 font-semibold text-brand-950 transition-all duration-300 hover:scale-[1.01] hover:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-brand-900"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 font-semibold text-brand-950 shadow-[0_8px_24px_-8px_rgba(255,255,255,0.4)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_-8px_rgba(255,255,255,0.55)] focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-brand-900"
               >
                 <GoogleGlyph className="h-4 w-4" />
                 {t('authCustomer.continueWithGoogle')}
@@ -162,7 +164,7 @@ export default function CustomerAuth() {
           <form onSubmit={handleVerify} className="mt-8 animate-fade-in space-y-4">
             <p className="text-sm text-white/80">{t('authCustomer.otpSentMessage')}</p>
             <div>
-              <label htmlFor="otp" className="mb-1 block text-sm text-white/80">
+              <label htmlFor="otp" className="mb-1.5 block text-sm text-white/80">
                 {t('authCustomer.otpLabel')}
               </label>
               <input
@@ -173,15 +175,11 @@ export default function CustomerAuth() {
                 value={otp}
                 onChange={(event) => setOtp(event.target.value)}
                 placeholder={t('authCustomer.otpPlaceholder')}
-                className="w-full rounded-xl2 border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-white/50 transition-all focus:outline-none focus:ring-2 focus:ring-gold-300"
+                className="input-cinematic text-center tracking-[0.5em]"
               />
             </div>
-            {error && <p className="animate-slide-down text-sm text-red-200">{error}</p>}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-xl2 bg-gradient-gold px-4 py-3 font-bold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.01] hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-900 disabled:opacity-50 disabled:hover:scale-100"
-            >
+            {error && <p className="animate-slide-down text-sm text-red-300">{error}</p>}
+            <button type="submit" disabled={submitting} className="btn-cinematic-gold w-full px-4 py-3.5 disabled:opacity-50">
               {t('authCustomer.verifyCta')}
             </button>
             <button

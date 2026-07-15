@@ -153,7 +153,7 @@ export default function EmployeeDashboard() {
         <aside className="space-y-6">
           <section className="rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft transition-shadow duration-300 hover:shadow-elevate dark:border-white/10 dark:bg-surface-dark-alt/60">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-hero font-display text-lg font-bold text-white shadow-glow">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold-400/15 font-display text-lg font-bold text-gold-600 ring-1 ring-inset ring-gold-400/30 dark:text-gold-300">
                 {(profile.given_name ?? '?').charAt(0)}
               </div>
               <div>

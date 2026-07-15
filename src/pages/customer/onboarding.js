@@ -33,35 +33,27 @@ export default function CustomerOnboarding() {
   }
 
   if (loading || !profile || profile.avatar_key) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
-        {t('common.loading')}
-      </main>
-    );
+    return <main className="flex min-h-screen items-center justify-center text-white">{t('common.loading')}</main>;
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-hero p-6 text-white">
-      <div className="pointer-events-none absolute -left-16 top-16 h-56 w-56 animate-float rounded-full bg-white/10 blur-3xl" />
-      <div className="pointer-events-none absolute -right-10 bottom-16 h-72 w-72 animate-float rounded-full bg-gold-400/20 blur-3xl [animation-delay:1.5s]" />
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-6 text-white">
+      <div className="pointer-events-none absolute left-1/2 top-0 h-[36rem] w-[36rem] -translate-x-1/2 animate-spotlight-sweep rounded-full bg-gold-400/10 blur-[100px]" />
+      <div className="pointer-events-none absolute -left-16 top-16 h-56 w-56 animate-float rounded-full bg-white/5 blur-3xl" />
+      <div className="pointer-events-none absolute -right-10 bottom-16 h-72 w-72 animate-float rounded-full bg-gold-400/15 blur-3xl [animation-delay:1.5s]" />
 
-      <div className="glass-panel relative w-full max-w-lg animate-scale-in rounded-4xl p-10 text-center shadow-elevate-lg">
-        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 shadow-inner-glass">
-          <Sparkles className="h-7 w-7" strokeWidth={2} aria-hidden="true" />
+      <div className="cinematic-card relative z-10 w-full max-w-lg animate-scale-in p-10 text-center">
+        <span className="cinematic-emblem mx-auto h-16 w-16">
+          <Sparkles className="h-7 w-7 text-gold-300" strokeWidth={2} aria-hidden="true" />
         </span>
-        <h1 className="mt-4 font-display text-2xl font-bold">{t('onboarding.title')}</h1>
-        <p className="mt-2 text-white/80">{t('onboarding.subtitle')}</p>
+        <h1 className="mt-5 font-display text-3xl font-bold tracking-tight">{t('onboarding.title')}</h1>
+        <p className="mt-2 text-white/70">{t('onboarding.subtitle')}</p>
 
         <div className="mt-8">
           <AvatarPicker value={selected} onSelect={setSelected} />
         </div>
 
-        <button
-          type="button"
-          onClick={handleContinue}
-          disabled={saving}
-          className="mt-8 w-full rounded-xl2 bg-gradient-gold px-4 py-3 font-bold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.01] hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-900 disabled:opacity-50 disabled:hover:scale-100"
-        >
+        <button type="button" onClick={handleContinue} disabled={saving} className="btn-cinematic-gold mt-8 w-full px-4 py-3.5 disabled:opacity-50">
           {t('onboarding.continueCta')}
         </button>
       </div>

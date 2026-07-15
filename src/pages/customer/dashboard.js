@@ -128,7 +128,7 @@ export default function CustomerDashboard() {
 
   return (
     <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
-      <section className="relative overflow-hidden rounded-4xl bg-gradient-hero p-10 text-white shadow-elevate-lg">
+      <section className="cinematic-card relative p-10 text-white">
         <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-3xl" />
         {currentBanner ? (
           <a href={currentBanner.url} className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -136,17 +136,17 @@ export default function CustomerDashboard() {
               <SafeImage
                 src={currentBanner.image_path}
                 alt={bilingualText(currentBanner, 'title', locale)}
-                className="h-32 w-full shrink-0 rounded-2xl object-cover shadow-glass-sm sm:h-24 sm:w-40"
+                className="h-32 w-full shrink-0 rounded-2xl border border-gold-400/20 object-cover shadow-glass-sm sm:h-24 sm:w-40"
               />
             )}
             <div>
-              <p className="text-sm text-white/70">{bilingualText(currentBanner, 'subtitle', locale)}</p>
-              <h2 className="mt-2 font-display text-2xl font-bold">{bilingualText(currentBanner, 'title', locale)}</h2>
+              <p className="text-sm text-gold-300/80">{bilingualText(currentBanner, 'subtitle', locale)}</p>
+              <h2 className="mt-2 font-display text-2xl font-bold tracking-tight">{bilingualText(currentBanner, 'title', locale)}</h2>
             </div>
           </a>
         ) : (
           <div className="relative">
-            <h2 className="font-display text-2xl font-bold">{t('customerHub.heroFallbackTitle')}</h2>
+            <h2 className="font-display text-2xl font-bold tracking-tight">{t('customerHub.heroFallbackTitle')}</h2>
             <p className="mt-2 text-white/70">{t('customerHub.heroFallbackSubtitle')}</p>
           </div>
         )}
@@ -168,20 +168,20 @@ export default function CustomerDashboard() {
       </section>
 
       <section className="mt-10">
-        <h3 className="font-display text-xl font-bold">{t('customerHub.categoriesTitle')}</h3>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <h3 className="section-title-cinematic font-display text-xl font-bold">{t('customerHub.categoriesTitle')}</h3>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {(categories ?? []).map((category) => {
             const Icon = categoryIcon(category.key);
             return (
               <Link
                 key={category.key}
                 href={`/customer/requests/new?category=${category.key}`}
-                className="glass-panel-dark group flex flex-col items-center gap-3 rounded-2xl p-6 text-center font-semibold shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-elevate"
+                className="glass-panel-dark group relative flex flex-col items-center gap-3 overflow-hidden rounded-2xl p-6 text-center font-semibold shadow-soft transition-all duration-300 hover:-translate-y-1 hover:border-gold-400/40 hover:shadow-elevate"
               >
-                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10 text-white transition-transform duration-300 group-hover:scale-110">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gold-400/10 text-gold-300 ring-1 ring-inset ring-gold-400/25 transition-transform duration-300 group-hover:scale-110">
                   <Icon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
                 </span>
-                {categoryLabel(category, locale)}
+                <span className="text-white">{categoryLabel(category, locale)}</span>
               </Link>
             );
           })}
@@ -189,19 +189,19 @@ export default function CustomerDashboard() {
       </section>
 
       <section className="mt-10">
-        <h3 className="flex items-center gap-2 font-display text-xl font-bold">
-          <ShoppingBag className="h-5 w-5" aria-hidden="true" />
+        <h3 className="section-title-cinematic font-display text-xl font-bold">
+          <ShoppingBag className="h-5 w-5 text-gold-300" aria-hidden="true" />
           {t('customerHub.dealsTitle')}
         </h3>
-        {orderMessage && <p className="mt-2 animate-slide-down text-sm text-red-600 dark:text-red-300">{orderMessage}</p>}
+        {orderMessage && <p className="mt-2 animate-slide-down text-sm text-red-400">{orderMessage}</p>}
         {products.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-muted dark:text-ink-dark-muted">{t('customerHub.dealsEmpty')}</p>
+          <p className="mt-4 text-sm text-white/60">{t('customerHub.dealsEmpty')}</p>
         ) : (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => (
               <div
                 key={product.id}
-                className="group overflow-hidden rounded-2xl border border-black/5 shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-elevate dark:border-white/10"
+                className="glass-panel-dark group overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:border-gold-400/30 hover:shadow-elevate"
               >
                 <SafeImage
                   src={product.image_path}
@@ -209,30 +209,22 @@ export default function CustomerDashboard() {
                   className="h-36 w-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
                 <div className="p-5">
-                  <h4 className="font-semibold">{bilingualText(product, 'title', locale)}</h4>
-                  <p className="mt-1 text-sm text-ink-muted dark:text-ink-dark-muted">
-                    {bilingualText(product, 'description', locale)}
-                  </p>
+                  <h4 className="font-semibold text-white">{bilingualText(product, 'title', locale)}</h4>
+                  <p className="mt-1 text-sm text-white/60">{bilingualText(product, 'description', locale)}</p>
                   <div className="mt-3 flex items-center gap-2">
                     {product.discount_price ? (
                       <>
-                        <span className="text-sm text-ink-muted line-through dark:text-ink-dark-muted">
-                          {product.price} IQD
-                        </span>
-                        <span className="flex items-center gap-1 font-bold text-brand-700 dark:text-brand-300">
+                        <span className="text-sm text-white/40 line-through">{product.price} IQD</span>
+                        <span className="flex items-center gap-1 font-bold text-gold-300">
                           <Tag className="h-3.5 w-3.5" aria-hidden="true" />
                           {product.discount_price} IQD
                         </span>
                       </>
                     ) : (
-                      <span className="font-bold">{product.price} IQD</span>
+                      <span className="font-bold text-white">{product.price} IQD</span>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleOrder(product)}
-                    className="mt-4 w-full rounded-xl2 bg-brand-600 px-4 py-2 font-semibold text-white shadow-glass-sm transition-all duration-300 hover:bg-brand-700 hover:shadow-elevate focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2"
-                  >
+                  <button type="button" onClick={() => handleOrder(product)} className="btn-cinematic-gold mt-4 w-full px-4 py-2.5 text-sm">
                     {t('customerHub.orderCta')}
                   </button>
                 </div>

@@ -19,6 +19,7 @@ export default function App({ Component, pageProps }) {
   return (
     <div className={`${notoSansArabic.variable} ${cairo.variable} contents`}>
       <Component {...pageProps} />
+      <div className="grain-overlay" aria-hidden="true" />
       <div className="cinematic-frame" aria-hidden="true" />
       <div className="cinematic-frame-corner top-left" aria-hidden="true" />
       <div className="cinematic-frame-corner top-right" aria-hidden="true" />
