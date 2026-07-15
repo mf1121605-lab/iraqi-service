@@ -80,6 +80,9 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
 
   return (
     <div className="min-h-screen bg-surface-patterned text-ink-light dark:dark-surface-patterned dark:text-ink-dark">
+      <a href="#main-content" className="skip-link">
+        {t('common.skipToContent')}
+      </a>
       <header className="sticky top-0 z-30 glass-nav border-b border-black/5 shadow-soft transition-colors dark:glass-nav-dark dark:border-white/5">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <div className="flex items-center gap-2">
@@ -166,7 +169,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
           </nav>
         )}
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
+      <main id="main-content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
     </div>
   );
 }

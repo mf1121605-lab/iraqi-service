@@ -46,9 +46,9 @@ export default function FounderChatRooms() {
       </h2>
 
       <form onSubmit={handleAdd} className="mt-6 grid gap-3 sm:grid-cols-3">
-        <input placeholder={t('founderChatRooms.nameLabel')} value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input placeholder={t('founderChatRooms.nameArLabel')} value={form.nameAr} onChange={(e) => setForm({ ...form, nameAr: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input placeholder={t('founderChatRooms.nameCkbLabel')} value={form.nameCkb} onChange={(e) => setForm({ ...form, nameCkb: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
+        <input aria-label={t('founderChatRooms.nameLabel')} placeholder={t('founderChatRooms.nameLabel')} value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
+        <input aria-label={t('founderChatRooms.nameArLabel')} placeholder={t('founderChatRooms.nameArLabel')} value={form.nameAr} onChange={(e) => setForm({ ...form, nameAr: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
+        <input aria-label={t('founderChatRooms.nameCkbLabel')} placeholder={t('founderChatRooms.nameCkbLabel')} value={form.nameCkb} onChange={(e) => setForm({ ...form, nameCkb: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
         <button type="submit" className="flex items-center justify-center gap-1.5 rounded-xl2 bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-glass-sm hover:bg-brand-700">
           <Plus className="h-4 w-4" aria-hidden="true" />
           {t('founderChatRooms.addCta')}

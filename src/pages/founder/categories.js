@@ -110,6 +110,7 @@ export default function FounderCategories() {
         <input
           value={form.key}
           onChange={(event) => setForm({ ...form, key: event.target.value.trim() })}
+          aria-label={t('founderCategories.keyPlaceholder')}
           placeholder={t('founderCategories.keyPlaceholder')}
           dir="ltr"
           className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
@@ -117,12 +118,14 @@ export default function FounderCategories() {
         <input
           value={form.labelAr}
           onChange={(event) => setForm({ ...form, labelAr: event.target.value })}
+          aria-label={t('founderCategories.labelArLabel')}
           placeholder={t('founderCategories.labelArLabel')}
           className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
         />
         <input
           value={form.labelCkb}
           onChange={(event) => setForm({ ...form, labelCkb: event.target.value })}
+          aria-label={t('founderCategories.labelCkbLabel')}
           placeholder={t('founderCategories.labelCkbLabel')}
           className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
         />

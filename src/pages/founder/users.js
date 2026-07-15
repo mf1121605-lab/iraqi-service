@@ -170,30 +170,35 @@ export default function FounderUsers() {
           <input
             value={form.givenName}
             onChange={(event) => setForm({ ...form, givenName: event.target.value })}
+            aria-label={t('founderUsers.formGivenName')}
             placeholder={t('founderUsers.formGivenName')}
             className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
           />
           <input
             value={form.fatherName}
             onChange={(event) => setForm({ ...form, fatherName: event.target.value })}
+            aria-label={t('founderUsers.formFatherName')}
             placeholder={t('founderUsers.formFatherName')}
             className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
           />
           <input
             value={form.grandfatherName}
             onChange={(event) => setForm({ ...form, grandfatherName: event.target.value })}
+            aria-label={t('founderUsers.formGrandfatherName')}
             placeholder={t('founderUsers.formGrandfatherName')}
             className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
           />
           <input
             value={form.familyName}
             onChange={(event) => setForm({ ...form, familyName: event.target.value })}
+            aria-label={t('founderUsers.formFamilyName')}
             placeholder={t('founderUsers.formFamilyName')}
             className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
           />
           <input
             value={form.phone}
             onChange={(event) => setForm({ ...form, phone: event.target.value })}
+            aria-label={t('founderUsers.formPhone')}
             placeholder={t('founderUsers.formPhone')}
             dir="ltr"
             className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
@@ -201,6 +206,7 @@ export default function FounderUsers() {
           <input
             value={form.email}
             onChange={(event) => setForm({ ...form, email: event.target.value })}
+            aria-label={t('founderUsers.formEmail')}
             placeholder={t('founderUsers.formEmail')}
             dir="ltr"
             className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
@@ -209,6 +215,7 @@ export default function FounderUsers() {
             type="password"
             value={form.password}
             onChange={(event) => setForm({ ...form, password: event.target.value })}
+            aria-label={t('founderUsers.formPassword')}
             placeholder={t('founderUsers.formPassword')}
             dir="ltr"
             className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
@@ -216,6 +223,7 @@ export default function FounderUsers() {
           <input
             value={form.specialization}
             onChange={(event) => setForm({ ...form, specialization: event.target.value })}
+            aria-label={t('founderUsers.formSpecialization')}
             placeholder={t('founderUsers.formSpecialization')}
             className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
           />

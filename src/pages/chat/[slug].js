@@ -153,6 +153,7 @@ export default function ChatRoom() {
             <button
               type="button"
               onClick={toggleAudio}
+              aria-label={audioPlaying ? t('chat.audioPause') : t('chat.audioPlay')}
               className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-sm transition-colors hover:bg-white/20"
             >
               {audioPlaying ? (
