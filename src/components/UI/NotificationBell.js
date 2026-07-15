@@ -65,8 +65,9 @@ export default function NotificationBell({ userId, locale }) {
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="relative rounded-xl p-2 transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/10"
+        className="relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/10"
         aria-label={t('notifications.title')}
+        aria-expanded={open}
       >
         {unreadCount > 0 ? (
           <BellRing className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden="true" />

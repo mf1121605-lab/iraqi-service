@@ -50,27 +50,36 @@ export default function FounderBanners() {
         {t('founderBanners.title')}
       </h2>
 
-      <form onSubmit={handleAdd} className="mt-6 grid gap-3 sm:grid-cols-2">
-        <input aria-label={t('founderBanners.titleArLabel')} placeholder={t('founderBanners.titleArLabel')} value={form.titleAr} onChange={(e) => setForm({ ...form, titleAr: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input aria-label={t('founderBanners.titleCkbLabel')} placeholder={t('founderBanners.titleCkbLabel')} value={form.titleCkb} onChange={(e) => setForm({ ...form, titleCkb: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input aria-label={t('founderBanners.subtitleArLabel')} placeholder={t('founderBanners.subtitleArLabel')} value={form.subtitleAr} onChange={(e) => setForm({ ...form, subtitleAr: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input aria-label={t('founderBanners.subtitleCkbLabel')} placeholder={t('founderBanners.subtitleCkbLabel')} value={form.subtitleCkb} onChange={(e) => setForm({ ...form, subtitleCkb: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input aria-label={t('founderBanners.urlLabel')} placeholder={t('founderBanners.urlLabel')} value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input aria-label={t('founderBanners.imageLabel')} placeholder={t('founderBanners.imageLabel')} value={form.imagePath} onChange={(e) => setForm({ ...form, imagePath: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <button type="submit" className="flex items-center justify-center gap-1.5 rounded-xl2 bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-glass-sm hover:bg-brand-700">
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          {t('founderBanners.addCta')}
-        </button>
-      </form>
+      <section className="mt-6 rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft transition-shadow duration-300 hover:shadow-elevate dark:border-white/10 dark:bg-surface-dark-alt/60">
+        <form onSubmit={handleAdd} className="grid gap-3 sm:grid-cols-2">
+          <input aria-label={t('founderBanners.titleArLabel')} placeholder={t('founderBanners.titleArLabel')} value={form.titleAr} onChange={(e) => setForm({ ...form, titleAr: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark" />
+          <input aria-label={t('founderBanners.titleCkbLabel')} placeholder={t('founderBanners.titleCkbLabel')} value={form.titleCkb} onChange={(e) => setForm({ ...form, titleCkb: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark" />
+          <input aria-label={t('founderBanners.subtitleArLabel')} placeholder={t('founderBanners.subtitleArLabel')} value={form.subtitleAr} onChange={(e) => setForm({ ...form, subtitleAr: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark" />
+          <input aria-label={t('founderBanners.subtitleCkbLabel')} placeholder={t('founderBanners.subtitleCkbLabel')} value={form.subtitleCkb} onChange={(e) => setForm({ ...form, subtitleCkb: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark" />
+          <input aria-label={t('founderBanners.urlLabel')} placeholder={t('founderBanners.urlLabel')} value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} dir="ltr" className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark" />
+          <input aria-label={t('founderBanners.imageLabel')} placeholder={t('founderBanners.imageLabel')} value={form.imagePath} onChange={(e) => setForm({ ...form, imagePath: e.target.value })} dir="ltr" className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark" />
+          <button type="submit" className="flex items-center justify-center gap-1.5 sm:col-span-2 rounded-xl2 bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-glass-sm transition-all duration-300 hover:bg-brand-700 hover:shadow-elevate">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            {t('founderBanners.addCta')}
+          </button>
+        </form>
+      </section>
 
       {(banners ?? []).length === 0 ? (
         <p className="mt-6 text-sm text-ink-muted dark:text-ink-dark-muted">{t('founderBanners.empty')}</p>
       ) : (
         <ul className="mt-6 space-y-2">
           {(banners ?? []).map((banner) => (
-            <li key={banner.id} className="rounded-xl2 border border-black/5 p-3 text-sm dark:border-white/10">
-              <p className="font-semibold">{banner.title_ar}</p>
-              <p className="text-xs text-ink-muted dark:text-ink-dark-muted">{banner.url}</p>
+            <li
+              key={banner.id}
+              className="flex items-center gap-3 rounded-xl2 border border-black/5 p-3 text-sm transition-all duration-200 hover:shadow-soft dark:border-white/10"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold">{banner.title_ar}</p>
+                <p className="truncate text-xs text-ink-muted dark:text-ink-dark-muted" dir="ltr">
+                  {banner.url}
+                </p>
+              </div>
             </li>
           ))}
         </ul>

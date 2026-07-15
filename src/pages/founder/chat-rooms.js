@@ -45,24 +45,31 @@ export default function FounderChatRooms() {
         {t('founderChatRooms.title')}
       </h2>
 
-      <form onSubmit={handleAdd} className="mt-6 grid gap-3 sm:grid-cols-3">
-        <input aria-label={t('founderChatRooms.nameLabel')} placeholder={t('founderChatRooms.nameLabel')} value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input aria-label={t('founderChatRooms.nameArLabel')} placeholder={t('founderChatRooms.nameArLabel')} value={form.nameAr} onChange={(e) => setForm({ ...form, nameAr: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input aria-label={t('founderChatRooms.nameCkbLabel')} placeholder={t('founderChatRooms.nameCkbLabel')} value={form.nameCkb} onChange={(e) => setForm({ ...form, nameCkb: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <button type="submit" className="flex items-center justify-center gap-1.5 rounded-xl2 bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-glass-sm hover:bg-brand-700">
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          {t('founderChatRooms.addCta')}
-        </button>
-      </form>
+      <section className="mt-6 rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft transition-shadow duration-300 hover:shadow-elevate dark:border-white/10 dark:bg-surface-dark-alt/60">
+        <form onSubmit={handleAdd} className="grid gap-3 sm:grid-cols-3">
+          <input aria-label={t('founderChatRooms.nameLabel')} placeholder={t('founderChatRooms.nameLabel')} value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} dir="ltr" className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark" />
+          <input aria-label={t('founderChatRooms.nameArLabel')} placeholder={t('founderChatRooms.nameArLabel')} value={form.nameAr} onChange={(e) => setForm({ ...form, nameAr: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark" />
+          <input aria-label={t('founderChatRooms.nameCkbLabel')} placeholder={t('founderChatRooms.nameCkbLabel')} value={form.nameCkb} onChange={(e) => setForm({ ...form, nameCkb: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark" />
+          <button type="submit" className="flex items-center justify-center gap-1.5 sm:col-span-3 rounded-xl2 bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-glass-sm transition-all duration-300 hover:bg-brand-700 hover:shadow-elevate">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            {t('founderChatRooms.addCta')}
+          </button>
+        </form>
+      </section>
 
       {(rooms ?? []).length === 0 ? (
         <p className="mt-6 text-sm text-ink-muted dark:text-ink-dark-muted">{t('founderChatRooms.empty')}</p>
       ) : (
-        <ul className="mt-6 space-y-2">
+        <ul className="mt-6 grid gap-2 sm:grid-cols-2">
           {(rooms ?? []).map((room) => (
-            <li key={room.id} className="rounded-xl2 border border-black/5 p-3 text-sm dark:border-white/10">
+            <li
+              key={room.id}
+              className="rounded-xl2 border border-black/5 p-3 text-sm transition-all duration-200 hover:shadow-soft dark:border-white/10"
+            >
               <p className="font-semibold">{room.name_ar}</p>
-              <p className="text-xs text-ink-muted dark:text-ink-dark-muted">/{room.slug}</p>
+              <p className="text-xs text-ink-muted dark:text-ink-dark-muted" dir="ltr">
+                /{room.slug}
+              </p>
             </li>
           ))}
         </ul>

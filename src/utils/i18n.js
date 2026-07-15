@@ -26,6 +26,7 @@ const dictionaries = {
       cancel: 'إلغاء',
       noResults: 'لا توجد نتائج بعد',
       skipToContent: 'تخطَّ إلى المحتوى الرئيسي',
+      menu: 'القائمة',
     },
     languageSelect: {
       title: 'مرحبًا بك',
@@ -232,6 +233,7 @@ const dictionaries = {
       cancel: 'هەڵوەشاندنەوە',
       noResults: 'هێشتا هیچ ئەنجامێک نییە',
       skipToContent: 'بازدان بۆ ناوەڕۆکی سەرەکی',
+      menu: 'مینیو',
     },
     languageSelect: {
       title: 'بەخێربێیت',

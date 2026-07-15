@@ -114,7 +114,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
             <button
               type="button"
               onClick={toggleTheme}
-              className="rounded-xl p-2 transition-all duration-300 hover:bg-black/5 dark:hover:bg-white/10"
+              className="flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 hover:bg-black/5 dark:hover:bg-white/10"
               aria-label={theme === 'dark' ? t('common.lightMode') : t('common.darkMode')}
             >
               <span className="relative block h-4 w-4">
@@ -148,8 +148,9 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
               <button
                 type="button"
                 onClick={() => setMobileOpen((current) => !current)}
-                className="rounded-xl p-2 transition-colors duration-200 hover:bg-black/5 dark:hover:bg-white/10 sm:hidden"
-                aria-label="menu"
+                className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors duration-200 hover:bg-black/5 dark:hover:bg-white/10 sm:hidden"
+                aria-label={t('common.menu')}
+                aria-expanded={mobileOpen}
               >
                 {mobileOpen ? (
                   <X className="h-5 w-5" strokeWidth={2} aria-hidden="true" />

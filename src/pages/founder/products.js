@@ -50,28 +50,35 @@ export default function FounderProducts() {
         {t('founderProducts.title')}
       </h2>
 
-      <form onSubmit={handleAdd} className="mt-6 grid gap-3 sm:grid-cols-2">
-        <input aria-label={t('founderProducts.titleArLabel')} placeholder={t('founderProducts.titleArLabel')} value={form.titleAr} onChange={(e) => setForm({ ...form, titleAr: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input aria-label={t('founderProducts.titleCkbLabel')} placeholder={t('founderProducts.titleCkbLabel')} value={form.titleCkb} onChange={(e) => setForm({ ...form, titleCkb: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input aria-label={t('founderProducts.descriptionArLabel')} placeholder={t('founderProducts.descriptionArLabel')} value={form.descAr} onChange={(e) => setForm({ ...form, descAr: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input aria-label={t('founderProducts.descriptionCkbLabel')} placeholder={t('founderProducts.descriptionCkbLabel')} value={form.descCkb} onChange={(e) => setForm({ ...form, descCkb: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input aria-label={t('founderProducts.priceLabel')} type="number" placeholder={t('founderProducts.priceLabel')} value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input aria-label={t('founderProducts.discountLabel')} type="number" placeholder={t('founderProducts.discountLabel')} value={form.discount} onChange={(e) => setForm({ ...form, discount: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input aria-label={t('founderProducts.imageLabel')} placeholder={t('founderProducts.imageLabel')} value={form.imagePath} onChange={(e) => setForm({ ...form, imagePath: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <button type="submit" className="flex items-center justify-center gap-1.5 rounded-xl2 bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-glass-sm hover:bg-brand-700">
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          {t('founderProducts.addCta')}
-        </button>
-      </form>
+      <section className="mt-6 rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft transition-shadow duration-300 hover:shadow-elevate dark:border-white/10 dark:bg-surface-dark-alt/60">
+        <form onSubmit={handleAdd} className="grid gap-3 sm:grid-cols-2">
+          <input aria-label={t('founderProducts.titleArLabel')} placeholder={t('founderProducts.titleArLabel')} value={form.titleAr} onChange={(e) => setForm({ ...form, titleAr: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark" />
+          <input aria-label={t('founderProducts.titleCkbLabel')} placeholder={t('founderProducts.titleCkbLabel')} value={form.titleCkb} onChange={(e) => setForm({ ...form, titleCkb: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark" />
+          <input aria-label={t('founderProducts.descriptionArLabel')} placeholder={t('founderProducts.descriptionArLabel')} value={form.descAr} onChange={(e) => setForm({ ...form, descAr: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark" />
+          <input aria-label={t('founderProducts.descriptionCkbLabel')} placeholder={t('founderProducts.descriptionCkbLabel')} value={form.descCkb} onChange={(e) => setForm({ ...form, descCkb: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark" />
+          <input aria-label={t('founderProducts.priceLabel')} type="number" placeholder={t('founderProducts.priceLabel')} value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} dir="ltr" className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark" />
+          <input aria-label={t('founderProducts.discountLabel')} type="number" placeholder={t('founderProducts.discountLabel')} value={form.discount} onChange={(e) => setForm({ ...form, discount: e.target.value })} dir="ltr" className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark" />
+          <input aria-label={t('founderProducts.imageLabel')} placeholder={t('founderProducts.imageLabel')} value={form.imagePath} onChange={(e) => setForm({ ...form, imagePath: e.target.value })} dir="ltr" className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark" />
+          <button type="submit" className="flex items-center justify-center gap-1.5 sm:col-span-2 rounded-xl2 bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-glass-sm transition-all duration-300 hover:bg-brand-700 hover:shadow-elevate">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            {t('founderProducts.addCta')}
+          </button>
+        </form>
+      </section>
 
       {(products ?? []).length === 0 ? (
         <p className="mt-6 text-sm text-ink-muted dark:text-ink-dark-muted">{t('founderProducts.empty')}</p>
       ) : (
-        <ul className="mt-6 space-y-2">
+        <ul className="mt-6 grid gap-2 sm:grid-cols-2">
           {(products ?? []).map((product) => (
-            <li key={product.id} className="rounded-xl2 border border-black/5 p-3 text-sm dark:border-white/10">
+            <li
+              key={product.id}
+              className="rounded-xl2 border border-black/5 p-3 text-sm transition-all duration-200 hover:shadow-soft dark:border-white/10"
+            >
               <p className="font-semibold">{product.title_ar}</p>
-              <p className="text-xs text-ink-muted dark:text-ink-dark-muted">{product.price} IQD</p>
+              <p className="text-xs text-ink-muted dark:text-ink-dark-muted" dir="ltr">
+                {product.price} IQD
+              </p>
             </li>
           ))}
         </ul>
