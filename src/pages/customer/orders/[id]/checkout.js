@@ -128,7 +128,7 @@ export default function Checkout() {
             type="button"
             onClick={handleZainCash}
             disabled={processing}
-            className="glass-panel-dark flex w-full items-center justify-between rounded-xl2 px-5 py-4 font-semibold transition-all duration-300 hover:scale-[1.01] hover:shadow-glow disabled:opacity-50 disabled:hover:scale-100"
+            className="glass-panel-dark flex w-full items-center justify-between rounded-xl2 px-5 py-4 font-semibold transition-all duration-300 hover:scale-[1.01] hover:shadow-glow focus:outline-none focus:ring-2 focus:ring-gold-300 disabled:opacity-50 disabled:hover:scale-100"
           >
             <span className="flex items-center gap-2">
               <Smartphone className="h-4 w-4" aria-hidden="true" />
@@ -140,7 +140,7 @@ export default function Checkout() {
             type="button"
             onClick={handleRafidain}
             disabled={processing}
-            className="glass-panel-dark flex w-full items-center justify-between rounded-xl2 px-5 py-4 font-semibold transition-all duration-300 hover:scale-[1.01] hover:shadow-glow disabled:opacity-50 disabled:hover:scale-100"
+            className="glass-panel-dark flex w-full items-center justify-between rounded-xl2 px-5 py-4 font-semibold transition-all duration-300 hover:scale-[1.01] hover:shadow-glow focus:outline-none focus:ring-2 focus:ring-gold-300 disabled:opacity-50 disabled:hover:scale-100"
           >
             <span className="flex items-center gap-2">
               <Landmark className="h-4 w-4" aria-hidden="true" />

@@ -126,7 +126,7 @@ export default function CustomerAuth() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-xl2 bg-gradient-gold px-4 py-3 font-bold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.01] hover:opacity-90 disabled:opacity-50 disabled:hover:scale-100"
+              className="w-full rounded-xl2 bg-gradient-gold px-4 py-3 font-bold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.01] hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-900 disabled:opacity-50 disabled:hover:scale-100"
             >
               {t('authCustomer.sendCodeCta')}
             </button>
@@ -141,7 +141,7 @@ export default function CustomerAuth() {
               <button
                 type="button"
                 onClick={handleFacebookLogin}
-                className="glass-panel flex w-full items-center justify-center gap-2 rounded-xl2 px-4 py-3 font-semibold text-white transition-all duration-300 hover:scale-[1.01] hover:bg-white/10"
+                className="glass-panel flex w-full items-center justify-center gap-2 rounded-xl2 px-4 py-3 font-semibold text-white transition-all duration-300 hover:scale-[1.01] hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-gold-300"
               >
                 <FacebookGlyph className="h-4 w-4" />
                 {t('authCustomer.continueWithFacebook')}
@@ -149,7 +149,7 @@ export default function CustomerAuth() {
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="glass-panel flex w-full items-center justify-center gap-2 rounded-xl2 bg-white/95 px-4 py-3 font-semibold text-brand-950 transition-all duration-300 hover:scale-[1.01] hover:bg-white"
+                className="glass-panel flex w-full items-center justify-center gap-2 rounded-xl2 bg-white/95 px-4 py-3 font-semibold text-brand-950 transition-all duration-300 hover:scale-[1.01] hover:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-brand-900"
               >
                 <GoogleGlyph className="h-4 w-4" />
                 {t('authCustomer.continueWithGoogle')}
@@ -180,14 +180,14 @@ export default function CustomerAuth() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-xl2 bg-gradient-gold px-4 py-3 font-bold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.01] hover:opacity-90 disabled:opacity-50 disabled:hover:scale-100"
+              className="w-full rounded-xl2 bg-gradient-gold px-4 py-3 font-bold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.01] hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-900 disabled:opacity-50 disabled:hover:scale-100"
             >
               {t('authCustomer.verifyCta')}
             </button>
             <button
               type="button"
               onClick={handleSendCode}
-              className="w-full text-center text-sm text-white/70 underline underline-offset-4 transition-colors hover:text-white"
+              className="w-full rounded text-center text-sm text-white/70 underline underline-offset-4 transition-colors hover:text-white focus:outline-none focus:ring-2 focus:ring-gold-300"
             >
               {t('authCustomer.resendCta')}
             </button>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { LayoutDashboard, Users, ClipboardList, ShoppingBag, DollarSign } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
+import StatusBadge from '../../components/UI/StatusBadge';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
@@ -62,14 +63,17 @@ export default function FounderDashboard() {
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <section>
-          <h3 className="font-semibold">{t('founderDashboard.recentEmployees')}</h3>
+        <section className="rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft transition-shadow duration-300 hover:shadow-elevate dark:border-white/10 dark:bg-surface-dark-alt/60">
+          <h3 className="font-display font-semibold">{t('founderDashboard.recentEmployees')}</h3>
           {employees.length === 0 ? (
-            <p className="mt-2 text-sm text-ink-muted dark:text-ink-dark-muted">{t('founderDashboard.noEmployees')}</p>
+            <p className="mt-3 text-sm text-ink-muted dark:text-ink-dark-muted">{t('founderDashboard.noEmployees')}</p>
           ) : (
-            <ul className="mt-2 space-y-2">
+            <ul className="mt-3 space-y-2">
               {employees.map((emp) => (
-                <li key={emp.id} className="rounded-xl2 border border-black/5 p-3 text-sm dark:border-white/10">
+                <li
+                  key={emp.id}
+                  className="rounded-xl2 border border-black/5 p-3 text-sm transition-all duration-200 hover:shadow-soft dark:border-white/10"
+                >
                   <p className="font-semibold">{[emp.given_name, emp.father_name].filter(Boolean).join(' ') || '—'}</p>
                   <p className="text-xs text-ink-muted dark:text-ink-dark-muted">{emp.specialization || ''}</p>
                 </li>
@@ -78,16 +82,19 @@ export default function FounderDashboard() {
           )}
         </section>
 
-        <section>
-          <h3 className="font-semibold">{t('founderDashboard.recentRequests')}</h3>
+        <section className="rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft transition-shadow duration-300 hover:shadow-elevate dark:border-white/10 dark:bg-surface-dark-alt/60">
+          <h3 className="font-display font-semibold">{t('founderDashboard.recentRequests')}</h3>
           {requests.length === 0 ? (
-            <p className="mt-2 text-sm text-ink-muted dark:text-ink-dark-muted">{t('founderDashboard.noRequests')}</p>
+            <p className="mt-3 text-sm text-ink-muted dark:text-ink-dark-muted">{t('founderDashboard.noRequests')}</p>
           ) : (
-            <ul className="mt-2 space-y-2">
+            <ul className="mt-3 space-y-2">
               {requests.map((req) => (
-                <li key={req.id} className="rounded-xl2 border border-black/5 p-3 text-sm dark:border-white/10">
-                  <p className="font-semibold">{req.title}</p>
-                  <p className="text-xs text-ink-muted dark:text-ink-dark-muted">{req.status}</p>
+                <li
+                  key={req.id}
+                  className="flex items-center justify-between gap-2 rounded-xl2 border border-black/5 p-3 text-sm transition-all duration-200 hover:shadow-soft dark:border-white/10"
+                >
+                  <p className="min-w-0 truncate font-semibold">{req.title}</p>
+                  <StatusBadge status={req.status} locale={locale} />
                 </li>
               ))}
             </ul>

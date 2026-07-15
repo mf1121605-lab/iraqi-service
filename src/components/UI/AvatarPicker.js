@@ -1,4 +1,6 @@
 import SafeImage from './SafeImage';
+import { useLocale } from '../Layout/AppShell';
+import { translate } from '../../utils/i18n';
 
 export const AVATAR_KEYS = [
   'avatar-male-1',
@@ -14,6 +16,8 @@ export function avatarSrc(avatarKey) {
 }
 
 export default function AvatarPicker({ value, onSelect }) {
+  const locale = useLocale();
+
   return (
     <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
       {AVATAR_KEYS.map((key, index) => (
@@ -21,7 +25,9 @@ export default function AvatarPicker({ value, onSelect }) {
           key={key}
           type="button"
           onClick={() => onSelect(key)}
-          className={`group flex flex-col items-center gap-2 rounded-2xl p-3 transition-all duration-300 hover:bg-white/10 hover:shadow-glow ${
+          aria-pressed={value === key}
+          aria-label={translate(locale, 'onboarding.avatarOption').replace('{n}', index + 1)}
+          className={`group flex flex-col items-center gap-2 rounded-2xl p-3 transition-all duration-300 hover:bg-white/10 hover:shadow-glow focus:outline-none focus:ring-2 focus:ring-gold-300 ${
             value === key ? 'bg-white/10 shadow-glow ring-2 ring-gold-300' : ''
           }`}
         >

@@ -46,16 +46,33 @@ export default function FounderSettings() {
         {t('founderSettings.title')}
       </h2>
 
-      <form onSubmit={handleSave} className="mt-6 max-w-md space-y-4">
+      <form
+        onSubmit={handleSave}
+        className="mt-6 max-w-md space-y-4 rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft transition-shadow duration-300 hover:shadow-elevate dark:border-white/10 dark:bg-surface-dark-alt/60"
+      >
         <div>
           <label className="mb-1 block text-sm">{t('founderSettings.chatAudioTrackLabel')}</label>
-          <input value={audioTrack} onChange={(e) => setAudioTrack(e.target.value)} className="w-full rounded-xl2 border border-black/10 bg-white px-4 py-3 text-sm dark:border-white/10 dark:bg-surface-dark" />
+          <input
+            value={audioTrack}
+            onChange={(e) => setAudioTrack(e.target.value)}
+            dir="ltr"
+            className="w-full rounded-xl2 border border-black/10 bg-white px-4 py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
+          />
         </div>
         <div>
           <label className="mb-1 block text-sm">{t('founderSettings.chatBackgroundLabel')}</label>
-          <input value={background} onChange={(e) => setBackground(e.target.value)} className="w-full rounded-xl2 border border-black/10 bg-white px-4 py-3 text-sm dark:border-white/10 dark:bg-surface-dark" />
+          <input
+            value={background}
+            onChange={(e) => setBackground(e.target.value)}
+            dir="ltr"
+            className="w-full rounded-xl2 border border-black/10 bg-white px-4 py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
+          />
         </div>
-        <button type="submit" disabled={saving} className="rounded-xl2 bg-brand-600 px-4 py-3 font-bold text-white shadow-glass-sm hover:bg-brand-700 disabled:opacity-50">
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-xl2 bg-brand-600 px-4 py-3 font-bold text-white shadow-glass-sm transition-all duration-300 hover:bg-brand-700 hover:shadow-elevate disabled:opacity-50 disabled:hover:shadow-soft"
+        >
           {t('founderSettings.saveCta')}
         </button>
       </form>

@@ -47,7 +47,7 @@ export default function PaymentResult() {
             <button
               type="button"
               onClick={() => router.back()}
-              className="flex w-full items-center justify-center gap-2 rounded-xl2 bg-gradient-gold px-4 py-3 font-bold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.01] hover:opacity-90"
+              className="flex w-full items-center justify-center gap-2 rounded-xl2 bg-gradient-gold px-4 py-3 font-bold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.01] hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-900"
             >
               <RotateCcw className="h-4 w-4" aria-hidden="true" />
               {t('payment.tryAgainCta')}

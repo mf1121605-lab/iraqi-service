@@ -157,8 +157,8 @@ export default function CustomerDashboard() {
                 key={banner.id}
                 type="button"
                 onClick={() => setSlide(index)}
-                aria-label={`slide-${index}`}
-                className={`h-2 rounded-full transition-all duration-300 ${
+                aria-label={`${t('customerHub.goToSlide')} ${index + 1}`}
+                className={`h-2 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold-300 ${
                   index === slide ? 'w-8 bg-gold-300' : 'w-2 bg-white/30 hover:bg-white/50'
                 }`}
               />
@@ -231,7 +231,7 @@ export default function CustomerDashboard() {
                   <button
                     type="button"
                     onClick={() => handleOrder(product)}
-                    className="mt-4 w-full rounded-xl2 bg-brand-600 px-4 py-2 font-semibold text-white shadow-glass-sm transition-all duration-300 hover:bg-brand-700 hover:shadow-elevate"
+                    className="mt-4 w-full rounded-xl2 bg-brand-600 px-4 py-2 font-semibold text-white shadow-glass-sm transition-all duration-300 hover:bg-brand-700 hover:shadow-elevate focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2"
                   >
                     {t('customerHub.orderCta')}
                   </button>

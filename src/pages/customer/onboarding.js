@@ -60,7 +60,7 @@ export default function CustomerOnboarding() {
           type="button"
           onClick={handleContinue}
           disabled={saving}
-          className="mt-8 w-full rounded-xl2 bg-gradient-gold px-4 py-3 font-bold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.01] hover:opacity-90 disabled:opacity-50 disabled:hover:scale-100"
+          className="mt-8 w-full rounded-xl2 bg-gradient-gold px-4 py-3 font-bold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.01] hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-900 disabled:opacity-50 disabled:hover:scale-100"
         >
           {t('onboarding.continueCta')}
         </button>

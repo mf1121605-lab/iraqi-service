@@ -64,7 +64,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
             key={item.href}
             href={item.href}
             onClick={onNavigate}
-            className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/10 ${
+            className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10 ${
               item.active
                 ? 'bg-brand-600/10 font-semibold text-brand-700 shadow-inner-glass dark:bg-brand-400/10 dark:text-brand-300'
                 : 'text-ink-light/80 dark:text-ink-dark/80'
@@ -103,7 +103,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
             <button
               type="button"
               onClick={toggleLocale}
-              className="flex items-center gap-1.5 rounded-xl px-3 py-2 font-medium transition-colors duration-200 hover:bg-black/5 dark:hover:bg-white/10"
+              className="flex items-center gap-1.5 rounded-xl px-3 py-2 font-medium transition-colors duration-200 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
               aria-label={t('gateway.switchLanguage')}
             >
               <Globe className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
@@ -114,7 +114,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
             <button
               type="button"
               onClick={toggleTheme}
-              className="flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 hover:bg-black/5 dark:hover:bg-white/10"
+              className="flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
               aria-label={theme === 'dark' ? t('common.lightMode') : t('common.darkMode')}
             >
               <span className="relative block h-4 w-4">
@@ -138,7 +138,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
               <button
                 type="button"
                 onClick={onSignOut}
-                className="flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 font-semibold text-white shadow-glass-sm transition-all duration-200 hover:bg-brand-700 hover:shadow-elevate"
+                className="flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 font-semibold text-white shadow-glass-sm transition-all duration-200 hover:bg-brand-700 hover:shadow-elevate focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2"
               >
                 <LogOut className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                 <span className="hidden sm:inline">{t('common.signOut')}</span>
@@ -148,7 +148,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
               <button
                 type="button"
                 onClick={() => setMobileOpen((current) => !current)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors duration-200 hover:bg-black/5 dark:hover:bg-white/10 sm:hidden"
+                className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors duration-200 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10 sm:hidden"
                 aria-label={t('common.menu')}
                 aria-expanded={mobileOpen}
               >

@@ -123,7 +123,7 @@ export default function FounderUsers() {
                   <button
                     type="button"
                     onClick={() => handleAccountAction(employee.id, 'suspend')}
-                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-red-600 transition-colors hover:bg-red-500/10 dark:text-red-300"
+                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-red-600 transition-colors hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-red-300"
                   >
                     <UserX className="h-3.5 w-3.5" aria-hidden="true" />
                     {t('founderUsers.suspendCta')}
@@ -132,7 +132,7 @@ export default function FounderUsers() {
                   <button
                     type="button"
                     onClick={() => handleAccountAction(employee.id, 'activate')}
-                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-brand-700 transition-colors hover:bg-brand-500/10 dark:text-brand-300"
+                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-brand-700 transition-colors hover:bg-brand-500/10 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:text-brand-300"
                   >
                     <UserCheck className="h-3.5 w-3.5" aria-hidden="true" />
                     {t('founderUsers.activateCta')}
@@ -142,7 +142,7 @@ export default function FounderUsers() {
                   <button
                     type="button"
                     onClick={() => handleAccountAction(employee.id, 'remove_co_admin')}
-                    className="flex items-center gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                    className="flex items-center gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
                   >
                     <ShieldOff className="h-3.5 w-3.5" aria-hidden="true" />
                     {t('founderUsers.removeCoAdminCta')}
@@ -151,7 +151,7 @@ export default function FounderUsers() {
                   <button
                     type="button"
                     onClick={() => handleAccountAction(employee.id, 'assign_co_admin')}
-                    className="flex items-center gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                    className="flex items-center gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
                   >
                     <Crown className="h-3.5 w-3.5" aria-hidden="true" />
                     {t('founderUsers.assignCoAdminCta')}

@@ -77,6 +77,7 @@ const dictionaries = {
       orderCta: 'اطلب الآن',
       orderPlaced: 'تم تسجيل طلبك بنجاح',
       myRequestsCta: 'طلباتي',
+      goToSlide: 'الانتقال إلى الشريحة',
     },
     requestForm: {
       title: 'تقديم طلب جديد',
@@ -175,6 +176,7 @@ const dictionaries = {
       title: 'اختر صورتك الرمزية',
       subtitle: 'اختر الشخصية التي تمثلك، يمكنك تغييرها لاحقًا',
       continueCta: 'متابعة',
+      avatarOption: 'الصورة الرمزية {n}',
     },
     chat: {
       roomsTitle: 'المحادثات المجتمعية',
@@ -284,6 +286,7 @@ const dictionaries = {
       orderCta: 'ئێستا داوا بکە',
       orderPlaced: 'داواکارییەکەت بە سەرکەوتوویی تۆمار کرا',
       myRequestsCta: 'داواکارییەکانم',
+      goToSlide: 'بچۆ بۆ سلایدی',
     },
     requestForm: {
       title: 'ناردنی داواکارییەکی نوێ',
@@ -382,6 +385,7 @@ const dictionaries = {
       title: 'وێنەی نوێنەرایەتیت هەڵبژێرە',
       subtitle: 'ئەو کەسایەتییە هەڵبژێرە کە نوێنەرایەتیت دەکات، دواتر دەتوانیت بیگۆڕیت',
       continueCta: 'بەردەوامبوون',
+      avatarOption: 'وێنەی نوێنەرایەتی {n}',
     },
     chat: {
       roomsTitle: 'گفتوگۆ کۆمەڵایەتییەکان',

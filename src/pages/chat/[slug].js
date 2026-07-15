@@ -154,7 +154,7 @@ export default function ChatRoom() {
               type="button"
               onClick={toggleAudio}
               aria-label={audioPlaying ? t('chat.audioPause') : t('chat.audioPlay')}
-              className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-sm transition-colors hover:bg-white/20"
+              className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-sm transition-colors hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gold-300"
             >
               {audioPlaying ? (
                 <Pause className="h-3.5 w-3.5" aria-hidden="true" />
@@ -191,7 +191,7 @@ export default function ChatRoom() {
                 <button
                   type="button"
                   onClick={() => toggleHidden(message)}
-                  className="mt-1 flex items-center gap-1 text-xs text-white/50 underline transition-colors hover:text-white/80"
+                  className="mt-1 flex items-center gap-1 rounded text-xs text-white/50 underline transition-colors hover:text-white/80 focus:outline-none focus:ring-2 focus:ring-gold-300"
                 >
                   {message.is_hidden ? (
                     <Eye className="h-3 w-3" aria-hidden="true" />
@@ -220,7 +220,7 @@ export default function ChatRoom() {
           />
           <button
             type="submit"
-            className="flex items-center gap-1.5 rounded-xl2 bg-gold-500 px-4 py-2 text-sm font-semibold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.03] hover:bg-gold-400"
+            className="flex items-center gap-1.5 rounded-xl2 bg-gold-500 px-4 py-2 text-sm font-semibold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.03] hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-900"
           >
             <Send className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
             <span className="hidden sm:inline">{t('chat.sendCta')}</span>
