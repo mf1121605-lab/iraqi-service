@@ -14,7 +14,9 @@ export default function FounderCategories() {
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'categories');
-  const categories = useCategories();
+  // Realtime already, via useCategories — a co_admin editing this same
+  // page elsewhere shows up here live too.
+  const categories = useCategories({ activeOnly: false });
 
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
@@ -37,46 +39,101 @@ export default function FounderCategories() {
     setForm(emptyForm);
   }
 
-  async function handleDelete(key) {
-    await supabaseClient.from('categories').delete().eq('key', key);
+  async function toggleActive(category) {
+    await supabaseClient.from('categories').update({ is_active: !category.is_active }).eq('key', category.key);
+  }
+
+  async function handleDelete(category) {
+    setError('');
+    const { error: deleteError } = await supabaseClient.from('categories').delete().eq('key', category.key);
+    if (deleteError) {
+      setError(t('founderCategories.deleteBlockedMessage'));
+    }
   }
 
   if (loading || !profile) {
-    return <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">{t('common.loading')}</main>;
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
+        {t('common.loading')}
+      </main>
+    );
   }
 
   return (
     <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
-      <h2 className="flex items-center gap-2 font-display text-xl font-bold">
+      <h2 className="flex items-center gap-2 font-display text-lg font-bold">
         <Tags className="h-5 w-5" aria-hidden="true" />
         {t('founderCategories.title')}
       </h2>
 
-      <form onSubmit={handleAdd} className="mt-6 grid gap-3 sm:grid-cols-3">
-        <input placeholder={t('founderCategories.keyLabel')} value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input placeholder={t('founderCategories.labelArLabel')} value={form.labelAr} onChange={(e) => setForm({ ...form, labelAr: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <input placeholder={t('founderCategories.labelCkbLabel')} value={form.labelCkb} onChange={(e) => setForm({ ...form, labelCkb: e.target.value })} className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-surface-dark" />
-        <button type="submit" className="flex items-center justify-center gap-1.5 rounded-xl2 bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-glass-sm hover:bg-brand-700">
+      {error && <p className="mt-3 animate-slide-down text-sm text-red-600 dark:text-red-300">{error}</p>}
+
+      <ul className="mt-4 space-y-2">
+        {(categories ?? []).map((category) => (
+          <li
+            key={category.key}
+            className="flex flex-wrap items-center justify-between gap-2 rounded-xl2 border border-black/5 p-3 text-sm transition-all duration-200 hover:shadow-soft dark:border-white/10"
+          >
+            <div>
+              <p className="font-semibold">{categoryLabel(category, locale)}</p>
+              <p className="text-xs text-ink-muted dark:text-ink-dark-muted" dir="ltr">
+                {category.key}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1 text-xs">
+                <input
+                  type="checkbox"
+                  checked={category.is_active}
+                  onChange={() => toggleActive(category)}
+                  className="h-4 w-4 rounded border-black/20 text-brand-600 focus:ring-brand-400"
+                />
+                {t('founderCategories.activeLabel')}
+              </label>
+              <button
+                type="button"
+                onClick={() => handleDelete(category)}
+                className="rounded-lg p-1.5 text-red-600 transition-colors hover:bg-red-500/10 dark:text-red-300"
+                aria-label={t('founderCategories.deleteCta')}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <form
+        onSubmit={handleAdd}
+        className="mt-8 grid gap-3 rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft dark:border-white/10 dark:bg-surface-dark-alt/60 sm:grid-cols-3"
+      >
+        <input
+          value={form.key}
+          onChange={(event) => setForm({ ...form, key: event.target.value.trim() })}
+          placeholder={t('founderCategories.keyPlaceholder')}
+          dir="ltr"
+          className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
+        />
+        <input
+          value={form.labelAr}
+          onChange={(event) => setForm({ ...form, labelAr: event.target.value })}
+          placeholder={t('founderCategories.labelArLabel')}
+          className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
+        />
+        <input
+          value={form.labelCkb}
+          onChange={(event) => setForm({ ...form, labelCkb: event.target.value })}
+          placeholder={t('founderCategories.labelCkbLabel')}
+          className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
+        />
+        <button
+          type="submit"
+          className="flex items-center justify-center gap-1.5 sm:col-span-3 rounded-xl2 bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-glass-sm transition-all duration-300 hover:bg-brand-700 hover:shadow-elevate"
+        >
           <Plus className="h-4 w-4" aria-hidden="true" />
           {t('founderCategories.addCta')}
         </button>
       </form>
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-300">{error}</p>}
-
-      {(categories ?? []).length === 0 ? (
-        <p className="mt-6 text-sm text-ink-muted dark:text-ink-dark-muted">{t('founderCategories.empty')}</p>
-      ) : (
-        <ul className="mt-6 space-y-2">
-          {(categories ?? []).map((cat) => (
-            <li key={cat.key} className="flex items-center justify-between rounded-xl2 border border-black/5 p-3 dark:border-white/10">
-              <span className="font-medium">{categoryLabel(cat, locale)}</span>
-              <button type="button" onClick={() => handleDelete(cat.key)} className="text-red-600 hover:text-red-700 dark:text-red-300">
-                <Trash2 className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
     </AppShell>
   );
 }
