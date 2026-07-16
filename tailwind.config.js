@@ -276,6 +276,34 @@ module.exports = {
           backgroundImage: 'linear-gradient(90deg, #e6ab2c, transparent)',
           borderRadius: '9999px',
         },
+        '.metal-panel': {
+          position: 'relative',
+          borderRadius: '1.5rem',
+          backgroundImage: 'linear-gradient(145deg, #2c2f36 0%, #1a1c20 45%, #101113 100%)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow:
+            'inset 0 1px 0 0 rgba(255,255,255,0.12), inset 0 -2px 6px 0 rgba(0,0,0,0.6), 0 20px 40px -12px rgba(0,0,0,0.7)',
+          transition: 'box-shadow 300ms ease, transform 300ms ease',
+        },
+        '.metal-panel::before': {
+          content: '""',
+          position: 'absolute',
+          inset: '3px',
+          borderRadius: 'calc(1.5rem - 3px)',
+          border: '1px solid rgba(255,255,255,0.06)',
+          pointerEvents: 'none',
+        },
+        '.metal-panel:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow:
+            'inset 0 1px 0 0 rgba(255,255,255,0.16), inset 0 -2px 6px 0 rgba(0,0,0,0.6), 0 0 0 1px rgba(230,171,44,0.35), 0 24px 50px -12px rgba(0,0,0,0.85), 0 0 28px -4px rgba(230,171,44,0.3)',
+        },
+        '.iraq-flag-watermark': {
+          backgroundImage: "url('/assets/decorative/iraq-flag-watermark.svg')",
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center',
+          backgroundSize: 'contain',
+        },
         '.grain-overlay': {
           position: 'fixed',
           inset: 0,

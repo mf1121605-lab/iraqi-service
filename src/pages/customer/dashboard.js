@@ -1,17 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
-import {
-  ClipboardList,
-  GraduationCap,
-  HeartHandshake,
-  LayoutGrid,
-  MessageCircle,
-  ShieldHalf,
-  ShoppingBag,
-  Sparkles,
-  Tag,
-} from 'lucide-react';
+import { ClipboardList, LayoutGrid, MessageCircle, ShoppingBag, Tag } from 'lucide-react';
 import AppShell from '../../components/Layout/AppShell';
 import SafeImage from '../../components/UI/SafeImage';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -20,16 +11,15 @@ import { useLocale } from '../../components/Layout/AppShell';
 import { translate } from '../../utils/i18n';
 import { categoryLabel, useCategories } from '../../utils/useCategories';
 
-const CATEGORY_ICONS = {
-  military: ShieldHalf,
-  education: GraduationCap,
-  welfare: HeartHandshake,
-  general: LayoutGrid,
-};
+// WebGL needs a browser, so the 3D badge is client-only.
+const Icon3D = dynamic(() => import('../../components/UI/Icon3D'), { ssr: false });
 
-function categoryIcon(key) {
-  return CATEGORY_ICONS[key] ?? Sparkles;
-}
+const CATEGORY_3D = {
+  military: '#c9d3dc',
+  education: '#e6ab2c',
+  welfare: '#10b981',
+  general: '#e6ab2c',
+};
 
 function bilingualText(row, base, locale) {
   return (locale === 'ckb' ? row[`${base}_ckb`] : row[`${base}_ar`]) || row[`${base}_ar`] || '';
@@ -128,7 +118,8 @@ export default function CustomerDashboard() {
 
   return (
     <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
-      <section className="cinematic-card relative p-10 text-white">
+      <section className="cinematic-card relative overflow-hidden p-10 text-white">
+        <div className="iraq-flag-watermark pointer-events-none absolute inset-y-0 start-0 w-1/2 opacity-[0.05]" />
         <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-3xl" />
         {currentBanner ? (
           <a href={currentBanner.url} className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -170,21 +161,16 @@ export default function CustomerDashboard() {
       <section className="mt-10">
         <h3 className="section-title-cinematic font-display text-xl font-bold">{t('customerHub.categoriesTitle')}</h3>
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {(categories ?? []).map((category) => {
-            const Icon = categoryIcon(category.key);
-            return (
-              <Link
-                key={category.key}
-                href={`/customer/requests/new?category=${category.key}`}
-                className="glass-panel-dark group relative flex flex-col items-center gap-3 overflow-hidden rounded-2xl p-6 text-center font-semibold shadow-soft transition-all duration-300 hover:-translate-y-1 hover:border-gold-400/40 hover:shadow-elevate"
-              >
-                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gold-400/10 text-gold-300 ring-1 ring-inset ring-gold-400/25 transition-transform duration-300 group-hover:scale-110">
-                  <Icon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
-                </span>
-                <span className="text-white">{categoryLabel(category, locale)}</span>
-              </Link>
-            );
-          })}
+          {(categories ?? []).map((category) => (
+            <Link
+              key={category.key}
+              href={`/customer/requests/new?category=${category.key}`}
+              className="metal-panel group flex flex-col items-center gap-2 p-6 text-center font-semibold text-white"
+            >
+              <Icon3D variant={category.key} color={CATEGORY_3D[category.key] ?? '#e6ab2c'} className="h-20 w-20" />
+              <span>{categoryLabel(category, locale)}</span>
+            </Link>
+          ))}
         </div>
       </section>
 
