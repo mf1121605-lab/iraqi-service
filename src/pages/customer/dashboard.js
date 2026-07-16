@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import { ClipboardList, LayoutGrid, MessageCircle, ShoppingBag, Tag } from 'lucide-react';
 import AppShell from '../../components/Layout/AppShell';
 import SafeImage from '../../components/UI/SafeImage';
+import AnnouncementSlider from '../../components/UI/AnnouncementSlider';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useLocale } from '../../components/Layout/AppShell';
@@ -32,7 +33,6 @@ export default function CustomerDashboard() {
   const t = (path) => translate(locale, path);
 
   const [banners, setBanners] = useState([]);
-  const [slide, setSlide] = useState(0);
   const [products, setProducts] = useState([]);
   const [orderMessage, setOrderMessage] = useState('');
   const categories = useCategories();
@@ -70,12 +70,6 @@ export default function CustomerDashboard() {
 
     return () => supabaseClient.removeChannel(channel);
   }, [profile]);
-
-  useEffect(() => {
-    if (banners.length < 2) return undefined;
-    const interval = setInterval(() => setSlide((current) => (current + 1) % banners.length), 6000);
-    return () => clearInterval(interval);
-  }, [banners.length]);
 
   const navItems = useMemo(
     () => [
@@ -116,82 +110,20 @@ export default function CustomerDashboard() {
     );
   }
 
-  const currentBanner = banners[slide];
-
   return (
     <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
-      <section
-        className="cinematic-card relative overflow-hidden p-10 text-white"
-        style={currentBanner ? { backgroundColor: currentBanner.background_color, color: currentBanner.text_color } : undefined}
-      >
-        <div className="iraq-flag-watermark pointer-events-none absolute inset-y-0 start-0 w-1/2 opacity-[0.05]" />
-        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-3xl" />
-        {currentBanner ? (
-          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
-            {(currentBanner.mobile_image_url || currentBanner.image_url) && (
-              <>
-                {currentBanner.mobile_image_url && (
-                  <SafeImage
-                    src={currentBanner.mobile_image_url}
-                    alt={bilingualText(currentBanner, 'title', locale)}
-                    className={`h-32 w-full shrink-0 rounded-2xl border border-gold-400/20 object-cover shadow-glass-sm ${
-                      currentBanner.image_url ? 'sm:hidden' : 'sm:h-24 sm:w-40'
-                    }`}
-                  />
-                )}
-                {currentBanner.image_url && (
-                  <SafeImage
-                    src={currentBanner.image_url}
-                    alt={bilingualText(currentBanner, 'title', locale)}
-                    className={`h-32 w-full shrink-0 rounded-2xl border border-gold-400/20 object-cover shadow-glass-sm sm:h-24 sm:w-40 ${
-                      currentBanner.mobile_image_url ? 'hidden sm:block' : ''
-                    }`}
-                  />
-                )}
-              </>
-            )}
-            <div className="min-w-0 flex-1">
-              {bilingualText(currentBanner, 'badge', locale) && (
-                <span className="mb-1 inline-block rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold">
-                  {bilingualText(currentBanner, 'badge', locale)}
-                </span>
-              )}
-              <h2 className="font-display text-2xl font-bold tracking-tight">{bilingualText(currentBanner, 'title', locale)}</h2>
-              {bilingualText(currentBanner, 'description', locale) && (
-                <p className="mt-1 opacity-80">{bilingualText(currentBanner, 'description', locale)}</p>
-              )}
-              {currentBanner.button_link && bilingualText(currentBanner, 'button_text', locale) && (
-                <a
-                  href={currentBanner.button_link}
-                  className="mt-4 inline-flex items-center rounded-xl2 bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25"
-                >
-                  {bilingualText(currentBanner, 'button_text', locale)}
-                </a>
-              )}
-            </div>
-          </div>
-        ) : (
+      {banners.length > 0 ? (
+        <AnnouncementSlider banners={banners} locale={locale} />
+      ) : (
+        <section className="cinematic-card relative overflow-hidden p-10 text-white">
+          <div className="iraq-flag-watermark pointer-events-none absolute inset-y-0 start-0 w-1/2 opacity-[0.05]" />
+          <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-3xl" />
           <div className="relative">
             <h2 className="font-display text-2xl font-bold tracking-tight">{t('customerHub.heroFallbackTitle')}</h2>
             <p className="mt-2 text-white/70">{t('customerHub.heroFallbackSubtitle')}</p>
           </div>
-        )}
-        {banners.length > 1 && (
-          <div className="relative mt-6 flex gap-2">
-            {banners.map((banner, index) => (
-              <button
-                key={banner.id}
-                type="button"
-                onClick={() => setSlide(index)}
-                aria-label={`${t('customerHub.goToSlide')} ${index + 1}`}
-                className={`h-2 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold-300 ${
-                  index === slide ? 'w-8 bg-gold-300' : 'w-2 bg-white/30 hover:bg-white/50'
-                }`}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+        </section>
+      )}
 
       <section className="mt-10">
         <h3 className="section-title-cinematic font-display text-xl font-bold">{t('customerHub.categoriesTitle')}</h3>
