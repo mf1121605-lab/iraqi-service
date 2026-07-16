@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FileText } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, FileType } from 'lucide-react';
 import { supabaseClient } from '../../lib/supabaseClient';
 import SafeImage from '../UI/SafeImage';
 
@@ -8,7 +8,40 @@ function displayName(path) {
   return basename.replace(/^[0-9a-f-]{36}-/i, '');
 }
 
-export default function MessageAttachment({ path }) {
+function formatSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+const FILE_KINDS = {
+  pdf: { icon: FileText, className: 'bg-red-500/15 text-red-400' },
+  word: { icon: FileType, className: 'bg-blue-500/15 text-blue-400' },
+  excel: { icon: FileSpreadsheet, className: 'bg-emerald-500/15 text-emerald-400' },
+  other: { icon: FileText, className: 'bg-white/10 text-white/70' },
+};
+
+function fileKindFor(mime, name) {
+  const lowerName = (name || '').toLowerCase();
+  if (mime === 'application/pdf' || lowerName.endsWith('.pdf')) return 'pdf';
+  if (
+    mime === 'application/msword' ||
+    mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    /\.docx?$/.test(lowerName)
+  ) {
+    return 'word';
+  }
+  if (
+    mime === 'application/vnd.ms-excel' ||
+    mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+    /\.xlsx?$/.test(lowerName)
+  ) {
+    return 'excel';
+  }
+  return 'other';
+}
+
+export default function MessageAttachment({ path, name, size, mime }) {
   const [signedUrl, setSignedUrl] = useState(null);
 
   useEffect(() => {
@@ -28,29 +61,40 @@ export default function MessageAttachment({ path }) {
 
   if (!signedUrl) return null;
 
-  const isImage = /\.(png|jpe?g)$/i.test(path);
+  const fileName = name || displayName(path);
+  const isImage = mime ? mime.startsWith('image/') : /\.(png|jpe?g)$/i.test(path);
 
   if (isImage) {
     return (
       <a href={signedUrl} target="_blank" rel="noreferrer" className="mt-2 block overflow-hidden rounded-xl2 shadow-soft">
         <SafeImage
           src={signedUrl}
-          alt={displayName(path)}
+          alt={fileName}
           className="max-h-48 w-full rounded-xl2 object-cover transition-transform duration-300 hover:scale-[1.02]"
         />
       </a>
     );
   }
 
+  const kind = FILE_KINDS[fileKindFor(mime, fileName)];
+  const Icon = kind.icon;
+
   return (
     <a
       href={signedUrl}
       target="_blank"
       rel="noreferrer"
-      className="mt-2 flex items-center gap-2 rounded-lg bg-black/5 px-3 py-2 text-sm underline decoration-dotted underline-offset-2 dark:bg-white/5"
+      download={fileName}
+      className="mt-2 flex items-center gap-3 rounded-xl2 bg-black/5 p-2.5 pe-3 transition-colors hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
     >
-      <FileText className="h-4 w-4 shrink-0" aria-hidden="true" />
-      {displayName(path)}
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${kind.className}`}>
+        <Icon className="h-5 w-5" aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">{fileName}</span>
+        {size ? <span className="block text-xs text-ink-muted dark:text-ink-dark-muted">{formatSize(size)}</span> : null}
+      </span>
+      <Download className="h-4 w-4 shrink-0 opacity-60" aria-hidden="true" />
     </a>
   );
 }

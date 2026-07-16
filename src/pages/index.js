@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeftRight, Briefcase, Facebook, Instagram, Languages, Mail, Phone, ShieldCheck, Twitter, UserRound } from 'lucide-react';
+import { ArrowLeftRight, Briefcase, ExternalLink, Languages, Mail, Phone, ShieldCheck, UserRound } from 'lucide-react';
 import {
   LOCALE_META,
   defaultLocale,
@@ -137,18 +137,21 @@ export default function Home({ siteSettings }) {
               </a>
             )}
             {siteSettings.footer_facebook_url && (
-              <a href={siteSettings.footer_facebook_url} target="_blank" rel="noreferrer" className="hover:text-gold-300">
-                <Facebook className="h-3.5 w-3.5" aria-hidden="true" />
+              <a href={siteSettings.footer_facebook_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-gold-300">
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                Facebook
               </a>
             )}
             {siteSettings.footer_instagram_url && (
-              <a href={siteSettings.footer_instagram_url} target="_blank" rel="noreferrer" className="hover:text-gold-300">
-                <Instagram className="h-3.5 w-3.5" aria-hidden="true" />
+              <a href={siteSettings.footer_instagram_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-gold-300">
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                Instagram
               </a>
             )}
             {siteSettings.footer_twitter_url && (
-              <a href={siteSettings.footer_twitter_url} target="_blank" rel="noreferrer" className="hover:text-gold-300">
-                <Twitter className="h-3.5 w-3.5" aria-hidden="true" />
+              <a href={siteSettings.footer_twitter_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-gold-300">
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                X
               </a>
             )}
           </div>

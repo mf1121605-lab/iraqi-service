@@ -121,6 +121,16 @@ module.exports = {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
         },
+        'wave-drift': {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+        'particle-fall': {
+          '0%': { transform: 'translateY(-10%) translateX(0)', opacity: '0' },
+          '10%': { opacity: '0.8' },
+          '90%': { opacity: '0.5' },
+          '100%': { transform: 'translateY(110vh) translateX(20px)', opacity: '0' },
+        },
       },
       animation: {
         float: 'float 6s ease-in-out infinite',
@@ -131,6 +141,9 @@ module.exports = {
         'slide-down': 'slide-down 0.25s cubic-bezier(0.16, 1, 0.3, 1) both',
         shimmer: 'shimmer 2.5s ease-in-out infinite',
         'spotlight-sweep': 'spotlight-sweep 10s ease-in-out infinite',
+        'wave-drift': 'wave-drift 18s linear infinite',
+        'wave-drift-fast': 'wave-drift 11s linear infinite',
+        'particle-fall': 'particle-fall 12s linear infinite',
       },
     },
   },

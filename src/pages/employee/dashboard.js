@@ -120,7 +120,7 @@ export default function EmployeeDashboard() {
       request_id: selectedId,
       sender_id: profile.id,
       body: messageBody.trim() || null,
-      attachment_url: pendingAttachment,
+      attachment_url: pendingAttachment?.path ?? null,
     });
     setMessageBody('');
     setPendingAttachment(null);
@@ -320,9 +320,7 @@ export default function EmployeeDashboard() {
                       </li>
                     ))}
                   </ul>
-                  {pendingAttachment && (
-                    <p className="mt-1 text-xs text-white/60">{pendingAttachment.split('-').slice(1).join('-')}</p>
-                  )}
+                  {pendingAttachment && <p className="mt-1 text-xs text-white/60">{pendingAttachment.name}</p>}
                   <form onSubmit={handleSendMessage} className="relative mt-3 flex items-center gap-2">
                     <input
                       value={messageBody}

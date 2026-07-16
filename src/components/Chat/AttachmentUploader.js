@@ -3,7 +3,15 @@ import { Loader as Loader2, Paperclip } from 'lucide-react';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { translate } from '../../utils/i18n';
 
-const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'application/pdf'];
+const ALLOWED_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+];
 const MAX_BYTES = 5 * 1024 * 1024;
 
 export default function AttachmentUploader({ pathPrefix, onUploaded, locale }) {
@@ -35,7 +43,7 @@ export default function AttachmentUploader({ pathPrefix, onUploaded, locale }) {
       setError(t('common.errorGeneric'));
       return;
     }
-    onUploaded(path);
+    onUploaded({ path, name: file.name, size: file.size, mime: file.type });
   }
 
   return (
