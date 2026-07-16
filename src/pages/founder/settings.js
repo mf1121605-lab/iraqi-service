@@ -72,6 +72,10 @@ export default function FounderSettings() {
       setError(t('common.errorGeneric'));
       return;
     }
+    if (fields.background_color && !/^#[0-9a-fA-F]{6}$/.test(fields.background_color)) {
+      setError(t('founderSettings.backgroundColorInvalid'));
+      return;
+    }
     setSaving(true);
     const payload = FIELD_KEYS.reduce((acc, key) => {
       const value = fields[key];
@@ -117,13 +121,27 @@ export default function FounderSettings() {
           </div>
           <div>
             <label className="mb-1 block text-sm text-white/70">{t('founderSettings.backgroundColorLabel')}</label>
-            <input
-              value={fields.background_color}
-              onChange={(e) => setField('background_color', e.target.value)}
-              placeholder={t('founderSettings.backgroundColorPlaceholder')}
-              dir="ltr"
-              className="input-cinematic text-sm"
-            />
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={/^#[0-9a-fA-F]{6}$/.test(fields.background_color) ? fields.background_color : '#030303'}
+                onChange={(e) => setField('background_color', e.target.value)}
+                aria-label={t('founderSettings.backgroundColorLabel')}
+                className="h-11 w-14 shrink-0 cursor-pointer rounded-lg border border-white/15 bg-transparent p-1"
+              />
+              <input
+                value={fields.background_color}
+                onChange={(e) => setField('background_color', e.target.value)}
+                placeholder={t('founderSettings.backgroundColorPlaceholder')}
+                dir="ltr"
+                className="input-cinematic flex-1 text-sm"
+              />
+              {fields.background_color && (
+                <button type="button" onClick={() => setField('background_color', '')} className="shrink-0 text-xs text-white/50 underline">
+                  {t('common.remove')}
+                </button>
+              )}
+            </div>
           </div>
         </section>
 
