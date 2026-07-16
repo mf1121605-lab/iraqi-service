@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pencil, Plus, Tags, Trash2 } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import ImageUploader from '../../components/UI/ImageUploader';
+import CanvaDesignLink from '../../components/UI/CanvaDesignLink';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
@@ -109,13 +110,16 @@ export default function FounderCategories() {
                 </div>
                 <div>
                   <p className="mb-1 text-xs text-white/60">{t('founderCategories.iconLabel')}</p>
-                  <ImageUploader
-                    pathPrefix={`categories/${category.key}`}
-                    value={editForm.iconPath}
-                    onUploaded={(url) => setEditForm({ ...editForm, iconPath: url })}
-                    onClear={() => setEditForm({ ...editForm, iconPath: null })}
-                    locale={locale}
-                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <ImageUploader
+                      pathPrefix={`categories/${category.key}`}
+                      value={editForm.iconPath}
+                      onUploaded={(url) => setEditForm({ ...editForm, iconPath: url })}
+                      onClear={() => setEditForm({ ...editForm, iconPath: null })}
+                      locale={locale}
+                    />
+                    <CanvaDesignLink locale={locale} />
+                  </div>
                   <p className="mt-1 text-xs text-white/40">{t('founderCategories.iconHint')}</p>
                 </div>
                 <div className="flex gap-2">

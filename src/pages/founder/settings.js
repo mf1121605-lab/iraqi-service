@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Megaphone, Settings } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import ImageUploader from '../../components/UI/ImageUploader';
+import CanvaDesignLink from '../../components/UI/CanvaDesignLink';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
@@ -111,13 +112,17 @@ export default function FounderSettings() {
           <h3 className="font-display font-semibold text-gold-300">{t('founderSettings.brandingSectionTitle')}</h3>
           <div>
             <label className="mb-1 block text-sm text-white/70">{t('founderSettings.backgroundImageLabel')}</label>
-            <ImageUploader
-              pathPrefix="backgrounds"
-              value={fields.background_image_path}
-              onUploaded={(url) => setField('background_image_path', url)}
-              onClear={() => setField('background_image_path', '')}
-              locale={locale}
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <ImageUploader
+                pathPrefix="backgrounds"
+                value={fields.background_image_path}
+                onUploaded={(url) => setField('background_image_path', url)}
+                onClear={() => setField('background_image_path', '')}
+                locale={locale}
+              />
+              <CanvaDesignLink locale={locale} />
+            </div>
+            <p className="mt-1 text-xs text-white/40">{t('common.designWithCanvaHint')}</p>
           </div>
           <div>
             <label className="mb-1 block text-sm text-white/70">{t('founderSettings.backgroundColorLabel')}</label>

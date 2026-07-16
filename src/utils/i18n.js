@@ -34,6 +34,8 @@ const dictionaries = {
       remove: 'إزالة',
       close: 'إغلاق',
       edit: 'تعديل',
+      designWithCanva: 'صمّم في Canva',
+      designWithCanvaHint: 'يفتح محرر Canva في تبويب جديد — صمّم صورتك ثم نزّلها وارفعها من هنا',
     },
     languageSelect: {
       title: 'مرحبًا بك',
@@ -359,6 +361,8 @@ const dictionaries = {
       remove: 'سڕینەوە',
       close: 'داخستن',
       edit: 'دەستکاریکردن',
+      designWithCanva: 'دیزاین لە Canva',
+      designWithCanvaHint: 'دەستکاری Canva لە تابێکی نوێدا دەکرێتەوە — وێنەکەت دیزاین بکە، دواتر دایبگرە و لێرەوە باری بکە',
     },
     languageSelect: {
       title: 'بەخێربێیت',
