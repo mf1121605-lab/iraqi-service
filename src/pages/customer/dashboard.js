@@ -42,10 +42,12 @@ export default function CustomerDashboard() {
 
     function loadBanners() {
       supabaseClient
-        .from('service_links')
-        .select('id, title_ar, title_ckb, subtitle_ar, subtitle_ckb, url, image_path')
+        .from('announcements')
+        .select(
+          'id, title_ar, title_ckb, description_ar, description_ckb, image_url, mobile_image_url, badge_ar, badge_ckb, button_text_ar, button_text_ckb, button_link, background_color, text_color, display_order'
+        )
         .eq('is_active', true)
-        .order('sort_order')
+        .order('display_order')
         .then(({ data }) => setBanners(data ?? []));
     }
 
@@ -62,7 +64,7 @@ export default function CustomerDashboard() {
 
     const channel = supabaseClient
       .channel('customer-hub-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_links' }, loadBanners)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, loadBanners)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, loadProducts)
       .subscribe();
 
@@ -118,23 +120,56 @@ export default function CustomerDashboard() {
 
   return (
     <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
-      <section className="cinematic-card relative overflow-hidden p-10 text-white">
+      <section
+        className="cinematic-card relative overflow-hidden p-10 text-white"
+        style={currentBanner ? { backgroundColor: currentBanner.background_color, color: currentBanner.text_color } : undefined}
+      >
         <div className="iraq-flag-watermark pointer-events-none absolute inset-y-0 start-0 w-1/2 opacity-[0.05]" />
         <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-3xl" />
         {currentBanner ? (
-          <a href={currentBanner.url} className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
-            {currentBanner.image_path && (
-              <SafeImage
-                src={currentBanner.image_path}
-                alt={bilingualText(currentBanner, 'title', locale)}
-                className="h-32 w-full shrink-0 rounded-2xl border border-gold-400/20 object-cover shadow-glass-sm sm:h-24 sm:w-40"
-              />
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
+            {(currentBanner.mobile_image_url || currentBanner.image_url) && (
+              <>
+                {currentBanner.mobile_image_url && (
+                  <SafeImage
+                    src={currentBanner.mobile_image_url}
+                    alt={bilingualText(currentBanner, 'title', locale)}
+                    className={`h-32 w-full shrink-0 rounded-2xl border border-gold-400/20 object-cover shadow-glass-sm ${
+                      currentBanner.image_url ? 'sm:hidden' : 'sm:h-24 sm:w-40'
+                    }`}
+                  />
+                )}
+                {currentBanner.image_url && (
+                  <SafeImage
+                    src={currentBanner.image_url}
+                    alt={bilingualText(currentBanner, 'title', locale)}
+                    className={`h-32 w-full shrink-0 rounded-2xl border border-gold-400/20 object-cover shadow-glass-sm sm:h-24 sm:w-40 ${
+                      currentBanner.mobile_image_url ? 'hidden sm:block' : ''
+                    }`}
+                  />
+                )}
+              </>
             )}
-            <div>
-              <p className="text-sm text-gold-300/80">{bilingualText(currentBanner, 'subtitle', locale)}</p>
-              <h2 className="mt-2 font-display text-2xl font-bold tracking-tight">{bilingualText(currentBanner, 'title', locale)}</h2>
+            <div className="min-w-0 flex-1">
+              {bilingualText(currentBanner, 'badge', locale) && (
+                <span className="mb-1 inline-block rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold">
+                  {bilingualText(currentBanner, 'badge', locale)}
+                </span>
+              )}
+              <h2 className="font-display text-2xl font-bold tracking-tight">{bilingualText(currentBanner, 'title', locale)}</h2>
+              {bilingualText(currentBanner, 'description', locale) && (
+                <p className="mt-1 opacity-80">{bilingualText(currentBanner, 'description', locale)}</p>
+              )}
+              {currentBanner.button_link && bilingualText(currentBanner, 'button_text', locale) && (
+                <a
+                  href={currentBanner.button_link}
+                  className="mt-4 inline-flex items-center rounded-xl2 bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25"
+                >
+                  {bilingualText(currentBanner, 'button_text', locale)}
+                </a>
+              )}
             </div>
-          </a>
+          </div>
         ) : (
           <div className="relative">
             <h2 className="font-display text-2xl font-bold tracking-tight">{t('customerHub.heroFallbackTitle')}</h2>
