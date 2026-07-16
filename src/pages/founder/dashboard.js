@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { LayoutDashboard, Users, ClipboardList, ShoppingBag, DollarSign } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import StatusBadge from '../../components/UI/StatusBadge';
@@ -6,6 +7,9 @@ import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
 import { translate } from '../../utils/i18n';
+
+// WebGL needs a browser, so the 3D badge is client-only.
+const Icon3D = dynamic(() => import('../../components/UI/Icon3D'), { ssr: false });
 
 export default function FounderDashboard() {
   const { profile, loading, signOut } = useRequireRole(['founder']);
@@ -34,64 +38,62 @@ export default function FounderDashboard() {
   }, [profile]);
 
   if (loading || !profile) {
-    return <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">{t('common.loading')}</main>;
+    return <main className="flex min-h-screen items-center justify-center text-white">{t('common.loading')}</main>;
   }
 
   return (
     <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
-      <h2 className="flex items-center gap-2 font-display text-xl font-bold">
-        <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
+      <h2 className="section-title-cinematic font-display text-xl font-bold">
+        <LayoutDashboard className="h-5 w-5 text-gold-300" aria-hidden="true" />
         {t('founderDashboard.title')}
       </h2>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { icon: Users, label: t('founderDashboard.statsTotalUsers'), value: stats?.users ?? '—' },
-          { icon: ClipboardList, label: t('founderDashboard.statsTotalRequests'), value: stats?.requests ?? '—' },
-          { icon: DollarSign, label: t('founderDashboard.statsTotalRevenue'), value: `${stats?.revenue ?? 0} IQD` },
-          { icon: ShoppingBag, label: t('founderDashboard.statsTotalProducts'), value: stats?.products ?? '—' },
-        ].map((stat, i) => {
-          const Icon = stat.icon;
-          return (
-            <div key={i} className="glass-panel-dark animate-slide-up rounded-2xl p-6 shadow-soft" style={{ animationDelay: `${i * 60}ms` }}>
-              <Icon className="h-6 w-6 text-white/70" aria-hidden="true" />
-              <p className="mt-3 text-2xl font-bold">{stat.value}</p>
-              <p className="text-xs text-white/60">{stat.label}</p>
-            </div>
-          );
-        })}
+          { variant: 'general', color: '#e6ab2c', icon: Users, label: t('founderDashboard.statsTotalUsers'), value: stats?.users ?? '—' },
+          { variant: 'education', color: '#e6ab2c', icon: ClipboardList, label: t('founderDashboard.statsTotalRequests'), value: stats?.requests ?? '—' },
+          { variant: 'welfare', color: '#10b981', icon: DollarSign, label: t('founderDashboard.statsTotalRevenue'), value: `${stats?.revenue ?? 0} IQD` },
+          { variant: 'military', color: '#c9d3dc', icon: ShoppingBag, label: t('founderDashboard.statsTotalProducts'), value: stats?.products ?? '—' },
+        ].map((stat, i) => (
+          <div
+            key={i}
+            className="metal-panel animate-slide-up flex flex-col items-center gap-2 p-6 text-center text-white"
+            style={{ animationDelay: `${i * 60}ms` }}
+          >
+            <Icon3D variant={stat.variant} color={stat.color} className="h-16 w-16" />
+            <p className="text-2xl font-bold">{stat.value}</p>
+            <p className="text-xs text-white/60">{stat.label}</p>
+          </div>
+        ))}
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft transition-shadow duration-300 hover:shadow-elevate dark:border-white/10 dark:bg-surface-dark-alt/60">
+        <section className="metal-panel p-6 text-white">
           <h3 className="font-display font-semibold">{t('founderDashboard.recentEmployees')}</h3>
           {employees.length === 0 ? (
-            <p className="mt-3 text-sm text-ink-muted dark:text-ink-dark-muted">{t('founderDashboard.noEmployees')}</p>
+            <p className="mt-3 text-sm text-white/60">{t('founderDashboard.noEmployees')}</p>
           ) : (
             <ul className="mt-3 space-y-2">
               {employees.map((emp) => (
-                <li
-                  key={emp.id}
-                  className="rounded-xl2 border border-black/5 p-3 text-sm transition-all duration-200 hover:shadow-soft dark:border-white/10"
-                >
+                <li key={emp.id} className="rounded-xl2 border border-white/10 p-3 text-sm transition-all duration-200 hover:bg-white/5">
                   <p className="font-semibold">{[emp.given_name, emp.father_name].filter(Boolean).join(' ') || '—'}</p>
-                  <p className="text-xs text-ink-muted dark:text-ink-dark-muted">{emp.specialization || ''}</p>
+                  <p className="text-xs text-white/60">{emp.specialization || ''}</p>
                 </li>
               ))}
             </ul>
           )}
         </section>
 
-        <section className="rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft transition-shadow duration-300 hover:shadow-elevate dark:border-white/10 dark:bg-surface-dark-alt/60">
+        <section className="metal-panel p-6 text-white">
           <h3 className="font-display font-semibold">{t('founderDashboard.recentRequests')}</h3>
           {requests.length === 0 ? (
-            <p className="mt-3 text-sm text-ink-muted dark:text-ink-dark-muted">{t('founderDashboard.noRequests')}</p>
+            <p className="mt-3 text-sm text-white/60">{t('founderDashboard.noRequests')}</p>
           ) : (
             <ul className="mt-3 space-y-2">
               {requests.map((req) => (
                 <li
                   key={req.id}
-                  className="flex items-center justify-between gap-2 rounded-xl2 border border-black/5 p-3 text-sm transition-all duration-200 hover:shadow-soft dark:border-white/10"
+                  className="flex items-center justify-between gap-2 rounded-xl2 border border-white/10 p-3 text-sm transition-all duration-200 hover:bg-white/5"
                 >
                   <p className="min-w-0 truncate font-semibold">{req.title}</p>
                   <StatusBadge status={req.status} locale={locale} />
