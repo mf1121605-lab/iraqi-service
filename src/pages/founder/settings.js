@@ -41,6 +41,7 @@ export default function FounderSettings() {
   const [fields, setFields] = useState(emptyFields);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!profile) return;
@@ -60,18 +61,33 @@ export default function FounderSettings() {
   function setField(key, value) {
     setFields((current) => ({ ...current, [key]: value }));
     setSaved(false);
+    setError('');
   }
 
   async function handleSave(event) {
     event.preventDefault();
+    setError('');
+    setSaved(false);
+    if (!settingsId) {
+      setError(t('common.errorGeneric'));
+      return;
+    }
     setSaving(true);
     const payload = FIELD_KEYS.reduce((acc, key) => {
       const value = fields[key];
       acc[key] = key === 'announcement_enabled' ? value : value || null;
       return acc;
     }, {});
-    await supabaseClient.from('founder_settings').update(payload).eq('id', settingsId);
+    // .select().single() forces a row back — an RLS policy silently
+    // matching zero rows (wrong role, stale id) or a schema-cache-stale
+    // "column does not exist" both surface here as a real error, instead
+    // of a plain .update() that reports success even when nothing wrote.
+    const { error: updateError } = await supabaseClient.from('founder_settings').update(payload).eq('id', settingsId).select().single();
     setSaving(false);
+    if (updateError) {
+      setError(updateError.message || t('common.errorGeneric'));
+      return;
+    }
     setSaved(true);
   }
 
@@ -233,11 +249,12 @@ export default function FounderSettings() {
           </div>
         </section>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button type="submit" disabled={saving} className="btn-cinematic-gold px-6 py-3 text-sm disabled:opacity-50">
             {t('founderSettings.saveCta')}
           </button>
           {saved && <p className="text-sm text-emerald-400">{t('founderSettings.savedMessage')}</p>}
+          {error && <p className="text-sm text-red-400" dir="ltr">{error}</p>}
         </div>
       </form>
     </AppShell>
