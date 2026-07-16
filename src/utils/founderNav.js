@@ -1,4 +1,4 @@
-import { BarChart3, LayoutDashboard, MessageCircle, ScrollText, Tags, Users } from 'lucide-react';
+import { BarChart3, LayoutDashboard, MessageCircle, ScrollText, Settings, Tags, Users } from 'lucide-react';
 import { translate } from './i18n';
 
 export function useFounderNav(locale, active) {
@@ -9,6 +9,7 @@ export function useFounderNav(locale, active) {
     { href: '/founder/users', label: t('founderPanel.navUsers'), active: active === 'users', icon: Users },
     { href: '/founder/stats', label: t('founderPanel.navStats'), active: active === 'stats', icon: BarChart3 },
     { href: '/founder/audit-log', label: t('founderPanel.navAuditLog'), active: active === 'audit-log', icon: ScrollText },
+    { href: '/founder/settings', label: t('founderSettings.title'), active: active === 'settings', icon: Settings },
     { href: '/chat', label: t('chat.roomsTitle'), icon: MessageCircle },
   ];
 }
