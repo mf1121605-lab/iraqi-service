@@ -45,6 +45,7 @@ export default function ChatRoom() {
   const [typingUsers, setTypingUsers] = useState({});
   const [onlineUserIds, setOnlineUserIds] = useState(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sendError, setSendError] = useState('');
   const audioRef = useRef(null);
   const listEndRef = useRef(null);
   const channelRef = useRef(null);
@@ -180,7 +181,8 @@ export default function ChatRoom() {
   async function handleSend(event) {
     event.preventDefault();
     if (!body.trim() && !pendingAttachment) return;
-    await supabaseClient.from('chat_messages').insert({
+    setSendError('');
+    const { error } = await supabaseClient.from('chat_messages').insert({
       room_id: room.id,
       sender_id: profile.id,
       sender_display_name: displayNameFor(profile),
@@ -191,12 +193,17 @@ export default function ChatRoom() {
       attachment_size: pendingAttachment?.size ?? null,
       attachment_mime: pendingAttachment?.mime ?? null,
     });
+    if (error) {
+      setSendError(error.message || t('common.errorGeneric'));
+      return;
+    }
     setBody('');
     setPendingAttachment(null);
   }
 
   async function toggleHidden(message) {
-    await supabaseClient.from('chat_messages').update({ is_hidden: !message.is_hidden }).eq('id', message.id);
+    const { error } = await supabaseClient.from('chat_messages').update({ is_hidden: !message.is_hidden }).eq('id', message.id);
+    if (error) setSendError(error.message || t('common.errorGeneric'));
   }
 
   async function toggleReaction(message, emoji) {
@@ -205,17 +212,20 @@ export default function ChatRoom() {
     // as messages already work in this file — avoids double-adding our own
     // reaction once the realtime echo of our own write arrives.
     const existing = reactions.find((r) => r.message_id === message.id && r.user_id === profile.id && r.emoji === emoji);
-    if (existing) {
-      await supabaseClient.from('chat_message_reactions').delete().eq('id', existing.id);
-    } else {
-      await supabaseClient.from('chat_message_reactions').insert({ message_id: message.id, user_id: profile.id, emoji });
-    }
+    const { error } = existing
+      ? await supabaseClient.from('chat_message_reactions').delete().eq('id', existing.id)
+      : await supabaseClient.from('chat_message_reactions').insert({ message_id: message.id, user_id: profile.id, emoji });
+    if (error) setSendError(error.message || t('common.errorGeneric'));
   }
 
   async function togglePinnedRoom(roomId) {
     const current = profile.pinned_room_ids ?? [];
     const next = current.includes(roomId) ? current.filter((id) => id !== roomId) : [...current, roomId];
-    await supabaseClient.from('profiles').update({ pinned_room_ids: next }).eq('id', profile.id);
+    const { error } = await supabaseClient.from('profiles').update({ pinned_room_ids: next }).eq('id', profile.id);
+    if (error) {
+      setSendError(error.message || t('common.errorGeneric'));
+      return;
+    }
     refreshProfile();
   }
 
@@ -276,7 +286,7 @@ export default function ChatRoom() {
         </>
       )}
 
-      <header className="relative z-10 flex items-center justify-between gap-2 border-b border-white/10 bg-black/10 px-4 py-4 backdrop-blur sm:px-6">
+      <header className="relative z-20 flex items-center justify-between gap-2 border-b border-white/10 bg-black/10 px-4 py-4 backdrop-blur sm:px-6">
         <Link
           href="/chat"
           className="flex shrink-0 items-center gap-1.5 text-sm text-white/70 underline underline-offset-4 transition-colors hover:text-white"
@@ -322,7 +332,7 @@ export default function ChatRoom() {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto flex h-[calc(100vh-136px)] max-w-3xl flex-col p-4">
+      <main className="relative z-0 mx-auto flex h-[calc(100vh-136px)] max-w-3xl flex-col p-4">
         <div className="flex-1 space-y-3 overflow-y-auto">
           {messages.map((message) => {
             const messageReactions = reactions.filter((r) => r.message_id === message.id);
@@ -376,6 +386,11 @@ export default function ChatRoom() {
         </div>
 
         <TypingIndicator names={typingNames} locale={locale} />
+        {sendError && (
+          <p className="mt-1 text-xs text-red-400" dir="ltr">
+            {sendError}
+          </p>
+        )}
 
         <form onSubmit={handleSend} className="mt-3 flex items-center gap-2 rounded-xl2 bg-white/10 p-2 shadow-inner-glass">
           <input

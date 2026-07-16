@@ -3,7 +3,7 @@ import { Loader as Loader2, Paperclip } from 'lucide-react';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { translate } from '../../utils/i18n';
 
-const ALLOWED_TYPES = [
+const ALLOWED_MIME_TYPES = [
   'image/png',
   'image/jpeg',
   'application/pdf',
@@ -12,7 +12,18 @@ const ALLOWED_TYPES = [
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ];
+// Some mobile browsers/file pickers report a generic or blank file.type for
+// Office documents instead of the exact MIME string (observed as a real
+// "can't send files" failure, not just a sandbox quirk) — the extension is
+// a reliable fallback since file.name is always present.
+const ALLOWED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.pdf', '.doc', '.docx', '.xls', '.xlsx'];
 const MAX_BYTES = 5 * 1024 * 1024;
+
+function isAllowedFile(file) {
+  if (ALLOWED_MIME_TYPES.includes(file.type)) return true;
+  const lowerName = file.name.toLowerCase();
+  return ALLOWED_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
+}
 
 export default function AttachmentUploader({ pathPrefix, onUploaded, locale }) {
   const t = (path) => translate(locale, path);
@@ -25,7 +36,7 @@ export default function AttachmentUploader({ pathPrefix, onUploaded, locale }) {
     if (!file) return;
 
     setError('');
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    if (!isAllowedFile(file)) {
       setError(t('chat.attachmentTypeInvalid'));
       return;
     }
@@ -40,7 +51,7 @@ export default function AttachmentUploader({ pathPrefix, onUploaded, locale }) {
     setUploading(false);
 
     if (uploadError) {
-      setError(t('common.errorGeneric'));
+      setError(uploadError.message || t('common.errorGeneric'));
       return;
     }
     onUploaded({ path, name: file.name, size: file.size, mime: file.type });
@@ -50,7 +61,7 @@ export default function AttachmentUploader({ pathPrefix, onUploaded, locale }) {
     <label className="flex cursor-pointer items-center gap-1.5 rounded-xl px-2 py-2 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-500/10 dark:text-brand-300">
       <input
         type="file"
-        accept={ALLOWED_TYPES.join(',')}
+        accept={[...ALLOWED_MIME_TYPES, ...ALLOWED_EXTENSIONS].join(',')}
         onChange={handleFileChange}
         disabled={uploading}
         className="hidden"
@@ -61,7 +72,7 @@ export default function AttachmentUploader({ pathPrefix, onUploaded, locale }) {
         <Paperclip className="h-4 w-4" aria-hidden="true" />
       )}
       <span className="hidden sm:inline">{uploading ? t('chat.uploading') : t('chat.attachCta')}</span>
-      {error && <span className="ms-2 text-xs font-normal text-red-600 dark:text-red-300">{error}</span>}
+      {error && <span className="ms-2 text-xs font-normal text-red-600 dark:text-red-300" dir="ltr">{error}</span>}
     </label>
   );
 }
