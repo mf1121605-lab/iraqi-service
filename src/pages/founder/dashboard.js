@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { motion } from 'framer-motion';
 import { LayoutDashboard } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import StatusBadge from '../../components/UI/StatusBadge';
@@ -7,6 +8,7 @@ import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
 import { translate } from '../../utils/i18n';
+import { hoverLift } from '../../components/UI/Motion';
 
 // WebGL needs a browser, so the 3D badge is client-only.
 const Icon3D = dynamic(() => import('../../components/UI/Icon3D'), { ssr: false });
@@ -55,8 +57,9 @@ export default function FounderDashboard() {
           { variant: 'welfare', color: '#e14b6a', glow: 'rgba(225,75,106,0.55)', label: t('founderDashboard.statsTotalRevenue'), value: `${stats?.revenue ?? 0} IQD` },
           { variant: 'military', color: '#c9d3dc', glow: 'rgba(201,211,220,0.5)', label: t('founderDashboard.statsTotalProducts'), value: stats?.products ?? '—' },
         ].map((stat, i) => (
-          <div
+          <motion.div
             key={i}
+            {...hoverLift}
             className="metal-panel animate-slide-up flex flex-col items-center gap-3 p-6 text-center text-white"
             style={{ animationDelay: `${i * 60}ms` }}
           >
@@ -65,7 +68,7 @@ export default function FounderDashboard() {
             </div>
             <p className="text-2xl font-bold">{stat.value}</p>
             <p className="text-xs text-white/60">{stat.label}</p>
-          </div>
+          </motion.div>
         ))}
       </div>
 

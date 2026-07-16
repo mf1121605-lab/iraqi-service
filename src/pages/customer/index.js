@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { ArrowLeft, KeyRound, Phone, ShieldCheck } from 'lucide-react';
 import FacebookGlyph from '../../components/UI/FacebookGlyph';
 import GoogleGlyph from '../../components/UI/GoogleGlyph';
@@ -8,6 +8,7 @@ import { supabaseClient } from '../../lib/supabaseClient';
 import { dashboardPathForRole, useSession } from '../../utils/useSession';
 import { defaultLocale, getDirection, getStoredLocale, translate } from '../../utils/i18n';
 import { isValidIraqiPhone, toE164 } from '../../utils/phoneHelper';
+import { MotionLink, buttonTap } from '../../components/UI/Motion';
 
 export default function CustomerAuth() {
   const router = useRouter();
@@ -129,9 +130,14 @@ export default function CustomerAuth() {
               </div>
             </div>
             {error && <p className="animate-slide-down text-sm text-red-300">{error}</p>}
-            <button type="submit" disabled={submitting} className="btn-cinematic-gold w-full px-4 py-3.5 disabled:opacity-50">
+            <motion.button
+              type="submit"
+              disabled={submitting}
+              {...buttonTap}
+              className="btn-cinematic-gold w-full px-4 py-3.5 disabled:opacity-50"
+            >
               {t('authCustomer.sendCodeCta')}
-            </button>
+            </motion.button>
 
             <div className="flex items-center gap-3 text-xs text-white/50">
               <span className="h-px flex-1 bg-gradient-to-r from-transparent via-white/25 to-transparent" />
@@ -140,22 +146,24 @@ export default function CustomerAuth() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <button
+              <motion.button
                 type="button"
                 onClick={handleFacebookLogin}
+                {...buttonTap}
                 className="btn-cinematic-outline px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gold-300"
               >
                 <FacebookGlyph className="h-4 w-4" />
                 {t('authCustomer.continueWithFacebook')}
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 font-semibold text-brand-950 shadow-[0_8px_24px_-8px_rgba(255,255,255,0.4)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_-8px_rgba(255,255,255,0.55)] focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-brand-900"
+                {...buttonTap}
+                className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 font-semibold text-brand-950 shadow-[0_8px_24px_-8px_rgba(255,255,255,0.4)] transition-shadow duration-300 hover:shadow-[0_12px_30px_-8px_rgba(255,255,255,0.55)] focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-brand-900"
               >
                 <GoogleGlyph className="h-4 w-4" />
                 {t('authCustomer.continueWithGoogle')}
-              </button>
+              </motion.button>
             </div>
           </form>
         )}
@@ -179,9 +187,14 @@ export default function CustomerAuth() {
               />
             </div>
             {error && <p className="animate-slide-down text-sm text-red-300">{error}</p>}
-            <button type="submit" disabled={submitting} className="btn-cinematic-gold w-full px-4 py-3.5 disabled:opacity-50">
+            <motion.button
+              type="submit"
+              disabled={submitting}
+              {...buttonTap}
+              className="btn-cinematic-gold w-full px-4 py-3.5 disabled:opacity-50"
+            >
               {t('authCustomer.verifyCta')}
-            </button>
+            </motion.button>
             <button
               type="button"
               onClick={handleSendCode}
@@ -192,13 +205,14 @@ export default function CustomerAuth() {
           </form>
         )}
 
-        <Link
+        <MotionLink
           href="/"
+          whileTap={{ scale: 0.96 }}
           className="mt-6 flex items-center justify-center gap-1.5 text-center text-sm text-white/70 underline underline-offset-4 transition-colors hover:text-white"
         >
           <ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
           {t('authCustomer.backCta')}
-        </Link>
+        </MotionLink>
       </div>
     </main>
   );

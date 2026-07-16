@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { ArrowLeft, Briefcase, Lock } from 'lucide-react';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { dashboardPathForRole, useSession } from '../../utils/useSession';
 import { defaultLocale, getDirection, getStoredLocale, translate } from '../../utils/i18n';
 import { isValidIraqiPhone, toE164 } from '../../utils/phoneHelper';
+import { MotionLink, buttonTap } from '../../components/UI/Motion';
 
 export default function EmployeeAuth() {
   const router = useRouter();
@@ -95,18 +96,24 @@ export default function EmployeeAuth() {
             />
           </div>
           {error && <p className="animate-slide-down text-sm text-red-300">{error}</p>}
-          <button type="submit" disabled={submitting} className="btn-cinematic-gold w-full px-4 py-3.5 disabled:opacity-50">
+          <motion.button
+            type="submit"
+            disabled={submitting}
+            {...buttonTap}
+            className="btn-cinematic-gold w-full px-4 py-3.5 disabled:opacity-50"
+          >
             {t('authEmployee.submitCta')}
-          </button>
+          </motion.button>
         </form>
 
-        <Link
+        <MotionLink
           href="/"
+          whileTap={{ scale: 0.96 }}
           className="mt-6 flex items-center justify-center gap-1.5 text-center text-sm text-white/70 underline underline-offset-4 transition-colors hover:text-white"
         >
           <ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
           {t('authEmployee.backCta')}
-        </Link>
+        </MotionLink>
       </div>
     </main>
   );

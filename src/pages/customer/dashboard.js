@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { ClipboardList, LayoutGrid, MessageCircle, ShoppingBag, Tag } from 'lucide-react';
 import AppShell from '../../components/Layout/AppShell';
 import SafeImage from '../../components/UI/SafeImage';
 import AnnouncementSlider from '../../components/UI/AnnouncementSlider';
+import { MotionLink, buttonTap, cardLift } from '../../components/UI/Motion';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useLocale } from '../../components/Layout/AppShell';
@@ -131,9 +132,10 @@ export default function CustomerDashboard() {
           {(categories ?? []).map((category) => {
             const visual = CATEGORY_3D[category.key] ?? CATEGORY_3D.general;
             return (
-              <Link
+              <MotionLink
                 key={category.key}
                 href={`/customer/requests/new?category=${category.key}`}
+                {...cardLift}
                 className="metal-panel group flex flex-col items-center gap-3 p-6 text-center font-semibold text-white"
               >
                 <div className="icon-medallion h-24 w-24" style={{ '--medallion-glow': visual.glow }}>
@@ -145,7 +147,7 @@ export default function CustomerDashboard() {
                   )}
                 </div>
                 <span>{categoryLabel(category, locale)}</span>
-              </Link>
+              </MotionLink>
             );
           })}
         </div>
@@ -162,9 +164,10 @@ export default function CustomerDashboard() {
         ) : (
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => (
-              <div
+              <motion.div
                 key={product.id}
-                className="glass-panel-dark group overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:border-gold-400/30 hover:shadow-elevate"
+                {...cardLift}
+                className="glass-panel-dark group overflow-hidden rounded-2xl transition-colors duration-300 hover:border-gold-400/30 hover:shadow-elevate"
               >
                 <SafeImage
                   src={product.image_path}
@@ -187,11 +190,16 @@ export default function CustomerDashboard() {
                       <span className="font-bold text-white">{product.price} IQD</span>
                     )}
                   </div>
-                  <button type="button" onClick={() => handleOrder(product)} className="btn-cinematic-gold mt-4 w-full px-4 py-2.5 text-sm">
+                  <motion.button
+                    type="button"
+                    onClick={() => handleOrder(product)}
+                    {...buttonTap}
+                    className="btn-cinematic-gold mt-4 w-full px-4 py-2.5 text-sm"
+                  >
                     {t('customerHub.orderCta')}
-                  </button>
+                  </motion.button>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         )}

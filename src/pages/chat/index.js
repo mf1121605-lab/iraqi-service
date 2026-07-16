@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { MessageCircle, MessagesSquare, Pin } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { translate } from '../../utils/i18n';
+import { MotionLink, cardLift } from '../../components/UI/Motion';
 
 export default function ChatRooms() {
   const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder', 'employee', 'customer']);
@@ -62,10 +62,11 @@ export default function ChatRooms() {
   function RoomCard({ room, index }) {
     const pinned = pinnedRoomIds.includes(room.id);
     return (
-      <Link
+      <MotionLink
         href={`/chat/${room.slug}`}
         style={{ animationDelay: `${index * 60}ms` }}
-        className="glass-panel-dark group relative flex animate-slide-up items-center gap-3 rounded-2xl p-6 font-semibold text-white shadow-soft transition-all duration-300 hover:-translate-y-1 hover:border-gold-400/30 hover:shadow-elevate"
+        {...cardLift}
+        className="glass-panel-dark group relative flex animate-slide-up items-center gap-3 rounded-2xl p-6 font-semibold text-white shadow-soft transition-colors duration-300 hover:border-gold-400/30 hover:shadow-elevate"
       >
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold-400/10 text-gold-300 ring-1 ring-inset ring-gold-400/25 transition-transform duration-300 group-hover:scale-110">
           <MessageCircle className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
@@ -80,7 +81,7 @@ export default function ChatRooms() {
         >
           <Pin className={`h-4 w-4 ${pinned ? 'fill-gold-300 text-gold-300' : ''}`} aria-hidden="true" />
         </button>
-      </Link>
+      </MotionLink>
     );
   }
 
