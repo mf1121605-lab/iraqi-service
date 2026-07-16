@@ -1,5 +1,11 @@
+import { useCallback, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Cairo, Noto_Sans_Arabic } from 'next/font/google';
 import '../styles/globals.css';
+
+// Dynamically loaded (ssr:false) so the Supabase client it needs doesn't
+// end up in every page's synchronous shared bundle — see SiteChrome.js.
+const SiteChrome = dynamic(() => import('../components/Layout/SiteChrome'), { ssr: false });
 
 const notoSansArabic = Noto_Sans_Arabic({
   subsets: ['arabic'],
@@ -16,9 +22,13 @@ const cairo = Cairo({
 });
 
 export default function App({ Component, pageProps }) {
+  const [siteSettings, setSiteSettings] = useState(null);
+  const handleSettings = useCallback((settings) => setSiteSettings(settings), []);
+
   return (
     <div className={`${notoSansArabic.variable} ${cairo.variable} contents`}>
-      <Component {...pageProps} />
+      <SiteChrome onSettings={handleSettings} />
+      <Component {...pageProps} siteSettings={siteSettings} />
       <div className="grain-overlay" aria-hidden="true" />
       <div className="cinematic-frame" aria-hidden="true" />
       <div className="cinematic-frame-corner top-left" aria-hidden="true" />

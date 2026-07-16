@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeftRight, Briefcase, Languages, ShieldCheck, UserRound } from 'lucide-react';
+import { ArrowLeftRight, Briefcase, Facebook, Instagram, Languages, Mail, Phone, ShieldCheck, Twitter, UserRound } from 'lucide-react';
 import {
   LOCALE_META,
   defaultLocale,
@@ -10,8 +10,9 @@ import {
   setStoredLocale,
   translate,
 } from '../utils/i18n';
+import { siteText } from '../utils/useSiteSettings';
 
-export default function Home() {
+export default function Home({ siteSettings }) {
   const [locale, setLocale] = useState(null);
   const [step, setStep] = useState('language');
 
@@ -38,6 +39,12 @@ export default function Home() {
   }
 
   const t = (path) => translate(locale ?? defaultLocale, path);
+  const activeLocale = locale ?? defaultLocale;
+  const heroTitle = siteText(siteSettings, activeLocale, 'hero_title') || t('gateway.welcomeTitle');
+  const heroSubtitle = siteText(siteSettings, activeLocale, 'hero_subtitle') || t('gateway.welcomeSubtitle');
+  const footerLegal = siteText(siteSettings, activeLocale, 'footer_legal') || t('common.footerDisclaimer');
+  const hasContactRow =
+    siteSettings?.footer_phone || siteSettings?.footer_email || siteSettings?.footer_facebook_url || siteSettings?.footer_instagram_url || siteSettings?.footer_twitter_url;
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-6">
@@ -76,8 +83,8 @@ export default function Home() {
           <span className="cinematic-emblem mx-auto h-[4.5rem] w-[4.5rem]">
             <ShieldCheck className="h-8 w-8 text-gold-300" strokeWidth={2.25} aria-hidden="true" />
           </span>
-          <h1 className="mt-5 font-display text-3xl font-bold tracking-tight">{t('gateway.welcomeTitle')}</h1>
-          <p className="mt-2 text-white/80">{t('gateway.welcomeSubtitle')}</p>
+          <h1 className="mt-5 font-display text-3xl font-bold tracking-tight">{heroTitle}</h1>
+          <p className="mt-2 text-white/80">{heroSubtitle}</p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             <Link
@@ -114,9 +121,40 @@ export default function Home() {
         </div>
       )}
 
-      <p className="absolute inset-x-6 bottom-4 z-10 text-center text-xs leading-relaxed text-white/50">
-        {t('common.footerDisclaimer')}
-      </p>
+      <div className="absolute inset-x-6 bottom-4 z-10 text-center">
+        {hasContactRow && (
+          <div className="mb-2 flex flex-wrap items-center justify-center gap-4 text-xs text-white/60">
+            {siteSettings.footer_phone && (
+              <a href={`tel:${siteSettings.footer_phone}`} className="flex items-center gap-1 hover:text-gold-300">
+                <Phone className="h-3.5 w-3.5" aria-hidden="true" />
+                <span dir="ltr">{siteSettings.footer_phone}</span>
+              </a>
+            )}
+            {siteSettings.footer_email && (
+              <a href={`mailto:${siteSettings.footer_email}`} className="flex items-center gap-1 hover:text-gold-300">
+                <Mail className="h-3.5 w-3.5" aria-hidden="true" />
+                <span dir="ltr">{siteSettings.footer_email}</span>
+              </a>
+            )}
+            {siteSettings.footer_facebook_url && (
+              <a href={siteSettings.footer_facebook_url} target="_blank" rel="noreferrer" className="hover:text-gold-300">
+                <Facebook className="h-3.5 w-3.5" aria-hidden="true" />
+              </a>
+            )}
+            {siteSettings.footer_instagram_url && (
+              <a href={siteSettings.footer_instagram_url} target="_blank" rel="noreferrer" className="hover:text-gold-300">
+                <Instagram className="h-3.5 w-3.5" aria-hidden="true" />
+              </a>
+            )}
+            {siteSettings.footer_twitter_url && (
+              <a href={siteSettings.footer_twitter_url} target="_blank" rel="noreferrer" className="hover:text-gold-300">
+                <Twitter className="h-3.5 w-3.5" aria-hidden="true" />
+              </a>
+            )}
+          </div>
+        )}
+        <p className="text-center text-xs leading-relaxed text-white/50">{footerLegal}</p>
+      </div>
     </main>
   );
 }

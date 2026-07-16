@@ -170,7 +170,12 @@ export default function CustomerDashboard() {
                 className="metal-panel group flex flex-col items-center gap-3 p-6 text-center font-semibold text-white"
               >
                 <div className="icon-medallion h-24 w-24" style={{ '--medallion-glow': visual.glow }}>
-                  <Icon3D variant={category.key} color={visual.color} className="h-20 w-20" />
+                  {category.icon_path ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={category.icon_path} alt="" className="h-16 w-16 rounded-full object-cover" />
+                  ) : (
+                    <Icon3D variant={category.key} color={visual.color} className="h-20 w-20" />
+                  )}
                 </div>
                 <span>{categoryLabel(category, locale)}</span>
               </Link>

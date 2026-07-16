@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabaseClient } from '../lib/supabaseClient';
 
-const SELECT_COLUMNS = 'key, label_ar, label_ckb, is_active, sort_order';
+// Wildcard rather than an explicit icon_path column: this must keep
+// working even before the admin-dashboard migration that adds it has run
+// against a given database, and an unknown-column select would error out
+// category loading everywhere (dashboards, active-services checklist)
+// instead of just leaving icon_path undefined.
+const SELECT_COLUMNS = '*';
 
 export function useCategories({ activeOnly = true } = {}) {
   const [categories, setCategories] = useState(null);

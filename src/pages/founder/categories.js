@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Plus, Tags, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Tags, Trash2 } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
+import ImageUploader from '../../components/UI/ImageUploader';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
@@ -20,6 +21,8 @@ export default function FounderCategories() {
 
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
+  const [editingKey, setEditingKey] = useState(null);
+  const [editForm, setEditForm] = useState(null);
 
   async function handleAdd(event) {
     event.preventDefault();
@@ -51,88 +54,157 @@ export default function FounderCategories() {
     }
   }
 
+  function startEdit(category) {
+    setEditingKey(category.key);
+    setEditForm({ labelAr: category.label_ar, labelCkb: category.label_ckb, iconPath: category.icon_path ?? null });
+  }
+
+  async function saveEdit(category) {
+    setError('');
+    const { error: updateError } = await supabaseClient
+      .from('categories')
+      .update({ label_ar: editForm.labelAr, label_ckb: editForm.labelCkb, icon_path: editForm.iconPath })
+      .eq('key', category.key);
+    if (updateError) {
+      setError(t('common.errorGeneric'));
+      return;
+    }
+    setEditingKey(null);
+    setEditForm(null);
+  }
+
   if (loading || !profile) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
-        {t('common.loading')}
-      </main>
-    );
+    return <main className="flex min-h-screen items-center justify-center text-white">{t('common.loading')}</main>;
   }
 
   return (
     <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
-      <h2 className="flex items-center gap-2 font-display text-lg font-bold">
-        <Tags className="h-5 w-5" aria-hidden="true" />
+      <h2 className="section-title-cinematic font-display text-lg font-bold">
+        <Tags className="h-5 w-5 text-gold-300" aria-hidden="true" />
         {t('founderCategories.title')}
       </h2>
 
-      {error && <p className="mt-3 animate-slide-down text-sm text-red-600 dark:text-red-300">{error}</p>}
+      {error && <p className="mt-3 animate-slide-down text-sm text-red-400">{error}</p>}
 
       <ul className="mt-4 space-y-2">
         {(categories ?? []).map((category) => (
-          <li
-            key={category.key}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-xl2 border border-black/5 p-3 text-sm transition-all duration-200 hover:shadow-soft dark:border-white/10"
-          >
-            <div>
-              <p className="font-semibold">{categoryLabel(category, locale)}</p>
-              <p className="text-xs text-ink-muted dark:text-ink-dark-muted" dir="ltr">
-                {category.key}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-1 text-xs">
-                <input
-                  type="checkbox"
-                  checked={category.is_active}
-                  onChange={() => toggleActive(category)}
-                  className="h-4 w-4 rounded border-black/20 text-brand-600 focus:ring-brand-400"
-                />
-                {t('founderCategories.activeLabel')}
-              </label>
-              <button
-                type="button"
-                onClick={() => handleDelete(category)}
-                className="flex h-10 w-10 items-center justify-center rounded-lg text-red-600 transition-colors hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-red-300"
-                aria-label={t('founderCategories.deleteCta')}
-              >
-                <Trash2 className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
+          <li key={category.key} className="metal-panel p-4 text-white">
+            {editingKey === category.key ? (
+              <div className="space-y-3">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input
+                    value={editForm.labelAr}
+                    onChange={(event) => setEditForm({ ...editForm, labelAr: event.target.value })}
+                    aria-label={t('founderCategories.labelArLabel')}
+                    placeholder={t('founderCategories.labelArLabel')}
+                    className="input-cinematic text-sm"
+                  />
+                  <input
+                    value={editForm.labelCkb}
+                    onChange={(event) => setEditForm({ ...editForm, labelCkb: event.target.value })}
+                    aria-label={t('founderCategories.labelCkbLabel')}
+                    placeholder={t('founderCategories.labelCkbLabel')}
+                    className="input-cinematic text-sm"
+                  />
+                </div>
+                <div>
+                  <p className="mb-1 text-xs text-white/60">{t('founderCategories.iconLabel')}</p>
+                  <ImageUploader
+                    pathPrefix={`categories/${category.key}`}
+                    value={editForm.iconPath}
+                    onUploaded={(url) => setEditForm({ ...editForm, iconPath: url })}
+                    onClear={() => setEditForm({ ...editForm, iconPath: null })}
+                    locale={locale}
+                  />
+                  <p className="mt-1 text-xs text-white/40">{t('founderCategories.iconHint')}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => saveEdit(category)} className="btn-cinematic-gold px-4 py-2 text-sm">
+                    {t('founderCategories.editCta')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingKey(null);
+                      setEditForm(null);
+                    }}
+                    className="btn-cinematic-outline px-4 py-2 text-sm"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  {category.icon_path && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={category.icon_path} alt="" className="h-10 w-10 rounded-lg object-cover" />
+                  )}
+                  <div>
+                    <p className="font-semibold">{categoryLabel(category, locale)}</p>
+                    <p className="text-xs text-white/50" dir="ltr">
+                      {category.key}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1 text-xs text-white/80">
+                    <input
+                      type="checkbox"
+                      checked={category.is_active}
+                      onChange={() => toggleActive(category)}
+                      className="h-4 w-4 rounded border-white/20 bg-transparent text-gold-400 focus:ring-gold-400"
+                    />
+                    {t('founderCategories.activeLabel')}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => startEdit(category)}
+                    className="flex h-10 w-10 items-center justify-center rounded-lg text-gold-300 transition-colors hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-gold-400"
+                    aria-label={t('common.edit')}
+                  >
+                    <Pencil className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(category)}
+                    className="flex h-10 w-10 items-center justify-center rounded-lg text-red-400 transition-colors hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-400"
+                    aria-label={t('founderCategories.deleteCta')}
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            )}
           </li>
         ))}
       </ul>
 
-      <form
-        onSubmit={handleAdd}
-        className="mt-8 grid gap-3 rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft dark:border-white/10 dark:bg-surface-dark-alt/60 sm:grid-cols-3"
-      >
+      <form onSubmit={handleAdd} className="metal-panel mt-8 grid gap-3 p-6 sm:grid-cols-3">
         <input
           value={form.key}
           onChange={(event) => setForm({ ...form, key: event.target.value.trim() })}
           aria-label={t('founderCategories.keyPlaceholder')}
           placeholder={t('founderCategories.keyPlaceholder')}
           dir="ltr"
-          className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
+          className="input-cinematic text-sm"
         />
         <input
           value={form.labelAr}
           onChange={(event) => setForm({ ...form, labelAr: event.target.value })}
           aria-label={t('founderCategories.labelArLabel')}
           placeholder={t('founderCategories.labelArLabel')}
-          className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
+          className="input-cinematic text-sm"
         />
         <input
           value={form.labelCkb}
           onChange={(event) => setForm({ ...form, labelCkb: event.target.value })}
           aria-label={t('founderCategories.labelCkbLabel')}
           placeholder={t('founderCategories.labelCkbLabel')}
-          className="rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
+          className="input-cinematic text-sm"
         />
-        <button
-          type="submit"
-          className="flex items-center justify-center gap-1.5 sm:col-span-3 rounded-xl2 bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-glass-sm transition-all duration-300 hover:bg-brand-700 hover:shadow-elevate"
-        >
+        <button type="submit" className="btn-cinematic-gold flex items-center justify-center gap-1.5 px-4 py-2 text-sm sm:col-span-3">
           <Plus className="h-4 w-4" aria-hidden="true" />
           {t('founderCategories.addCta')}
         </button>

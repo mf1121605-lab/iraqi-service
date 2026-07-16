@@ -1,80 +1,244 @@
 import { useEffect, useState } from 'react';
-import { Settings } from 'lucide-react';
+import { Megaphone, Settings } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
+import ImageUploader from '../../components/UI/ImageUploader';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
 import { translate } from '../../utils/i18n';
+
+const FIELD_KEYS = [
+  'chat_audio_track_key',
+  'chat_background_key',
+  'background_image_path',
+  'background_color',
+  'hero_title_ar',
+  'hero_title_ckb',
+  'hero_subtitle_ar',
+  'hero_subtitle_ckb',
+  'footer_phone',
+  'footer_email',
+  'footer_legal_ar',
+  'footer_legal_ckb',
+  'footer_facebook_url',
+  'footer_instagram_url',
+  'footer_twitter_url',
+  'announcement_enabled',
+  'announcement_text_ar',
+  'announcement_text_ckb',
+];
+
+function emptyFields() {
+  return FIELD_KEYS.reduce((acc, key) => ({ ...acc, [key]: key === 'announcement_enabled' ? false : '' }), {});
+}
 
 export default function FounderSettings() {
   const { profile, loading, signOut } = useRequireRole(['founder']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'settings');
-  const [settings, setSettings] = useState(null);
-  const [audioTrack, setAudioTrack] = useState('');
-  const [background, setBackground] = useState('');
+  const [settingsId, setSettingsId] = useState(null);
+  const [fields, setFields] = useState(emptyFields);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
     supabaseClient.from('founder_settings').select('*').single().then(({ data }) => {
-      setSettings(data);
-      setAudioTrack(data?.chat_audio_track_key ?? '');
-      setBackground(data?.chat_background_key ?? '');
+      if (!data) return;
+      setSettingsId(data.id);
+      setFields((current) => {
+        const next = { ...current };
+        FIELD_KEYS.forEach((key) => {
+          if (data[key] !== null && data[key] !== undefined) next[key] = data[key];
+        });
+        return next;
+      });
     });
   }, [profile]);
+
+  function setField(key, value) {
+    setFields((current) => ({ ...current, [key]: value }));
+    setSaved(false);
+  }
 
   async function handleSave(event) {
     event.preventDefault();
     setSaving(true);
-    await supabaseClient.from('founder_settings').update({
-      chat_audio_track_key: audioTrack || null,
-      chat_background_key: background || null,
-    }).eq('id', settings.id);
+    const payload = FIELD_KEYS.reduce((acc, key) => {
+      const value = fields[key];
+      acc[key] = key === 'announcement_enabled' ? value : value || null;
+      return acc;
+    }, {});
+    await supabaseClient.from('founder_settings').update(payload).eq('id', settingsId);
     setSaving(false);
+    setSaved(true);
   }
 
   if (loading || !profile) {
-    return <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">{t('common.loading')}</main>;
+    return <main className="flex min-h-screen items-center justify-center text-white">{t('common.loading')}</main>;
   }
 
   return (
     <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
-      <h2 className="flex items-center gap-2 font-display text-xl font-bold">
-        <Settings className="h-5 w-5" aria-hidden="true" />
+      <h2 className="section-title-cinematic font-display text-xl font-bold">
+        <Settings className="h-5 w-5 text-gold-300" aria-hidden="true" />
         {t('founderSettings.title')}
       </h2>
 
-      <form
-        onSubmit={handleSave}
-        className="mt-6 max-w-md space-y-4 rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft transition-shadow duration-300 hover:shadow-elevate dark:border-white/10 dark:bg-surface-dark-alt/60"
-      >
-        <div>
-          <label className="mb-1 block text-sm">{t('founderSettings.chatAudioTrackLabel')}</label>
-          <input
-            value={audioTrack}
-            onChange={(e) => setAudioTrack(e.target.value)}
-            dir="ltr"
-            className="w-full rounded-xl2 border border-black/10 bg-white px-4 py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
-          />
+      <form onSubmit={handleSave} className="mt-6 max-w-2xl space-y-6">
+        <section className="metal-panel space-y-4 p-6 text-white">
+          <h3 className="font-display font-semibold text-gold-300">{t('founderSettings.brandingSectionTitle')}</h3>
+          <div>
+            <label className="mb-1 block text-sm text-white/70">{t('founderSettings.backgroundImageLabel')}</label>
+            <ImageUploader
+              pathPrefix="backgrounds"
+              value={fields.background_image_path}
+              onUploaded={(url) => setField('background_image_path', url)}
+              onClear={() => setField('background_image_path', '')}
+              locale={locale}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm text-white/70">{t('founderSettings.backgroundColorLabel')}</label>
+            <input
+              value={fields.background_color}
+              onChange={(e) => setField('background_color', e.target.value)}
+              placeholder={t('founderSettings.backgroundColorPlaceholder')}
+              dir="ltr"
+              className="input-cinematic text-sm"
+            />
+          </div>
+        </section>
+
+        <section className="metal-panel space-y-4 p-6 text-white">
+          <h3 className="font-display font-semibold text-gold-300">{t('founderSettings.contentSectionTitle')}</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm text-white/70">{t('founderSettings.heroTitleArLabel')}</label>
+              <input value={fields.hero_title_ar} onChange={(e) => setField('hero_title_ar', e.target.value)} className="input-cinematic text-sm" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-white/70">{t('founderSettings.heroTitleCkbLabel')}</label>
+              <input value={fields.hero_title_ckb} onChange={(e) => setField('hero_title_ckb', e.target.value)} className="input-cinematic text-sm" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-white/70">{t('founderSettings.heroSubtitleArLabel')}</label>
+              <input value={fields.hero_subtitle_ar} onChange={(e) => setField('hero_subtitle_ar', e.target.value)} className="input-cinematic text-sm" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-white/70">{t('founderSettings.heroSubtitleCkbLabel')}</label>
+              <input value={fields.hero_subtitle_ckb} onChange={(e) => setField('hero_subtitle_ckb', e.target.value)} className="input-cinematic text-sm" />
+            </div>
+          </div>
+        </section>
+
+        <section className="metal-panel space-y-4 p-6 text-white">
+          <h3 className="font-display font-semibold text-gold-300">{t('founderSettings.footerSectionTitle')}</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm text-white/70">{t('founderSettings.footerPhoneLabel')}</label>
+              <input value={fields.footer_phone} onChange={(e) => setField('footer_phone', e.target.value)} dir="ltr" className="input-cinematic text-sm" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-white/70">{t('founderSettings.footerEmailLabel')}</label>
+              <input value={fields.footer_email} onChange={(e) => setField('footer_email', e.target.value)} dir="ltr" className="input-cinematic text-sm" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-white/70">{t('founderSettings.footerFacebookLabel')}</label>
+              <input value={fields.footer_facebook_url} onChange={(e) => setField('footer_facebook_url', e.target.value)} dir="ltr" className="input-cinematic text-sm" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-white/70">{t('founderSettings.footerInstagramLabel')}</label>
+              <input value={fields.footer_instagram_url} onChange={(e) => setField('footer_instagram_url', e.target.value)} dir="ltr" className="input-cinematic text-sm" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-white/70">{t('founderSettings.footerTwitterLabel')}</label>
+              <input value={fields.footer_twitter_url} onChange={(e) => setField('footer_twitter_url', e.target.value)} dir="ltr" className="input-cinematic text-sm" />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm text-white/70">{t('founderSettings.footerLegalArLabel')}</label>
+            <textarea
+              value={fields.footer_legal_ar}
+              onChange={(e) => setField('footer_legal_ar', e.target.value)}
+              rows={3}
+              className="input-cinematic text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm text-white/70">{t('founderSettings.footerLegalCkbLabel')}</label>
+            <textarea
+              value={fields.footer_legal_ckb}
+              onChange={(e) => setField('footer_legal_ckb', e.target.value)}
+              rows={3}
+              className="input-cinematic text-sm"
+            />
+          </div>
+        </section>
+
+        <section className="metal-panel space-y-4 p-6 text-white">
+          <h3 className="flex items-center gap-2 font-display font-semibold text-gold-300">
+            <Megaphone className="h-4 w-4" aria-hidden="true" />
+            {t('founderSettings.announcementSectionTitle')}
+          </h3>
+          <label className="flex items-center gap-2 text-sm text-white/80">
+            <input
+              type="checkbox"
+              checked={fields.announcement_enabled}
+              onChange={(e) => setField('announcement_enabled', e.target.checked)}
+              className="h-4 w-4 rounded border-white/20 bg-transparent text-gold-400 focus:ring-gold-400"
+            />
+            {t('founderSettings.announcementEnabledLabel')}
+          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm text-white/70">{t('founderSettings.announcementTextArLabel')}</label>
+              <input
+                value={fields.announcement_text_ar}
+                onChange={(e) => setField('announcement_text_ar', e.target.value)}
+                className="input-cinematic text-sm"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-white/70">{t('founderSettings.announcementTextCkbLabel')}</label>
+              <input
+                value={fields.announcement_text_ckb}
+                onChange={(e) => setField('announcement_text_ckb', e.target.value)}
+                className="input-cinematic text-sm"
+              />
+            </div>
+          </div>
+        </section>
+
+        <section className="metal-panel space-y-4 p-6 text-white">
+          <h3 className="font-display font-semibold text-gold-300">{t('founderSettings.chatSectionTitle')}</h3>
+          <div>
+            <label className="mb-1 block text-sm text-white/70">{t('founderSettings.chatAudioTrackLabel')}</label>
+            <input
+              value={fields.chat_audio_track_key}
+              onChange={(e) => setField('chat_audio_track_key', e.target.value)}
+              dir="ltr"
+              className="input-cinematic text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm text-white/70">{t('founderSettings.chatBackgroundLabel')}</label>
+            <input
+              value={fields.chat_background_key}
+              onChange={(e) => setField('chat_background_key', e.target.value)}
+              dir="ltr"
+              className="input-cinematic text-sm"
+            />
+          </div>
+        </section>
+
+        <div className="flex items-center gap-3">
+          <button type="submit" disabled={saving} className="btn-cinematic-gold px-6 py-3 text-sm disabled:opacity-50">
+            {t('founderSettings.saveCta')}
+          </button>
+          {saved && <p className="text-sm text-emerald-400">{t('founderSettings.savedMessage')}</p>}
         </div>
-        <div>
-          <label className="mb-1 block text-sm">{t('founderSettings.chatBackgroundLabel')}</label>
-          <input
-            value={background}
-            onChange={(e) => setBackground(e.target.value)}
-            dir="ltr"
-            className="w-full rounded-xl2 border border-black/10 bg-white px-4 py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-xl2 bg-brand-600 px-4 py-3 font-bold text-white shadow-glass-sm transition-all duration-300 hover:bg-brand-700 hover:shadow-elevate disabled:opacity-50 disabled:hover:shadow-soft"
-        >
-          {t('founderSettings.saveCta')}
-        </button>
       </form>
     </AppShell>
   );
