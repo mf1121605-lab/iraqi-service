@@ -5,7 +5,7 @@ import SafeImage from '../UI/SafeImage';
 
 function displayName(path) {
   const basename = path.split('/').pop() ?? path;
-  return basename.replace(/^[0-9a-f-]{36}-/i, '');
+  return basename.replace(/^[0-9a-f-]{36}-?/i, '');
 }
 
 function formatSize(bytes) {

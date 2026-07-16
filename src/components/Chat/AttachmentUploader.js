@@ -25,6 +25,29 @@ function isAllowedFile(file) {
   return ALLOWED_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
 }
 
+// Supabase Storage rejects non-ASCII characters in the object key itself
+// ("Invalid key") — and Arabic/Kurdish file names are the norm for this
+// app's users, not an edge case. The real name (Arabic and all) is always
+// carried separately via onUploaded's `name` field, which is what the
+// chat UI displays — but request-chat attachments have nowhere to store
+// that (request_messages has no metadata columns), so the storage key
+// still keeps an ASCII-transliterated slug as a readable fallback name
+// for that one caller, rather than dropping the filename entirely.
+function safeExtension(fileName) {
+  const match = /\.([a-zA-Z0-9]+)$/.exec(fileName);
+  return match ? `.${match[1].toLowerCase()}` : '';
+}
+
+function safeSlug(fileName) {
+  const ext = safeExtension(fileName);
+  const base = fileName.slice(0, fileName.length - ext.length);
+  const asciiBase = base
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return `${asciiBase || 'file'}${ext}`;
+}
+
 export default function AttachmentUploader({ pathPrefix, onUploaded, locale }) {
   const t = (path) => translate(locale, path);
   const [uploading, setUploading] = useState(false);
@@ -46,7 +69,7 @@ export default function AttachmentUploader({ pathPrefix, onUploaded, locale }) {
     }
 
     setUploading(true);
-    const path = `${pathPrefix}/${crypto.randomUUID()}-${file.name}`;
+    const path = `${pathPrefix}/${crypto.randomUUID()}-${safeSlug(file.name)}`;
     const { error: uploadError } = await supabaseClient.storage.from('attachments').upload(path, file);
     setUploading(false);
 
