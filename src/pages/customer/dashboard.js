@@ -138,8 +138,17 @@ export default function CustomerDashboard() {
                 {...cardLift}
                 className="metal-panel group flex flex-col items-center gap-3 p-6 text-center font-semibold text-white"
               >
-                <div className="icon-medallion h-24 w-24" style={{ '--medallion-glow': visual.glow }}>
-                  {category.icon_path ? (
+                <div className="icon-medallion h-24 w-24 overflow-hidden" style={{ '--medallion-glow': visual.glow }}>
+                  {category.icon_video_url ? (
+                    <video
+                      src={category.icon_video_url}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="h-full w-full rounded-full object-cover"
+                    />
+                  ) : category.icon_path ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={category.icon_path} alt="" className="h-16 w-16 rounded-full object-cover" />
                   ) : (

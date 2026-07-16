@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { ArrowRight, Eye, EyeOff, Info, Pause, Pin, Play, Send } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Info, Pencil, Pin, Send, Volume2, VolumeX } from 'lucide-react';
 import { useLocale } from '../../components/Layout/AppShell';
 import AttachmentUploader from '../../components/Chat/AttachmentUploader';
 import MessageAttachment from '../../components/Chat/MessageAttachment';
@@ -9,6 +9,7 @@ import Avatar from '../../components/Chat/Avatar';
 import ReactionBar from '../../components/Chat/ReactionBar';
 import TypingIndicator from '../../components/Chat/TypingIndicator';
 import ChatSettingsSidebar from '../../components/Chat/ChatSettingsSidebar';
+import EditCardModal from '../../components/UI/EditCardModal';
 import { ChatBackgroundLayer, ChatBackgroundPicker, useChatBackgroundPreference } from '../../components/Chat/ChatBackground';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
@@ -35,18 +36,22 @@ export default function ChatRoom() {
   const [chatBg, setChatBg] = useChatBackgroundPreference();
 
   const [room, setRoom] = useState(null);
-  const [settings, setSettings] = useState(null);
   const [messages, setMessages] = useState([]);
   const [reactions, setReactions] = useState([]);
   const [allRooms, setAllRooms] = useState([]);
   const [body, setBody] = useState('');
   const [pendingAttachment, setPendingAttachment] = useState(null);
-  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [ambientTrack, setAmbientTrack] = useState(null);
+  const [ambientMuted, setAmbientMuted] = useState(true);
   const [typingUsers, setTypingUsers] = useState({});
   const [onlineUserIds, setOnlineUserIds] = useState(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sendError, setSendError] = useState('');
-  const audioRef = useRef(null);
+  const [roomEditOpen, setRoomEditOpen] = useState(false);
+  const [roomEditForm, setRoomEditForm] = useState(null);
+  const [roomSaving, setRoomSaving] = useState(false);
+  const [roomEditError, setRoomEditError] = useState('');
+  const ambientAudioRef = useRef(null);
   const listEndRef = useRef(null);
   const channelRef = useRef(null);
   const lastTypingSentRef = useRef(0);
@@ -71,9 +76,6 @@ export default function ChatRoom() {
         .single();
       if (!active || !roomRow) return;
       setRoom(roomRow);
-
-      const { data: settingsRow } = await supabaseClient.from('founder_settings').select('*').single();
-      if (active) setSettings(settingsRow);
 
       const { data: roomsRow } = await supabaseClient
         .from('chat_rooms')
@@ -100,6 +102,15 @@ export default function ChatRoom() {
         if (active) setReactions(reactionRows ?? []);
       }
 
+      const { data: audioRow } = await supabaseClient
+        .from('chat_ambient_audio')
+        .select('*')
+        .eq('room_id', roomRow.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (active) setAmbientTrack(audioRow ?? null);
+
       channel = supabaseClient
         .channel(`chat-room-${roomRow.id}`, { config: { broadcast: { self: false }, presence: { key: profile.id } } })
         .on(
@@ -111,9 +122,6 @@ export default function ChatRoom() {
           'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${roomRow.id}` },
           (payload) => setMessages((current) => current.map((m) => (m.id === payload.new.id ? payload.new : m)))
-        )
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'founder_settings' }, (payload) =>
-          setSettings(payload.new)
         )
         .on(
           'postgres_changes',
@@ -128,6 +136,11 @@ export default function ChatRoom() {
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_message_reactions' }, (payload) => {
           setReactions((r) => r.filter((reaction) => reaction.id !== payload.old.id));
         })
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'chat_ambient_audio', filter: `room_id=eq.${roomRow.id}` },
+          (payload) => setAmbientTrack(payload.new)
+        )
         .on('broadcast', { event: 'typing' }, ({ payload }) => {
           setTypingUsers((current) => ({ ...current, [payload.userId]: { name: payload.name, ts: Date.now() } }));
         })
@@ -229,14 +242,36 @@ export default function ChatRoom() {
     refreshProfile();
   }
 
-  function toggleAudio() {
-    if (!audioRef.current) return;
-    if (audioPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play();
+  function startRoomEdit() {
+    setRoomEditForm({ nameAr: room.name_ar, nameCkb: room.name_ckb });
+    setRoomEditError('');
+    setRoomEditOpen(true);
+  }
+
+  async function saveRoomEdit() {
+    setRoomEditError('');
+    setRoomSaving(true);
+    const { error } = await supabaseClient
+      .from('chat_rooms')
+      .update({ name_ar: roomEditForm.nameAr, name_ckb: roomEditForm.nameCkb })
+      .eq('id', room.id);
+    setRoomSaving(false);
+    if (error) {
+      setRoomEditError(error.message || t('common.errorGeneric'));
+      return;
     }
-    setAudioPlaying(!audioPlaying);
+    setRoomEditOpen(false);
+  }
+
+  function toggleAmbientMute() {
+    // Browsers block unmuted audio autoplay without a user gesture, so the
+    // track always starts muted (silent autoplay is allowed) and this
+    // click — itself a user gesture — is what unlocks sound. There's no
+    // way to guarantee identical playback position across clients without
+    // a server-driven clock, but for a looping ambient track that's not
+    // perceptible; what matters is everyone hearing the same track.
+    if (ambientAudioRef.current) ambientAudioRef.current.muted = !ambientMuted;
+    setAmbientMuted((current) => !current);
   }
 
   const members = useMemo(() => {
@@ -274,6 +309,7 @@ export default function ChatRoom() {
   const canModerate = (message) =>
     profile.role === 'founder' || profile.id === room.moderator_id || profile.id === message.sender_id;
   const isPinned = (profile.pinned_room_ids ?? []).includes(room.id);
+  const canManageAudio = profile.role === 'founder' || profile.admin_level === 'co_admin' || profile.id === room.moderator_id;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-brand-950 via-brand-900 to-gold-900/40 text-white">
@@ -294,8 +330,18 @@ export default function ChatRoom() {
           <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
           <span className="hidden sm:inline">{t('chat.backToRooms')}</span>
         </Link>
-        <h1 className="min-w-0 flex-1 truncate text-center font-display text-lg font-bold">
+        <h1 className="flex min-w-0 flex-1 items-center justify-center gap-1.5 truncate text-center font-display text-lg font-bold">
           {locale === 'ar' ? room.name_ar : room.name_ckb}
+          {profile.role === 'founder' && (
+            <button
+              type="button"
+              onClick={startRoomEdit}
+              aria-label={t('common.edit')}
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-gold-300/70 transition-colors hover:bg-white/10 hover:text-gold-300 focus:outline-none focus:ring-2 focus:ring-gold-300"
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          )}
         </h1>
         <div className="flex shrink-0 items-center gap-1.5">
           <button
@@ -316,16 +362,16 @@ export default function ChatRoom() {
           >
             <Info className="h-4 w-4" aria-hidden="true" />
           </button>
-          {settings?.chat_audio_track_key && (
+          {ambientTrack && (
             <div>
-              <audio ref={audioRef} loop src={`/assets/audio/${settings.chat_audio_track_key}.mp3`} />
+              <audio ref={ambientAudioRef} src={ambientTrack.audio_url} loop autoPlay muted={ambientMuted} />
               <button
                 type="button"
-                onClick={toggleAudio}
-                aria-label={audioPlaying ? t('chat.audioPause') : t('chat.audioPlay')}
+                onClick={toggleAmbientMute}
+                aria-label={ambientMuted ? t('chat.ambientAudioUnmute') : t('chat.ambientAudioMute')}
                 className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white/80 transition-colors hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gold-300"
               >
-                {audioPlaying ? <Pause className="h-4 w-4" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}
+                {ambientMuted ? <VolumeX className="h-4 w-4" aria-hidden="true" /> : <Volume2 className="h-4 w-4" aria-hidden="true" />}
               </button>
             </div>
           )}
@@ -420,6 +466,26 @@ export default function ChatRoom() {
         rooms={allRooms}
         pinnedRoomIds={profile.pinned_room_ids ?? []}
         onTogglePin={togglePinnedRoom}
+        canManageAudio={canManageAudio}
+        roomId={room.id}
+        currentTrack={ambientTrack}
+        profileId={profile.id}
+      />
+
+      <EditCardModal
+        open={roomEditOpen}
+        onClose={() => {
+          setRoomEditOpen(false);
+          setRoomEditForm(null);
+        }}
+        locale={locale}
+        titleAr={roomEditForm?.nameAr ?? ''}
+        titleCkb={roomEditForm?.nameCkb ?? ''}
+        onTitleArChange={(value) => setRoomEditForm({ ...roomEditForm, nameAr: value })}
+        onTitleCkbChange={(value) => setRoomEditForm({ ...roomEditForm, nameCkb: value })}
+        onSave={saveRoomEdit}
+        saving={roomSaving}
+        error={roomEditError}
       />
     </div>
   );

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ImagePlus, Loader as Loader2, X } from 'lucide-react';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { translate } from '../../utils/i18n';
+import { safeSlug } from '../../utils/safeStorageName';
 
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -30,11 +31,11 @@ export default function ImageUploader({ pathPrefix, value, onUploaded, onClear, 
     }
 
     setUploading(true);
-    const path = `${pathPrefix}/${crypto.randomUUID()}-${file.name}`;
+    const path = `${pathPrefix}/${crypto.randomUUID()}-${safeSlug(file.name)}`;
     const { error: uploadError } = await supabaseClient.storage.from('site-assets').upload(path, file);
     if (uploadError) {
       setUploading(false);
-      setError(t('common.errorGeneric'));
+      setError(uploadError.message || t('common.errorGeneric'));
       return;
     }
     const { data } = supabaseClient.storage.from('site-assets').getPublicUrl(path);

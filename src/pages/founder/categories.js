@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Pencil, Plus, Tags, Trash2 } from 'lucide-react';
+import { Film, Pencil, Plus, Tags, Trash2 } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
-import ImageUploader from '../../components/UI/ImageUploader';
-import CanvaDesignLink from '../../components/UI/CanvaDesignLink';
+import EditCardModal from '../../components/UI/EditCardModal';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
@@ -24,6 +23,8 @@ export default function FounderCategories() {
   const [error, setError] = useState('');
   const [editingKey, setEditingKey] = useState(null);
   const [editForm, setEditForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState('');
 
   async function handleAdd(event) {
     event.preventDefault();
@@ -57,17 +58,31 @@ export default function FounderCategories() {
 
   function startEdit(category) {
     setEditingKey(category.key);
-    setEditForm({ labelAr: category.label_ar, labelCkb: category.label_ckb, iconPath: category.icon_path ?? null });
+    setEditError('');
+    setEditForm({
+      labelAr: category.label_ar,
+      labelCkb: category.label_ckb,
+      mediaUrl: category.icon_video_url || category.icon_path || null,
+      mediaType: category.icon_video_url ? 'video' : category.icon_path ? 'image' : null,
+    });
   }
 
-  async function saveEdit(category) {
-    setError('');
+  async function saveEdit() {
+    setEditError('');
+    setSaving(true);
+    const category = categories.find((c) => c.key === editingKey);
     const { error: updateError } = await supabaseClient
       .from('categories')
-      .update({ label_ar: editForm.labelAr, label_ckb: editForm.labelCkb, icon_path: editForm.iconPath })
+      .update({
+        label_ar: editForm.labelAr,
+        label_ckb: editForm.labelCkb,
+        icon_path: editForm.mediaType === 'image' ? editForm.mediaUrl : null,
+        icon_video_url: editForm.mediaType === 'video' ? editForm.mediaUrl : null,
+      })
       .eq('key', category.key);
+    setSaving(false);
     if (updateError) {
-      setError(t('common.errorGeneric'));
+      setEditError(updateError.message || t('common.errorGeneric'));
       return;
     }
     setEditingKey(null);
@@ -89,98 +104,57 @@ export default function FounderCategories() {
 
       <ul className="mt-4 space-y-2">
         {(categories ?? []).map((category) => (
-          <li key={category.key} className="metal-panel p-4 text-white">
-            {editingKey === category.key ? (
-              <div className="space-y-3">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <input
-                    value={editForm.labelAr}
-                    onChange={(event) => setEditForm({ ...editForm, labelAr: event.target.value })}
-                    aria-label={t('founderCategories.labelArLabel')}
-                    placeholder={t('founderCategories.labelArLabel')}
-                    className="input-cinematic text-sm"
-                  />
-                  <input
-                    value={editForm.labelCkb}
-                    onChange={(event) => setEditForm({ ...editForm, labelCkb: event.target.value })}
-                    aria-label={t('founderCategories.labelCkbLabel')}
-                    placeholder={t('founderCategories.labelCkbLabel')}
-                    className="input-cinematic text-sm"
-                  />
-                </div>
-                <div>
-                  <p className="mb-1 text-xs text-white/60">{t('founderCategories.iconLabel')}</p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <ImageUploader
-                      pathPrefix={`categories/${category.key}`}
-                      value={editForm.iconPath}
-                      onUploaded={(url) => setEditForm({ ...editForm, iconPath: url })}
-                      onClear={() => setEditForm({ ...editForm, iconPath: null })}
-                      locale={locale}
-                    />
-                    <CanvaDesignLink locale={locale} />
-                  </div>
-                  <p className="mt-1 text-xs text-white/40">{t('founderCategories.iconHint')}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => saveEdit(category)} className="btn-cinematic-gold px-4 py-2 text-sm">
-                    {t('founderCategories.editCta')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingKey(null);
-                      setEditForm(null);
-                    }}
-                    className="btn-cinematic-outline px-4 py-2 text-sm"
-                  >
-                    {t('common.cancel')}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-3">
-                  {category.icon_path && (
+          <li key={category.key} className="metal-panel flex flex-wrap items-center justify-between gap-2 p-4 text-white">
+            <div className="flex items-center gap-3">
+              {(category.icon_video_url || category.icon_path) && (
+                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg">
+                  {category.icon_video_url ? (
+                    <video src={category.icon_video_url} muted loop autoPlay playsInline className="h-full w-full object-cover" />
+                  ) : (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={category.icon_path} alt="" className="h-10 w-10 rounded-lg object-cover" />
+                    <img src={category.icon_path} alt="" className="h-full w-full object-cover" />
                   )}
-                  <div>
-                    <p className="font-semibold">{categoryLabel(category, locale)}</p>
-                    <p className="text-xs text-white/50" dir="ltr">
-                      {category.key}
-                    </p>
-                  </div>
+                  {category.icon_video_url && (
+                    <span className="absolute end-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-white">
+                      <Film className="h-2 w-2" aria-hidden="true" />
+                    </span>
+                  )}
                 </div>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-1 text-xs text-white/80">
-                    <input
-                      type="checkbox"
-                      checked={category.is_active}
-                      onChange={() => toggleActive(category)}
-                      className="h-4 w-4 rounded border-white/20 bg-transparent text-gold-400 focus:ring-gold-400"
-                    />
-                    {t('founderCategories.activeLabel')}
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => startEdit(category)}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg text-gold-300 transition-colors hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-gold-400"
-                    aria-label={t('common.edit')}
-                  >
-                    <Pencil className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(category)}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg text-red-400 transition-colors hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-400"
-                    aria-label={t('founderCategories.deleteCta')}
-                  >
-                    <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </div>
+              )}
+              <div>
+                <p className="font-semibold">{categoryLabel(category, locale)}</p>
+                <p className="text-xs text-white/50" dir="ltr">
+                  {category.key}
+                </p>
               </div>
-            )}
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1 text-xs text-white/80">
+                <input
+                  type="checkbox"
+                  checked={category.is_active}
+                  onChange={() => toggleActive(category)}
+                  className="h-4 w-4 rounded border-white/20 bg-transparent text-gold-400 focus:ring-gold-400"
+                />
+                {t('founderCategories.activeLabel')}
+              </label>
+              <button
+                type="button"
+                onClick={() => startEdit(category)}
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-gold-300 transition-colors hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-gold-400"
+                aria-label={t('common.edit')}
+              >
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(category)}
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-red-400 transition-colors hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-400"
+                aria-label={t('founderCategories.deleteCta')}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
           </li>
         ))}
       </ul>
@@ -213,6 +187,26 @@ export default function FounderCategories() {
           {t('founderCategories.addCta')}
         </button>
       </form>
+
+      <EditCardModal
+        open={editingKey !== null}
+        onClose={() => {
+          setEditingKey(null);
+          setEditForm(null);
+        }}
+        locale={locale}
+        titleAr={editForm?.labelAr ?? ''}
+        titleCkb={editForm?.labelCkb ?? ''}
+        onTitleArChange={(value) => setEditForm({ ...editForm, labelAr: value })}
+        onTitleCkbChange={(value) => setEditForm({ ...editForm, labelCkb: value })}
+        mediaUrl={editForm?.mediaUrl}
+        mediaType={editForm?.mediaType}
+        onMediaSelect={(item) => setEditForm({ ...editForm, mediaUrl: item.url, mediaType: item.type })}
+        onMediaClear={() => setEditForm({ ...editForm, mediaUrl: null, mediaType: null })}
+        onSave={saveEdit}
+        saving={saving}
+        error={editError}
+      />
     </AppShell>
   );
 }

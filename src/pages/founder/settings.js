@@ -9,8 +9,6 @@ import { useFounderNav } from '../../utils/founderNav';
 import { translate } from '../../utils/i18n';
 
 const FIELD_KEYS = [
-  'chat_audio_track_key',
-  'chat_background_key',
   'background_image_path',
   'background_color',
   'hero_title_ar',
@@ -247,28 +245,6 @@ export default function FounderSettings() {
                 className="input-cinematic text-sm"
               />
             </div>
-          </div>
-        </section>
-
-        <section className="metal-panel space-y-4 p-6 text-white">
-          <h3 className="font-display font-semibold text-gold-300">{t('founderSettings.chatSectionTitle')}</h3>
-          <div>
-            <label className="mb-1 block text-sm text-white/70">{t('founderSettings.chatAudioTrackLabel')}</label>
-            <input
-              value={fields.chat_audio_track_key}
-              onChange={(e) => setField('chat_audio_track_key', e.target.value)}
-              dir="ltr"
-              className="input-cinematic text-sm"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm text-white/70">{t('founderSettings.chatBackgroundLabel')}</label>
-            <input
-              value={fields.chat_background_key}
-              onChange={(e) => setField('chat_background_key', e.target.value)}
-              dir="ltr"
-              className="input-cinematic text-sm"
-            />
           </div>
         </section>
 

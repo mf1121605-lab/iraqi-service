@@ -1,16 +1,113 @@
 import { useState } from 'react';
-import { Paperclip, Pin, Users, X } from 'lucide-react';
+import { Loader as Loader2, Music, Paperclip, Pin, UploadCloud, Users, X } from 'lucide-react';
 import Avatar from './Avatar';
 import MessageAttachment from './MessageAttachment';
+import { supabaseClient } from '../../lib/supabaseClient';
 import { translate } from '../../utils/i18n';
+import { safeSlug } from '../../utils/safeStorageName';
 
-const TABS = ['members', 'files', 'pinned'];
+const ALLOWED_AUDIO_TYPES = ['audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/wav'];
+const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
 
-export default function ChatSettingsSidebar({ open, onClose, locale, members, sharedFiles, rooms, pinnedRoomIds, onTogglePin }) {
+function AudioTab({ roomId, currentTrack, locale, profileId }) {
+  const t = (path) => translate(locale, path);
+  const [title, setTitle] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleFile(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setError('');
+    if (!ALLOWED_AUDIO_TYPES.includes(file.type)) {
+      setError(t('mediaStudio.unsupportedType'));
+      return;
+    }
+    if (file.size > MAX_AUDIO_BYTES) {
+      setError(t('common.imageTooLarge'));
+      return;
+    }
+
+    setUploading(true);
+    const path = `chat-audio/${roomId}/${crypto.randomUUID()}-${safeSlug(file.name)}`;
+    const { error: uploadError } = await supabaseClient.storage.from('site-assets').upload(path, file);
+    if (uploadError) {
+      setUploading(false);
+      setError(uploadError.message || t('common.errorGeneric'));
+      return;
+    }
+    const { data } = supabaseClient.storage.from('site-assets').getPublicUrl(path);
+    const { error: insertError } = await supabaseClient.from('chat_ambient_audio').insert({
+      room_id: roomId,
+      title: title.trim() || file.name,
+      audio_url: data.publicUrl,
+      uploaded_by: profileId,
+    });
+    setUploading(false);
+    if (insertError) {
+      setError(insertError.message || t('common.errorGeneric'));
+      return;
+    }
+    setTitle('');
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="mb-1 text-xs text-white/60">{t('chat.ambientAudioLabel')}</p>
+        {currentTrack ? (
+          <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm">{currentTrack.title}</p>
+        ) : (
+          <p className="text-sm text-white/50">{t('chat.ambientAudioNone')}</p>
+        )}
+      </div>
+
+      <input
+        value={title}
+        onChange={(event) => setTitle(event.target.value)}
+        placeholder={t('chat.ambientAudioLabel')}
+        className="input-cinematic text-sm"
+      />
+
+      <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl2 border border-white/15 px-3 py-2.5 text-sm font-semibold text-white/80 transition-colors hover:bg-white/5">
+        <input type="file" accept={ALLOWED_AUDIO_TYPES.join(',')} onChange={handleFile} disabled={uploading} className="hidden" />
+        {uploading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <UploadCloud className="h-4 w-4" aria-hidden="true" />}
+        {currentTrack ? t('chat.ambientAudioChangeCta') : t('chat.ambientAudioUploadCta')}
+      </label>
+      {error && (
+        <p className="text-xs text-red-400" dir="ltr">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+const BASE_TABS = ['members', 'files', 'pinned'];
+
+export default function ChatSettingsSidebar({
+  open,
+  onClose,
+  locale,
+  members,
+  sharedFiles,
+  rooms,
+  pinnedRoomIds,
+  onTogglePin,
+  canManageAudio,
+  roomId,
+  currentTrack,
+  profileId,
+}) {
   const [tab, setTab] = useState('members');
   const t = (path) => translate(locale, path);
+  const tabs = canManageAudio ? [...BASE_TABS, 'audio'] : BASE_TABS;
 
   if (!open) return null;
+
+  const TAB_ICONS = { members: Users, files: Paperclip, pinned: Pin, audio: Music };
 
   return (
     <>
@@ -29,8 +126,8 @@ export default function ChatSettingsSidebar({ open, onClose, locale, members, sh
         </div>
 
         <div className="flex border-b border-white/10">
-          {TABS.map((key) => {
-            const Icon = key === 'members' ? Users : key === 'files' ? Paperclip : Pin;
+          {tabs.map((key) => {
+            const Icon = TAB_ICONS[key];
             return (
               <button
                 key={key}
@@ -41,7 +138,7 @@ export default function ChatSettingsSidebar({ open, onClose, locale, members, sh
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                {t(`chat.sidebarTab${key.charAt(0).toUpperCase()}${key.slice(1)}`)}
+                {key === 'audio' ? t('chat.ambientAudioLabel') : t(`chat.sidebarTab${key.charAt(0).toUpperCase()}${key.slice(1)}`)}
               </button>
             );
           })}
@@ -104,6 +201,10 @@ export default function ChatSettingsSidebar({ open, onClose, locale, members, sh
                 );
               })}
             </ul>
+          )}
+
+          {tab === 'audio' && canManageAudio && (
+            <AudioTab roomId={roomId} currentTrack={currentTrack} locale={locale} profileId={profileId} />
           )}
         </div>
       </aside>

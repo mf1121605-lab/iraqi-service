@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ImageIcon, Plus, Trash2 } from 'lucide-react';
+import { Film, ImageIcon, Pencil, Plus, Trash2 } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import ImageUploader from '../../components/UI/ImageUploader';
 import CanvaDesignLink from '../../components/UI/CanvaDesignLink';
+import EditCardModal from '../../components/UI/EditCardModal';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
@@ -36,6 +37,10 @@ export default function FounderBanners() {
   const [banners, setBanners] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState('');
 
   useEffect(() => {
     if (!profile) return undefined;
@@ -86,6 +91,42 @@ export default function FounderBanners() {
 
   async function handleDelete(banner) {
     await supabaseClient.from('announcements').delete().eq('id', banner.id);
+  }
+
+  function startEdit(banner) {
+    setEditingId(banner.id);
+    setEditError('');
+    setEditForm({
+      titleAr: banner.title_ar,
+      titleCkb: banner.title_ckb,
+      descriptionAr: banner.description_ar ?? '',
+      descriptionCkb: banner.description_ckb ?? '',
+      mediaUrl: banner.video_url || banner.image_url || null,
+      mediaType: banner.video_url ? 'video' : banner.image_url ? 'image' : null,
+    });
+  }
+
+  async function saveEdit() {
+    setEditError('');
+    setSaving(true);
+    const { error: updateError } = await supabaseClient
+      .from('announcements')
+      .update({
+        title_ar: editForm.titleAr,
+        title_ckb: editForm.titleCkb,
+        description_ar: editForm.descriptionAr || null,
+        description_ckb: editForm.descriptionCkb || null,
+        image_url: editForm.mediaType === 'image' ? editForm.mediaUrl : null,
+        video_url: editForm.mediaType === 'video' ? editForm.mediaUrl : null,
+      })
+      .eq('id', editingId);
+    setSaving(false);
+    if (updateError) {
+      setEditError(updateError.message || t('common.errorGeneric'));
+      return;
+    }
+    setEditingId(null);
+    setEditForm(null);
   }
 
   if (loading || !profile) {
@@ -177,6 +218,21 @@ export default function FounderBanners() {
         <ul className="mt-6 space-y-2">
           {(banners ?? []).map((banner) => (
             <li key={banner.id} className="metal-panel flex items-center gap-3 p-4 text-sm text-white">
+              {(banner.video_url || banner.image_url) && (
+                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg">
+                  {banner.video_url ? (
+                    <video src={banner.video_url} muted loop autoPlay playsInline className="h-full w-full object-cover" />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={banner.image_url} alt="" className="h-full w-full object-cover" />
+                  )}
+                  {banner.video_url && (
+                    <span className="absolute end-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-white">
+                      <Film className="h-2 w-2" aria-hidden="true" />
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{banner.title_ar}</p>
                 {banner.button_link && (
@@ -196,6 +252,14 @@ export default function FounderBanners() {
               </label>
               <button
                 type="button"
+                onClick={() => startEdit(banner)}
+                aria-label={t('common.edit')}
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-gold-300 transition-colors hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-gold-400"
+              >
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
                 onClick={() => handleDelete(banner)}
                 aria-label={t('founderCategories.deleteCta')}
                 className="flex h-10 w-10 items-center justify-center rounded-lg text-red-400 transition-colors hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-400"
@@ -206,6 +270,48 @@ export default function FounderBanners() {
           ))}
         </ul>
       )}
+
+      <EditCardModal
+        open={editingId !== null}
+        onClose={() => {
+          setEditingId(null);
+          setEditForm(null);
+        }}
+        locale={locale}
+        titleAr={editForm?.titleAr ?? ''}
+        titleCkb={editForm?.titleCkb ?? ''}
+        onTitleArChange={(value) => setEditForm({ ...editForm, titleAr: value })}
+        onTitleCkbChange={(value) => setEditForm({ ...editForm, titleCkb: value })}
+        mediaUrl={editForm?.mediaUrl}
+        mediaType={editForm?.mediaType}
+        onMediaSelect={(item) => setEditForm({ ...editForm, mediaUrl: item.url, mediaType: item.type })}
+        onMediaClear={() => setEditForm({ ...editForm, mediaUrl: null, mediaType: null })}
+        onSave={saveEdit}
+        saving={saving}
+        error={editError}
+        extraFields={
+          editForm && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs text-white/60">{t('founderBanners.descriptionArLabel')}</label>
+                <input
+                  value={editForm.descriptionAr}
+                  onChange={(e) => setEditForm({ ...editForm, descriptionAr: e.target.value })}
+                  className="input-cinematic text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-white/60">{t('founderBanners.descriptionCkbLabel')}</label>
+                <input
+                  value={editForm.descriptionCkb}
+                  onChange={(e) => setEditForm({ ...editForm, descriptionCkb: e.target.value })}
+                  className="input-cinematic text-sm"
+                />
+              </div>
+            </div>
+          )
+        }
+      />
     </AppShell>
   );
 }
