@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { LayoutDashboard, Users, ClipboardList, ShoppingBag, DollarSign } from 'lucide-react';
+import { LayoutDashboard } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import StatusBadge from '../../components/UI/StatusBadge';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -50,17 +50,19 @@ export default function FounderDashboard() {
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { variant: 'general', color: '#e6ab2c', icon: Users, label: t('founderDashboard.statsTotalUsers'), value: stats?.users ?? '—' },
-          { variant: 'education', color: '#e6ab2c', icon: ClipboardList, label: t('founderDashboard.statsTotalRequests'), value: stats?.requests ?? '—' },
-          { variant: 'welfare', color: '#10b981', icon: DollarSign, label: t('founderDashboard.statsTotalRevenue'), value: `${stats?.revenue ?? 0} IQD` },
-          { variant: 'military', color: '#c9d3dc', icon: ShoppingBag, label: t('founderDashboard.statsTotalProducts'), value: stats?.products ?? '—' },
+          { variant: 'general', color: '#e6ab2c', glow: 'rgba(230,171,44,0.55)', label: t('founderDashboard.statsTotalUsers'), value: stats?.users ?? '—' },
+          { variant: 'education', color: '#4f8bff', glow: 'rgba(79,139,255,0.55)', label: t('founderDashboard.statsTotalRequests'), value: stats?.requests ?? '—' },
+          { variant: 'welfare', color: '#e14b6a', glow: 'rgba(225,75,106,0.55)', label: t('founderDashboard.statsTotalRevenue'), value: `${stats?.revenue ?? 0} IQD` },
+          { variant: 'military', color: '#c9d3dc', glow: 'rgba(201,211,220,0.5)', label: t('founderDashboard.statsTotalProducts'), value: stats?.products ?? '—' },
         ].map((stat, i) => (
           <div
             key={i}
-            className="metal-panel animate-slide-up flex flex-col items-center gap-2 p-6 text-center text-white"
+            className="metal-panel animate-slide-up flex flex-col items-center gap-3 p-6 text-center text-white"
             style={{ animationDelay: `${i * 60}ms` }}
           >
-            <Icon3D variant={stat.variant} color={stat.color} className="h-16 w-16" />
+            <div className="icon-medallion h-20 w-20" style={{ '--medallion-glow': stat.glow }}>
+              <Icon3D variant={stat.variant} color={stat.color} className="h-16 w-16" />
+            </div>
             <p className="text-2xl font-bold">{stat.value}</p>
             <p className="text-xs text-white/60">{stat.label}</p>
           </div>

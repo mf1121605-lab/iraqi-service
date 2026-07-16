@@ -15,10 +15,10 @@ import { categoryLabel, useCategories } from '../../utils/useCategories';
 const Icon3D = dynamic(() => import('../../components/UI/Icon3D'), { ssr: false });
 
 const CATEGORY_3D = {
-  military: '#c9d3dc',
-  education: '#e6ab2c',
-  welfare: '#10b981',
-  general: '#e6ab2c',
+  military: { color: '#c9d3dc', glow: 'rgba(201,211,220,0.5)' },
+  education: { color: '#4f8bff', glow: 'rgba(79,139,255,0.55)' },
+  welfare: { color: '#e14b6a', glow: 'rgba(225,75,106,0.55)' },
+  general: { color: '#e6ab2c', glow: 'rgba(230,171,44,0.55)' },
 };
 
 function bilingualText(row, base, locale) {
@@ -161,16 +161,21 @@ export default function CustomerDashboard() {
       <section className="mt-10">
         <h3 className="section-title-cinematic font-display text-xl font-bold">{t('customerHub.categoriesTitle')}</h3>
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {(categories ?? []).map((category) => (
-            <Link
-              key={category.key}
-              href={`/customer/requests/new?category=${category.key}`}
-              className="metal-panel group flex flex-col items-center gap-2 p-6 text-center font-semibold text-white"
-            >
-              <Icon3D variant={category.key} color={CATEGORY_3D[category.key] ?? '#e6ab2c'} className="h-20 w-20" />
-              <span>{categoryLabel(category, locale)}</span>
-            </Link>
-          ))}
+          {(categories ?? []).map((category) => {
+            const visual = CATEGORY_3D[category.key] ?? CATEGORY_3D.general;
+            return (
+              <Link
+                key={category.key}
+                href={`/customer/requests/new?category=${category.key}`}
+                className="metal-panel group flex flex-col items-center gap-3 p-6 text-center font-semibold text-white"
+              >
+                <div className="icon-medallion h-24 w-24" style={{ '--medallion-glow': visual.glow }}>
+                  <Icon3D variant={category.key} color={visual.color} className="h-20 w-20" />
+                </div>
+                <span>{categoryLabel(category, locale)}</span>
+              </Link>
+            );
+          })}
         </div>
       </section>
 

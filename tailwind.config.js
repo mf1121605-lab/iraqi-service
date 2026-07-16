@@ -291,12 +291,37 @@ module.exports = {
           inset: '3px',
           borderRadius: 'calc(1.5rem - 3px)',
           border: '1px solid rgba(255,255,255,0.06)',
+          backgroundImage:
+            'repeating-linear-gradient(115deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 5px)',
           pointerEvents: 'none',
+        },
+        '.metal-panel::after': {
+          content: '""',
+          position: 'absolute',
+          inset: 0,
+          borderRadius: 'inherit',
+          pointerEvents: 'none',
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: '9px 9px',
+          backgroundImage: Array(4)
+            .fill('radial-gradient(circle at 3px 3px, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.08) 55%, transparent 70%)')
+            .join(', '),
+          backgroundPosition: '14px 14px, calc(100% - 14px) 14px, 14px calc(100% - 14px), calc(100% - 14px) calc(100% - 14px)',
         },
         '.metal-panel:hover': {
           transform: 'translateY(-2px)',
           boxShadow:
             'inset 0 1px 0 0 rgba(255,255,255,0.16), inset 0 -2px 6px 0 rgba(0,0,0,0.6), 0 0 0 1px rgba(230,171,44,0.35), 0 24px 50px -12px rgba(0,0,0,0.85), 0 0 28px -4px rgba(230,171,44,0.3)',
+        },
+        '.icon-medallion': {
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: '9999px',
+          backgroundImage: 'radial-gradient(circle at 50% 32%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.02) 45%, transparent 70%)',
+          boxShadow:
+            'inset 0 2px 6px rgba(255,255,255,0.15), inset 0 -6px 14px rgba(0,0,0,0.55), 0 0 26px -2px var(--medallion-glow, rgba(230,171,44,0.5))',
         },
         '.iraq-flag-watermark': {
           backgroundImage: "url('/assets/decorative/iraq-flag-watermark.svg')",
