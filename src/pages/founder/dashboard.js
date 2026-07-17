@@ -74,8 +74,8 @@ export default function FounderDashboard() {
     setEditForm({
       titleAr: banner.title_ar,
       titleCkb: banner.title_ckb,
-      mediaUrl: banner.video_url || banner.image_url || null,
-      mediaType: banner.video_url ? 'video' : banner.image_url ? 'image' : null,
+      imageUrl: banner.image_url || null,
+      videoUrl: banner.video_url || null,
     });
   }
 
@@ -87,8 +87,8 @@ export default function FounderDashboard() {
       .update({
         title_ar: editForm.titleAr,
         title_ckb: editForm.titleCkb,
-        image_url: editForm.mediaType === 'image' ? editForm.mediaUrl : null,
-        video_url: editForm.mediaType === 'video' ? editForm.mediaUrl : null,
+        image_url: editForm.imageUrl || null,
+        video_url: editForm.videoUrl || null,
       })
       .eq('id', editingId);
     setSaving(false);
@@ -187,10 +187,12 @@ export default function FounderDashboard() {
         titleCkb={editForm?.titleCkb ?? ''}
         onTitleArChange={(value) => setEditForm({ ...editForm, titleAr: value })}
         onTitleCkbChange={(value) => setEditForm({ ...editForm, titleCkb: value })}
-        mediaUrl={editForm?.mediaUrl}
-        mediaType={editForm?.mediaType}
-        onMediaSelect={(item) => setEditForm({ ...editForm, mediaUrl: item.url, mediaType: item.type })}
-        onMediaClear={() => setEditForm({ ...editForm, mediaUrl: null, mediaType: null })}
+        imageUrl={editForm?.imageUrl}
+        onImageSelect={(item) => setEditForm({ ...editForm, imageUrl: item.url })}
+        onImageClear={() => setEditForm({ ...editForm, imageUrl: null })}
+        videoUrl={editForm?.videoUrl}
+        onVideoSelect={(item) => setEditForm({ ...editForm, videoUrl: item.url })}
+        onVideoClear={() => setEditForm({ ...editForm, videoUrl: null })}
         onSave={saveEdit}
         saving={saving}
         error={editError}

@@ -62,8 +62,8 @@ export default function FounderCategories() {
     setEditForm({
       labelAr: category.label_ar,
       labelCkb: category.label_ckb,
-      mediaUrl: category.icon_video_url || category.icon_path || null,
-      mediaType: category.icon_video_url ? 'video' : category.icon_path ? 'image' : null,
+      imageUrl: category.icon_path || null,
+      videoUrl: category.icon_video_url || null,
     });
   }
 
@@ -76,8 +76,8 @@ export default function FounderCategories() {
       .update({
         label_ar: editForm.labelAr,
         label_ckb: editForm.labelCkb,
-        icon_path: editForm.mediaType === 'image' ? editForm.mediaUrl : null,
-        icon_video_url: editForm.mediaType === 'video' ? editForm.mediaUrl : null,
+        icon_path: editForm.imageUrl || null,
+        icon_video_url: editForm.videoUrl || null,
       })
       .eq('key', category.key);
     setSaving(false);
@@ -199,10 +199,12 @@ export default function FounderCategories() {
         titleCkb={editForm?.labelCkb ?? ''}
         onTitleArChange={(value) => setEditForm({ ...editForm, labelAr: value })}
         onTitleCkbChange={(value) => setEditForm({ ...editForm, labelCkb: value })}
-        mediaUrl={editForm?.mediaUrl}
-        mediaType={editForm?.mediaType}
-        onMediaSelect={(item) => setEditForm({ ...editForm, mediaUrl: item.url, mediaType: item.type })}
-        onMediaClear={() => setEditForm({ ...editForm, mediaUrl: null, mediaType: null })}
+        imageUrl={editForm?.imageUrl}
+        onImageSelect={(item) => setEditForm({ ...editForm, imageUrl: item.url })}
+        onImageClear={() => setEditForm({ ...editForm, imageUrl: null })}
+        videoUrl={editForm?.videoUrl}
+        onVideoSelect={(item) => setEditForm({ ...editForm, videoUrl: item.url })}
+        onVideoClear={() => setEditForm({ ...editForm, videoUrl: null })}
         onSave={saveEdit}
         saving={saving}
         error={editError}

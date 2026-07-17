@@ -7,6 +7,7 @@ import AppShell from '../../components/Layout/AppShell';
 import SafeImage from '../../components/UI/SafeImage';
 import AnnouncementSlider from '../../components/UI/AnnouncementSlider';
 import LazyVideo from '../../components/UI/LazyVideo';
+import SparkOverlay from '../../components/UI/SparkOverlay';
 import { MotionLink, buttonTap, cardLift } from '../../components/UI/Motion';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
@@ -161,12 +162,15 @@ export default function CustomerDashboard() {
                         className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                     ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={category.icon_path}
-                        alt=""
-                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={category.icon_path}
+                          alt=""
+                          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                        <SparkOverlay />
+                      </>
                     )}
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
                     <span className="relative z-10 p-4 text-base drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">

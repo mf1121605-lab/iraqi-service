@@ -131,6 +131,12 @@ module.exports = {
           '90%': { opacity: '0.5' },
           '100%': { transform: 'translateY(110vh) translateX(20px)', opacity: '0' },
         },
+        'spark-rise': {
+          '0%': { transform: 'translateY(0) scale(0.3)', opacity: '0' },
+          '15%': { opacity: '1' },
+          '70%': { opacity: '0.7' },
+          '100%': { transform: 'translateY(-46px) scale(1)', opacity: '0' },
+        },
       },
       animation: {
         float: 'float 6s ease-in-out infinite',
@@ -144,6 +150,7 @@ module.exports = {
         'wave-drift': 'wave-drift 18s linear infinite',
         'wave-drift-fast': 'wave-drift 11s linear infinite',
         'particle-fall': 'particle-fall 12s linear infinite',
+        'spark-rise': 'spark-rise 1.8s ease-out infinite',
       },
     },
   },

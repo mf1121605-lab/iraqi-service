@@ -43,9 +43,10 @@ function readVideoDuration(file) {
 // upload) since these are meant as short looping backgrounds, not general
 // video hosting. Callers can raise the cap (e.g. announcements allow
 // longer clips than category icons) via maxVideoSeconds.
-export default function MediaStudioModal({ open, onClose, onSelect, locale, maxVideoSeconds = DEFAULT_MAX_VIDEO_SECONDS }) {
+export default function MediaStudioModal({ open, onClose, onSelect, locale, maxVideoSeconds = DEFAULT_MAX_VIDEO_SECONDS, filterType }) {
   const t = (path) => translate(locale, path);
   const maxWithGrace = maxVideoSeconds + GRACE_SECONDS;
+  const acceptAttr = filterType === 'image' ? 'image/png,image/jpeg,image/webp,image/svg+xml' : filterType === 'video' ? 'video/mp4,video/webm' : 'image/png,image/jpeg,image/webp,image/svg+xml,video/mp4,video/webm';
   const [items, setItems] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -81,7 +82,7 @@ export default function MediaStudioModal({ open, onClose, onSelect, locale, maxV
   async function handleFile(file) {
     setError('');
     const kind = fileKind(file);
-    if (!kind) {
+    if (!kind || (filterType && kind !== filterType)) {
       setError(t('mediaStudio.unsupportedType'));
       return;
     }
@@ -174,7 +175,7 @@ export default function MediaStudioModal({ open, onClose, onSelect, locale, maxV
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/png,image/jpeg,image/webp,image/svg+xml,video/mp4,video/webm"
+              accept={acceptAttr}
               className="hidden"
               onChange={(event) => {
                 const file = event.target.files?.[0];
@@ -194,13 +195,13 @@ export default function MediaStudioModal({ open, onClose, onSelect, locale, maxV
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-5">
-          {items === null ? (
-            <p className="text-sm text-white/50">{t('common.loading')}</p>
-          ) : items.length === 0 ? (
-            <p className="text-sm text-white/50">{t('mediaStudio.empty')}</p>
-          ) : (
+          {(() => {
+            if (items === null) return <p className="text-sm text-white/50">{t('common.loading')}</p>;
+            const visibleItems = filterType ? items.filter((item) => item.type === filterType) : items;
+            if (visibleItems.length === 0) return <p className="text-sm text-white/50">{t('mediaStudio.empty')}</p>;
+            return (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {items.map((item) => (
+              {visibleItems.map((item) => (
                 <button
                   key={item.id}
                   type="button"
@@ -224,7 +225,8 @@ export default function MediaStudioModal({ open, onClose, onSelect, locale, maxV
                 </button>
               ))}
             </div>
-          )}
+            );
+          })()}
         </div>
       </motion.div>
     </div>

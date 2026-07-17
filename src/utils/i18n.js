@@ -342,6 +342,9 @@ const dictionaries = {
       chooseMediaCta: 'اختيار من استوديو الوسائط',
       removeMediaCta: 'إزالة الوسائط',
       editCta: 'تعديل',
+      imageSlotLabel: 'الصورة',
+      imageSlotHint: 'تظهر بدل الفيديو عند ضعف الاتصال، وتُستخدم لوحدها إذا ما رفعت فيديو',
+      videoSlotLabel: 'الفيديو',
     },
     payment: {
       checkoutTitle: 'إتمام الدفع',
@@ -701,6 +704,9 @@ const dictionaries = {
       chooseMediaCta: 'هەڵبژاردن لە ستۆدیۆی میدیا',
       removeMediaCta: 'سڕینەوەی میدیا',
       editCta: 'دەستکاریکردن',
+      imageSlotLabel: 'وێنە',
+      imageSlotHint: 'لە کاتی ئینتەرنێتی خاو لە جیاتی ڤیدیۆ نیشان دەدرێت، یان بە تەنها بەکاردێت ئەگەر ڤیدیۆت بار نەکردبێت',
+      videoSlotLabel: 'ڤیدیۆ',
     },
     payment: {
       checkoutTitle: 'تەواوکردنی پارەدان',

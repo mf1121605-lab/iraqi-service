@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Pencil } from 'lucide-react';
 import SafeImage from './SafeImage';
 import LazyVideo from './LazyVideo';
+import SparkOverlay from './SparkOverlay';
 import { translate } from '../../utils/i18n';
 import { useSlowConnection } from '../../utils/useSlowConnection';
 
@@ -109,6 +110,7 @@ export default function AnnouncementSlider({ banners, locale, canEdit, onEdit })
                     className={`absolute inset-0 h-full w-full object-cover ${banner.mobile_image_url ? 'hidden sm:block' : ''}`}
                   />
                 )}
+                <SparkOverlay />
               </>
             )
           )}
