@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 
-// '3g' is deliberately excluded: Chrome's effectiveType estimate weighs
-// round-trip latency heavily, and ordinary 4G/LTE connections (higher
-// latency than WiFi even with plenty of bandwidth) commonly get
-// classified as '3g' — treating that as "slow" was hiding video for a
-// lot of genuinely fine connections. These clips are short (≤15s) and
-// small; only the connections actually too weak to load them at all
-// should skip video.
-const SLOW_EFFECTIVE_TYPES = ['slow-2g', '2g'];
-
-// The Network Information API is Chromium-only (no Safari/Firefox support),
-// so this degrades to "not slow" everywhere it's unavailable — a false
-// negative there just means no auto-fallback, never a broken false positive.
+// Chrome's effectiveType estimate ('slow-2g'/'2g'/'3g'/'4g') was tried
+// here first and dropped entirely — real-world testing showed it
+// reporting non-'4g' values on ordinary, fast connections often enough to
+// hide video that should have played fine, which is worse than never
+// auto-hiding at all. saveData is a different kind of signal: it's not a
+// guess, it's the user explicitly turning on "Data Saver"/"Lite mode" in
+// their own browser, so it's the only thing this reacts to now.
+//
+// The Network Information API is also Chromium-only (no Safari/Firefox
+// support), so this degrades to "not slow" everywhere it's unavailable —
+// a false negative there just means no auto-fallback, never a broken
+// false positive.
 export function useSlowConnection() {
   const [slow, setSlow] = useState(false);
 
@@ -21,7 +21,7 @@ export function useSlowConnection() {
     if (!connection) return undefined;
 
     function update() {
-      setSlow(Boolean(connection.saveData) || SLOW_EFFECTIVE_TYPES.includes(connection.effectiveType));
+      setSlow(Boolean(connection.saveData));
     }
     update();
     connection.addEventListener('change', update);
