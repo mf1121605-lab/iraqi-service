@@ -131,31 +131,52 @@ export default function CustomerDashboard() {
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {(categories ?? []).map((category) => {
             const visual = CATEGORY_3D[category.key] ?? CATEGORY_3D.general;
+            const hasMedia = Boolean(category.icon_video_url || category.icon_path);
             return (
               <MotionLink
                 key={category.key}
                 href={`/customer/requests/new?category=${category.key}`}
                 {...cardLift}
-                className="metal-panel group flex flex-col items-center gap-3 p-6 text-center font-semibold text-white"
+                className={
+                  hasMedia
+                    ? 'group relative flex h-40 flex-col items-center justify-end overflow-hidden rounded-[1.5rem] border border-gold-400/20 text-center font-semibold text-white shadow-[0_0_30px_-12px_rgba(230,171,44,0.35)] sm:h-48'
+                    : 'metal-panel group flex flex-col items-center gap-3 p-6 text-center font-semibold text-white'
+                }
               >
-                <div className="icon-medallion h-24 w-24 overflow-hidden" style={{ '--medallion-glow': visual.glow }}>
-                  {category.icon_video_url ? (
-                    <video
-                      src={category.icon_video_url}
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      className="h-full w-full rounded-full object-cover"
-                    />
-                  ) : category.icon_path ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={category.icon_path} alt="" className="h-16 w-16 rounded-full object-cover" />
-                  ) : (
-                    <Icon3D variant={category.key} color={visual.color} className="h-20 w-20" />
-                  )}
-                </div>
-                <span>{categoryLabel(category, locale)}</span>
+                {hasMedia ? (
+                  <>
+                    {/* The card itself is the frame — media fills it edge to
+                        edge instead of sitting inside a small icon circle. */}
+                    {category.icon_video_url ? (
+                      <video
+                        src={category.icon_video_url}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={category.icon_path}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    )}
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+                    <span className="relative z-10 p-4 text-base drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">
+                      {categoryLabel(category, locale)}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <div className="icon-medallion h-24 w-24" style={{ '--medallion-glow': visual.glow }}>
+                      <Icon3D variant={category.key} color={visual.color} className="h-20 w-20" />
+                    </div>
+                    <span>{categoryLabel(category, locale)}</span>
+                  </>
+                )}
               </MotionLink>
             );
           })}
