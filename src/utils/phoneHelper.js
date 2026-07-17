@@ -52,3 +52,16 @@ export function getCarrier(raw) {
   if (!local) return null;
   return CARRIER_PREFIXES[local.slice(1, 3)] ?? 'Other';
 }
+
+// Supabase's hosted "Phone" auth provider requires a configured,
+// credentialed third-party SMS provider (Twilio/etc.) just to enable
+// signups at all, even when no SMS is ever meant to be sent ("Phone
+// signups are disabled" otherwise). Customer auth uses Supabase's
+// always-on Email provider instead, keyed off a deterministic address
+// derived from the E.164 number — invisible to the user, who only ever
+// sees/types their phone number. The real phone still lives in
+// profiles.phone via user_metadata, same as before.
+export function phoneToSyntheticEmail(e164Phone) {
+  const digits = String(e164Phone ?? '').replace(/^\+/, '');
+  return `${digits}@phone.iraqiservices.local`;
+}

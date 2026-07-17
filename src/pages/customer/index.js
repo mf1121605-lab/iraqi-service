@@ -7,7 +7,7 @@ import GoogleGlyph from '../../components/UI/GoogleGlyph';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { dashboardPathForRole, useSession } from '../../utils/useSession';
 import { defaultLocale, getDirection, getStoredLocale, translate } from '../../utils/i18n';
-import { isValidIraqiPhone, toE164 } from '../../utils/phoneHelper';
+import { isValidIraqiPhone, phoneToSyntheticEmail, toE164 } from '../../utils/phoneHelper';
 import { MotionLink, buttonTap } from '../../components/UI/Motion';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -69,7 +69,7 @@ export default function CustomerAuth() {
     setSubmitting(true);
     const e164Phone = toE164(phone);
     const { data, error: signUpError } = await supabaseClient.auth.signUp({
-      phone: e164Phone,
+      email: phoneToSyntheticEmail(e164Phone),
       password,
       options: { data: { phone: e164Phone } },
     });
