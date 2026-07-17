@@ -63,5 +63,8 @@ export function getCarrier(raw) {
 // profiles.phone via user_metadata, same as before.
 export function phoneToSyntheticEmail(e164Phone) {
   const digits = String(e164Phone ?? '').replace(/^\+/, '');
-  return `${digits}@phone.iraqiservices.local`;
+  // A ".local" TLD is reserved for mDNS (RFC 6762) and some server-side
+  // email validators reject it as malformed — use an ordinary-looking
+  // domain instead, since nothing ever needs to actually deliver here.
+  return `${digits}@phone.iraqiservices.com`;
 }

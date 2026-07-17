@@ -75,7 +75,14 @@ export default function CustomerAuth() {
     });
     if (signUpError) {
       setSubmitting(false);
-      setError(signUpError.message || t('common.errorGeneric'));
+      // Supabase's SDK occasionally surfaces a raw, unparsed error payload
+      // (e.g. literally "{}") instead of a real human-readable message —
+      // only show .message when it actually looks like one; the raw
+      // object still goes to the console for real debugging.
+      console.error('signUp failed', signUpError);
+      const message = signUpError.message?.trim();
+      const looksLikeRawPayload = !message || message.startsWith('{') || message.startsWith('[');
+      setError(looksLikeRawPayload ? t('common.errorGeneric') : message);
       return;
     }
 
