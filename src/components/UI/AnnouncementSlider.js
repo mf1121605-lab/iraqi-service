@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Pencil } from 'lucide-react';
 import SafeImage from './SafeImage';
+import LazyVideo from './LazyVideo';
 import { translate } from '../../utils/i18n';
+import { useSlowConnection } from '../../utils/useSlowConnection';
 
 const AUTOPLAY_MS = 6000;
 const SWIPE_CONFIDENCE_THRESHOLD = 10000;
@@ -29,6 +31,7 @@ const slideVariants = {
 export default function AnnouncementSlider({ banners, locale, canEdit, onEdit }) {
   const [[index, direction], setSlide] = useState([0, 0]);
   const [paused, setPaused] = useState(false);
+  const isSlowConnection = useSlowConnection();
   const t = (path) => translate(locale, path);
   const count = banners.length;
   const timerRef = useRef(null);
@@ -83,16 +86,12 @@ export default function AnnouncementSlider({ banners, locale, canEdit, onEdit })
           style={{ backgroundColor: banner.background_color, color: banner.text_color, touchAction: count > 1 ? 'pan-y' : undefined }}
         >
           {/* Video wins over image when both are set — the founder picks one
-              or the other in the Media Studio, this is just a safe order. */}
-          {banner.video_url ? (
-            <video
-              src={banner.video_url}
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="absolute inset-0 h-full w-full object-cover"
-            />
+              or the other in the Media Studio, this is just a safe order.
+              On a detected slow/data-saver connection the video is skipped
+              entirely rather than left to stall; the banner still shows its
+              background color and text, just without the clip. */}
+          {banner.video_url && !isSlowConnection ? (
+            <LazyVideo src={banner.video_url} className="absolute inset-0 h-full w-full object-cover" />
           ) : (
             (banner.mobile_image_url || banner.image_url) && (
               <>

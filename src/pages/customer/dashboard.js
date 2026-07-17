@@ -6,12 +6,14 @@ import { ClipboardList, LayoutGrid, MessageCircle, ShoppingBag, Tag } from 'luci
 import AppShell from '../../components/Layout/AppShell';
 import SafeImage from '../../components/UI/SafeImage';
 import AnnouncementSlider from '../../components/UI/AnnouncementSlider';
+import LazyVideo from '../../components/UI/LazyVideo';
 import { MotionLink, buttonTap, cardLift } from '../../components/UI/Motion';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useLocale } from '../../components/Layout/AppShell';
 import { translate } from '../../utils/i18n';
 import { categoryLabel, useCategories } from '../../utils/useCategories';
+import { useSlowConnection } from '../../utils/useSlowConnection';
 
 // WebGL needs a browser, so the 3D badge is client-only.
 const Icon3D = dynamic(() => import('../../components/UI/Icon3D'), { ssr: false });
@@ -37,6 +39,7 @@ export default function CustomerDashboard() {
   const [products, setProducts] = useState([]);
   const [orderMessage, setOrderMessage] = useState('');
   const categories = useCategories();
+  const isSlowConnection = useSlowConnection();
 
   useEffect(() => {
     if (!profile) return undefined;
@@ -131,7 +134,12 @@ export default function CustomerDashboard() {
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {(categories ?? []).map((category) => {
             const visual = CATEGORY_3D[category.key] ?? CATEGORY_3D.general;
-            const hasMedia = Boolean(category.icon_video_url || category.icon_path);
+            // On a detected slow/data-saver connection, skip the video
+            // entirely rather than let it stall — the medallion+icon
+            // fallback below already exists for categories with no media.
+            const showVideo = Boolean(category.icon_video_url) && !isSlowConnection;
+            const showImage = !showVideo && Boolean(category.icon_path);
+            const hasMedia = showVideo || showImage;
             return (
               <MotionLink
                 key={category.key}
@@ -147,13 +155,9 @@ export default function CustomerDashboard() {
                   <>
                     {/* The card itself is the frame — media fills it edge to
                         edge instead of sitting inside a small icon circle. */}
-                    {category.icon_video_url ? (
-                      <video
+                    {showVideo ? (
+                      <LazyVideo
                         src={category.icon_video_url}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
                         className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                     ) : (
