@@ -44,11 +44,16 @@ const dictionaries = {
     gateway: {
       welcomeTitle: 'منصة الخدمات العراقية',
       welcomeSubtitle: 'اختر طريقة الدخول للمتابعة',
-      employeeCta: 'دخول الموظفين',
-      employeeDesc: 'للموظفين المعتمدين من قبل المؤسس فقط',
-      customerCta: 'بوابة المواطنين',
-      customerDesc: 'تسجيل دخول سريع أو حساب جديد',
+      newUserCta: 'مستخدم جديد',
+      newUserDesc: 'إنشاء حساب جديد',
+      loginCta: 'لديه حساب',
+      loginDesc: 'تسجيل الدخول لحسابك',
       switchLanguage: 'تغيير اللغة',
+    },
+    authLogin: {
+      title: 'تسجيل الدخول',
+      methodPhoneTab: 'رقم الهاتف',
+      methodPasswordTab: 'البريد الإلكتروني',
     },
     authCustomer: {
       title: 'بوابة المواطنين',
@@ -406,11 +411,16 @@ const dictionaries = {
     gateway: {
       welcomeTitle: 'پلاتفۆرمی خزمەتگوزاریی عێراقی',
       welcomeSubtitle: 'شێوازی چوونەژوورەوە هەڵبژێرە بۆ بەردەوامبوون',
-      employeeCta: 'چوونەژوورەوەی فەرمانبەران',
-      employeeDesc: 'تەنها بۆ فەرمانبەرانی پەسەندکراو لەلایەن دامەزرێنەرەوە',
-      customerCta: 'دەروازەی هاوڵاتیان',
-      customerDesc: 'چوونەژوورەوەی خێرا یان هەژماری نوێ',
+      newUserCta: 'بەکارهێنەری نوێ',
+      newUserDesc: 'دروستکردنی هەژماری نوێ',
+      loginCta: 'هەژمارم هەیە',
+      loginDesc: 'چوونەژوورەوە بۆ هەژمارەکەت',
       switchLanguage: 'گۆڕینی زمان',
+    },
+    authLogin: {
+      title: 'چوونەژوورەوە',
+      methodPhoneTab: 'ژمارەی مۆبایل',
+      methodPasswordTab: 'ئیمەیل',
     },
     authCustomer: {
       title: 'دەروازەی هاوڵاتیان',

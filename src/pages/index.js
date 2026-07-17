@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeftRight, Briefcase, ExternalLink, Mail, Phone, UserRound } from 'lucide-react';
+import { ArrowLeftRight, ExternalLink, Mail, Phone, UserPlus, UserRound } from 'lucide-react';
 import {
   LOCALE_META,
   defaultLocale,
@@ -92,27 +92,27 @@ export default function Home({ siteSettings }) {
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             <MotionLink
-              href="/employee"
+              href="/customer"
               {...cardLift}
               className="btn-cinematic-outline group flex-col gap-2 p-6 focus:outline-none focus:ring-2 focus:ring-gold-300"
             >
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 transition-transform duration-300 group-hover:scale-110">
-                <Briefcase className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
+                <UserPlus className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
               </span>
-              <span className="font-display text-lg font-bold">{t('gateway.employeeCta')}</span>
-              <span className="text-sm text-white/60">{t('gateway.employeeDesc')}</span>
+              <span className="font-display text-lg font-bold">{t('gateway.newUserCta')}</span>
+              <span className="text-sm text-white/60">{t('gateway.newUserDesc')}</span>
             </MotionLink>
 
             <MotionLink
-              href="/customer"
+              href="/login"
               {...cardLift}
               className="group relative flex flex-col items-center gap-2 overflow-hidden rounded-2xl border border-gold-400/30 bg-gradient-to-b from-gold-400/15 to-transparent p-6 transition-colors duration-300 hover:border-gold-400/60 hover:shadow-glow focus:outline-none focus:ring-2 focus:ring-gold-300"
             >
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold-400/15 transition-transform duration-300 group-hover:scale-110">
                 <UserRound className="h-5 w-5 text-gold-300" strokeWidth={2} aria-hidden="true" />
               </span>
-              <span className="font-display text-lg font-bold">{t('gateway.customerCta')}</span>
-              <span className="text-sm text-white/60">{t('gateway.customerDesc')}</span>
+              <span className="font-display text-lg font-bold">{t('gateway.loginCta')}</span>
+              <span className="text-sm text-white/60">{t('gateway.loginDesc')}</span>
             </MotionLink>
           </div>
 
