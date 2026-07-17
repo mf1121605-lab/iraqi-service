@@ -82,7 +82,12 @@ export default function CustomerAuth() {
       console.error('signUp failed', signUpError);
       const message = signUpError.message?.trim();
       const looksLikeRawPayload = !message || message.startsWith('{') || message.startsWith('[');
-      setError(looksLikeRawPayload ? t('common.errorGeneric') : message);
+      const friendly = looksLikeRawPayload ? t('common.errorGeneric') : message;
+      // TEMPORARY diagnostic detail while tracking down a live signup
+      // failure — appends status/code so it's visible without needing
+      // browser devtools. Remove once the real cause is confirmed fixed.
+      const detail = [signUpError.status, signUpError.code, signUpError.name].filter(Boolean).join(' / ');
+      setError(detail ? `${friendly} (${detail})` : friendly);
       return;
     }
 
