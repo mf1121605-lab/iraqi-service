@@ -194,6 +194,7 @@ export default function FounderDashboard() {
         onSave={saveEdit}
         saving={saving}
         error={editError}
+        maxVideoSeconds={15}
       />
     </AppShell>
   );

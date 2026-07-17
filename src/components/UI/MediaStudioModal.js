@@ -6,10 +6,10 @@ import { translate } from '../../utils/i18n';
 import { safeSlug } from '../../utils/safeStorageName';
 import CanvaDesignLink from './CanvaDesignLink';
 
-const MAX_VIDEO_SECONDS = 5;
+const DEFAULT_MAX_VIDEO_SECONDS = 5;
 // Small grace window for encoder rounding (a "5 second" export can read
 // back as 5.03s) — reject meaningfully long clips, not float noise.
-const MAX_VIDEO_SECONDS_WITH_GRACE = MAX_VIDEO_SECONDS + 0.5;
+const GRACE_SECONDS = 0.5;
 
 function fileKind(file) {
   if (file.type.startsWith('image/')) return 'image';
@@ -37,13 +37,15 @@ function readVideoDuration(file) {
 }
 
 // Founder-only reusable media picker: browse previously uploaded
-// images/videos, or drag-and-drop a new one in. Videos are capped at 5
-// seconds (checked client-side before upload, not just server-side —
-// Supabase Storage has no video-duration inspection to enforce it on a
-// direct API upload) since these are meant as short looping card
-// backgrounds, not general video hosting.
-export default function MediaStudioModal({ open, onClose, onSelect, locale }) {
+// images/videos, or drag-and-drop a new one in. Videos are duration-capped
+// (checked client-side before upload, not just server-side — Supabase
+// Storage has no video-duration inspection to enforce it on a direct API
+// upload) since these are meant as short looping backgrounds, not general
+// video hosting. Callers can raise the cap (e.g. announcements allow
+// longer clips than category icons) via maxVideoSeconds.
+export default function MediaStudioModal({ open, onClose, onSelect, locale, maxVideoSeconds = DEFAULT_MAX_VIDEO_SECONDS }) {
   const t = (path) => translate(locale, path);
+  const maxWithGrace = maxVideoSeconds + GRACE_SECONDS;
   const [items, setItems] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -87,8 +89,8 @@ export default function MediaStudioModal({ open, onClose, onSelect, locale }) {
     if (kind === 'video') {
       try {
         const duration = await readVideoDuration(file);
-        if (duration > MAX_VIDEO_SECONDS_WITH_GRACE) {
-          setError(t('mediaStudio.videoTooLong'));
+        if (duration > maxWithGrace) {
+          setError(t('mediaStudio.videoTooLong').replace('{max}', String(maxVideoSeconds)));
           return;
         }
       } catch {

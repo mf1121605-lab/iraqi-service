@@ -25,6 +25,7 @@ export default function EditCardModal({
   saving,
   error,
   extraFields,
+  maxVideoSeconds,
 }) {
   const t = (path) => translate(locale, path);
   const [mediaStudioOpen, setMediaStudioOpen] = useState(false);
@@ -133,6 +134,7 @@ export default function EditCardModal({
           setMediaStudioOpen(false);
         }}
         locale={locale}
+        {...(maxVideoSeconds ? { maxVideoSeconds } : {})}
       />
     </div>
   );

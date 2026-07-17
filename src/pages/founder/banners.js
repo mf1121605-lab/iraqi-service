@@ -289,6 +289,7 @@ export default function FounderBanners() {
         onSave={saveEdit}
         saving={saving}
         error={editError}
+        maxVideoSeconds={15}
         extraFields={
           editForm && (
             <div className="grid gap-3 sm:grid-cols-2">
