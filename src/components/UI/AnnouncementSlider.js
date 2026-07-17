@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Pencil } from 'lucide-react';
 import SafeImage from './SafeImage';
 import { translate } from '../../utils/i18n';
 
@@ -25,7 +26,7 @@ const slideVariants = {
 // transition (spring physics) and the drag-to-swipe gesture; plain CSS
 // handles everything that doesn't need to be interrupted mid-animation
 // (the glass panel, the glow, the dots' resting state).
-export default function AnnouncementSlider({ banners, locale }) {
+export default function AnnouncementSlider({ banners, locale, canEdit, onEdit }) {
   const [[index, direction], setSlide] = useState([0, 0]);
   const [paused, setPaused] = useState(false);
   const t = (path) => translate(locale, path);
@@ -118,6 +119,21 @@ export default function AnnouncementSlider({ banners, locale }) {
 
           <div className="iraq-flag-watermark pointer-events-none absolute inset-y-0 start-0 w-1/2 opacity-[0.05]" />
           <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-3xl" />
+
+          {canEdit && onEdit && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEdit(banner);
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+              aria-label={t('common.edit')}
+              className="absolute end-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/40 text-gold-300 backdrop-blur-md transition-all duration-300 hover:scale-110 hover:bg-black/60 hover:shadow-glow focus:outline-none focus:ring-2 focus:ring-gold-300"
+            >
+              <Pencil className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
 
           <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
             {/* Glassmorphism panel: frosted backdrop-blur over the media so

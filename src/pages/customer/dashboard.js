@@ -45,7 +45,7 @@ export default function CustomerDashboard() {
       supabaseClient
         .from('announcements')
         .select(
-          'id, title_ar, title_ckb, description_ar, description_ckb, image_url, mobile_image_url, badge_ar, badge_ckb, button_text_ar, button_text_ckb, button_link, background_color, text_color, display_order'
+          'id, title_ar, title_ckb, description_ar, description_ckb, image_url, mobile_image_url, video_url, badge_ar, badge_ckb, button_text_ar, button_text_ckb, button_link, background_color, text_color, display_order'
         )
         .eq('is_active', true)
         .order('display_order')

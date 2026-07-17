@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { LayoutDashboard } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import StatusBadge from '../../components/UI/StatusBadge';
+import AnnouncementSlider from '../../components/UI/AnnouncementSlider';
+import EditCardModal from '../../components/UI/EditCardModal';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
@@ -21,6 +23,33 @@ export default function FounderDashboard() {
   const [stats, setStats] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [requests, setRequests] = useState([]);
+  const [banners, setBanners] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  useEffect(() => {
+    if (!profile) return undefined;
+
+    function loadBanners() {
+      supabaseClient
+        .from('announcements')
+        .select(
+          'id, title_ar, title_ckb, description_ar, description_ckb, image_url, mobile_image_url, video_url, badge_ar, badge_ckb, button_text_ar, button_text_ckb, button_link, background_color, text_color, display_order'
+        )
+        .eq('is_active', true)
+        .order('display_order')
+        .then(({ data }) => setBanners(data ?? []));
+    }
+
+    loadBanners();
+    const channel = supabaseClient
+      .channel('founder-dashboard-banners-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, loadBanners)
+      .subscribe();
+    return () => supabaseClient.removeChannel(channel);
+  }, [profile]);
 
   useEffect(() => {
     if (!profile) return;
@@ -39,6 +68,38 @@ export default function FounderDashboard() {
     });
   }, [profile]);
 
+  function startEdit(banner) {
+    setEditingId(banner.id);
+    setEditError('');
+    setEditForm({
+      titleAr: banner.title_ar,
+      titleCkb: banner.title_ckb,
+      mediaUrl: banner.video_url || banner.image_url || null,
+      mediaType: banner.video_url ? 'video' : banner.image_url ? 'image' : null,
+    });
+  }
+
+  async function saveEdit() {
+    setEditError('');
+    setSaving(true);
+    const { error: updateError } = await supabaseClient
+      .from('announcements')
+      .update({
+        title_ar: editForm.titleAr,
+        title_ckb: editForm.titleCkb,
+        image_url: editForm.mediaType === 'image' ? editForm.mediaUrl : null,
+        video_url: editForm.mediaType === 'video' ? editForm.mediaUrl : null,
+      })
+      .eq('id', editingId);
+    setSaving(false);
+    if (updateError) {
+      setEditError(updateError.message || t('common.errorGeneric'));
+      return;
+    }
+    setEditingId(null);
+    setEditForm(null);
+  }
+
   if (loading || !profile) {
     return <main className="flex min-h-screen items-center justify-center text-white">{t('common.loading')}</main>;
   }
@@ -49,6 +110,12 @@ export default function FounderDashboard() {
         <LayoutDashboard className="h-5 w-5 text-gold-300" aria-hidden="true" />
         {t('founderDashboard.title')}
       </h2>
+
+      {banners.length > 0 && (
+        <div className="mt-6">
+          <AnnouncementSlider banners={banners} locale={locale} canEdit onEdit={startEdit} />
+        </div>
+      )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
@@ -108,6 +175,26 @@ export default function FounderDashboard() {
           )}
         </section>
       </div>
+
+      <EditCardModal
+        open={editingId !== null}
+        onClose={() => {
+          setEditingId(null);
+          setEditForm(null);
+        }}
+        locale={locale}
+        titleAr={editForm?.titleAr ?? ''}
+        titleCkb={editForm?.titleCkb ?? ''}
+        onTitleArChange={(value) => setEditForm({ ...editForm, titleAr: value })}
+        onTitleCkbChange={(value) => setEditForm({ ...editForm, titleCkb: value })}
+        mediaUrl={editForm?.mediaUrl}
+        mediaType={editForm?.mediaType}
+        onMediaSelect={(item) => setEditForm({ ...editForm, mediaUrl: item.url, mediaType: item.type })}
+        onMediaClear={() => setEditForm({ ...editForm, mediaUrl: null, mediaType: null })}
+        onSave={saveEdit}
+        saving={saving}
+        error={editError}
+      />
     </AppShell>
   );
 }
