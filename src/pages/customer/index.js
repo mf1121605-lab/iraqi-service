@@ -7,7 +7,7 @@ import GoogleGlyph from '../../components/UI/GoogleGlyph';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { dashboardPathForRole, useSession } from '../../utils/useSession';
 import { defaultLocale, getDirection, getStoredLocale, translate } from '../../utils/i18n';
-import { isValidIraqiPhone, phoneToSyntheticEmail, toE164 } from '../../utils/phoneHelper';
+import { isValidIraqiPhone, phoneToSyntheticEmail, toE164, toLocalFormat } from '../../utils/phoneHelper';
 import { MotionLink, buttonTap } from '../../components/UI/Motion';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -71,7 +71,11 @@ export default function CustomerAuth() {
     const { data, error: signUpError } = await supabaseClient.auth.signUp({
       email: phoneToSyntheticEmail(e164Phone),
       password,
-      options: { data: { phone: e164Phone } },
+      // profiles.phone has a check constraint requiring the local
+      // 07XXXXXXXXX format (profiles_phone_format) — the trigger that
+      // creates the profile row reads phone straight from this metadata
+      // with no reformatting, so it has to already be local, not E.164.
+      options: { data: { phone: toLocalFormat(phone) } },
     });
     if (signUpError) {
       setSubmitting(false);
@@ -82,12 +86,7 @@ export default function CustomerAuth() {
       console.error('signUp failed', signUpError);
       const message = signUpError.message?.trim();
       const looksLikeRawPayload = !message || message.startsWith('{') || message.startsWith('[');
-      const friendly = looksLikeRawPayload ? t('common.errorGeneric') : message;
-      // TEMPORARY diagnostic detail while tracking down a live signup
-      // failure — appends status/code so it's visible without needing
-      // browser devtools. Remove once the real cause is confirmed fixed.
-      const detail = [signUpError.status, signUpError.code, signUpError.name].filter(Boolean).join(' / ');
-      setError(detail ? `${friendly} (${detail})` : friendly);
+      setError(looksLikeRawPayload ? t('common.errorGeneric') : message);
       return;
     }
 

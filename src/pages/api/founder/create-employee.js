@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { requireFounderOrCoAdmin } from '../../../lib/founderAuth';
-import { isValidIraqiPhone, toE164 } from '../../../utils/phoneHelper';
+import { isValidIraqiPhone, toE164, toLocalFormat } from '../../../utils/phoneHelper';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -37,7 +37,11 @@ export default async function handler(req, res) {
     password,
     phone_confirm: Boolean(phone),
     email_confirm: Boolean(email),
-    user_metadata: { role: 'employee', phone: phone ? toE164(phone) : undefined },
+    // profiles.phone requires the local 07XXXXXXXXX format
+    // (profiles_phone_format check constraint) — the signup trigger reads
+    // phone straight from this metadata with no reformatting, unlike the
+    // admin.createUser phone field above which does need E.164.
+    user_metadata: { role: 'employee', phone: phone ? toLocalFormat(phone) : undefined },
   });
 
   if (createError) {
