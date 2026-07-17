@@ -53,7 +53,7 @@ export default function EditCardModal({
           </button>
         </div>
 
-        <div className="space-y-4 overflow-y-auto p-5">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs text-white/60">{t('editModal.titleArLabel')}</label>
