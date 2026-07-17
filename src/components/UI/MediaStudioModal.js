@@ -114,7 +114,12 @@ export default function MediaStudioModal({ open, onClose, onSelect, locale, maxV
     setUploading(false);
     if (insertError) {
       setError(insertError.message || t('common.errorGeneric'));
+      return;
     }
+    // A fresh upload should behave exactly like clicking an existing
+    // library thumbnail — select it immediately instead of leaving the
+    // founder to notice the new tile and click it themselves.
+    onSelect({ url: data.publicUrl, type: kind, name: file.name });
   }
 
   function handleDrop(event) {
