@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Globe, LogOut, Menu, Moon, ShieldCheck, Sun, X } from 'lucide-react';
+import { Globe, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import {
   LOCALE_META,
   defaultLocale,
@@ -88,7 +88,8 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <div className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-hero text-white shadow-glow dark:bg-none dark:bg-gold-400/15 dark:text-gold-300 dark:shadow-[0_0_0_1px_rgba(230,171,44,0.35),0_4px_16px_-4px_rgba(230,171,44,0.4)]">
-              <ShieldCheck className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/brand/logo-icon-512.png" alt="" className="h-full w-full rounded-xl object-contain p-1" />
             </span>
             <h1 className="font-display text-lg font-bold tracking-tight">{title ?? t('common.platformName')}</h1>
           </div>

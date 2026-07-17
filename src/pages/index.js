@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeftRight, Briefcase, ExternalLink, Languages, Mail, Phone, ShieldCheck, UserRound } from 'lucide-react';
+import { ArrowLeftRight, Briefcase, ExternalLink, Mail, Phone, UserRound } from 'lucide-react';
 import {
   LOCALE_META,
   defaultLocale,
@@ -56,7 +56,8 @@ export default function Home({ siteSettings }) {
       {step === 'language' && (
         <div className="cinematic-card relative z-10 w-full max-w-md animate-scale-in p-10 text-center text-white">
           <span className="cinematic-emblem mx-auto h-16 w-16">
-            <Languages className="h-7 w-7 text-gold-300" strokeWidth={2} aria-hidden="true" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/logo-icon-512.png" alt="" className="h-full w-full rounded-full object-contain p-1.5" />
           </span>
           {LOCALE_META.map((meta) => (
             <p key={meta.code} className="mb-1 mt-5 text-lg font-semibold text-white/90">
@@ -83,7 +84,8 @@ export default function Home({ siteSettings }) {
       {step === 'gateway' && locale && (
         <div className="cinematic-card relative z-10 w-full max-w-lg animate-scale-in p-10 text-center text-white">
           <span className="cinematic-emblem mx-auto h-[4.5rem] w-[4.5rem]">
-            <ShieldCheck className="h-8 w-8 text-gold-300" strokeWidth={2.25} aria-hidden="true" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/logo-icon-512.png" alt="" className="h-full w-full rounded-full object-contain p-1.5" />
           </span>
           <h1 className="mt-5 font-display text-3xl font-bold tracking-tight">{heroTitle}</h1>
           <p className="mt-2 text-white/80">{heroSubtitle}</p>
