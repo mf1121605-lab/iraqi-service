@@ -2,18 +2,20 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 
 // Shared hover/tap physics so every clickable button/card site-wide feels
-// consistent rather than each page inventing its own timing. whileTap
-// gives real touch feedback on mobile, not just desktop :hover.
+// consistent rather than each page inventing its own timing. whileHover
+// never fires on touch devices (there's no cursor to hover with), so
+// whileTap carries the entire felt effect on mobile — it needs to be
+// pronounced on its own, not just a scaled-down echo of the hover state.
 export const buttonTap = {
-  whileHover: { scale: 1.03 },
-  whileTap: { scale: 0.96 },
-  transition: { type: 'spring', stiffness: 420, damping: 28 },
+  whileHover: { scale: 1.04 },
+  whileTap: { scale: 0.92 },
+  transition: { type: 'spring', stiffness: 420, damping: 22 },
 };
 
 export const cardLift = {
   whileHover: { y: -4 },
-  whileTap: { scale: 0.98 },
-  transition: { type: 'spring', stiffness: 300, damping: 24 },
+  whileTap: { y: -3, scale: 0.96 },
+  transition: { type: 'spring', stiffness: 340, damping: 20 },
 };
 
 // Same lift, no whileTap — for cards that aren't themselves clickable
