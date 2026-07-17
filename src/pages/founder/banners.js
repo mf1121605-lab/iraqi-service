@@ -4,6 +4,7 @@ import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import ImageUploader from '../../components/UI/ImageUploader';
 import CanvaDesignLink from '../../components/UI/CanvaDesignLink';
 import EditCardModal from '../../components/UI/EditCardModal';
+import MediaStudioModal from '../../components/UI/MediaStudioModal';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
@@ -20,6 +21,7 @@ const emptyForm = {
   buttonTextCkb: '',
   buttonLink: '',
   imageUrl: '',
+  videoUrl: '',
   mobileImageUrl: '',
   backgroundColor: '#0f172a',
   textColor: '#ffffff',
@@ -41,6 +43,7 @@ export default function FounderBanners() {
   const [editForm, setEditForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState('');
+  const [addMediaStudioOpen, setAddMediaStudioOpen] = useState(false);
 
   useEffect(() => {
     if (!profile) return undefined;
@@ -70,7 +73,8 @@ export default function FounderBanners() {
       button_text_ar: form.buttonTextAr || null,
       button_text_ckb: form.buttonTextCkb || null,
       button_link: form.buttonLink || null,
-      image_url: form.imageUrl || null,
+      image_url: form.videoUrl ? null : form.imageUrl || null,
+      video_url: form.videoUrl || null,
       mobile_image_url: form.mobileImageUrl || null,
       background_color: form.backgroundColor,
       text_color: form.textColor,
@@ -162,14 +166,42 @@ export default function FounderBanners() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <p className="mb-1 text-xs text-white/60">{t('founderBanners.imageLabel')}</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <ImageUploader
-                pathPrefix="announcements"
-                value={form.imageUrl}
-                onUploaded={(url) => setField('imageUrl', url)}
-                onClear={() => setField('imageUrl', '')}
-                locale={locale}
-              />
+            <div className="flex flex-wrap items-center gap-3">
+              {(form.videoUrl || form.imageUrl) && (
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/20">
+                  {form.videoUrl ? (
+                    <video src={form.videoUrl} muted loop autoPlay playsInline className="h-full w-full object-cover" />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={form.imageUrl} alt="" className="h-full w-full object-cover" />
+                  )}
+                  {form.videoUrl && (
+                    <span className="absolute end-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white">
+                      <Film className="h-2.5 w-2.5" aria-hidden="true" />
+                    </span>
+                  )}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setAddMediaStudioOpen(true)}
+                className="flex items-center gap-1.5 rounded-xl2 border border-white/15 px-3 py-2 text-sm font-semibold text-white/80 transition-colors hover:bg-white/5"
+              >
+                <ImageIcon className="h-4 w-4" aria-hidden="true" />
+                {t('editModal.chooseMediaCta')}
+              </button>
+              {(form.videoUrl || form.imageUrl) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setField('imageUrl', '');
+                    setField('videoUrl', '');
+                  }}
+                  className="rounded-xl2 border border-red-400/30 px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/10"
+                >
+                  {t('editModal.removeMediaCta')}
+                </button>
+              )}
               <CanvaDesignLink locale={locale} />
             </div>
           </div>
@@ -312,6 +344,23 @@ export default function FounderBanners() {
             </div>
           )
         }
+      />
+
+      <MediaStudioModal
+        open={addMediaStudioOpen}
+        onClose={() => setAddMediaStudioOpen(false)}
+        onSelect={(item) => {
+          if (item.type === 'video') {
+            setField('videoUrl', item.url);
+            setField('imageUrl', '');
+          } else {
+            setField('imageUrl', item.url);
+            setField('videoUrl', '');
+          }
+          setAddMediaStudioOpen(false);
+        }}
+        locale={locale}
+        maxVideoSeconds={15}
       />
     </AppShell>
   );
