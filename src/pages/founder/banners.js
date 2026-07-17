@@ -62,7 +62,10 @@ export default function FounderBanners() {
   async function handleAdd(event) {
     event.preventDefault();
     setError('');
-    if (!form.titleAr || !form.titleCkb) return;
+    if (!form.titleAr || !form.titleCkb) {
+      setError(t('founderBanners.titleRequired'));
+      return;
+    }
     const { error: insertError } = await supabaseClient.from('announcements').insert({
       title_ar: form.titleAr,
       title_ckb: form.titleCkb,

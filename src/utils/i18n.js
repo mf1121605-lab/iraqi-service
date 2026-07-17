@@ -188,6 +188,7 @@ const dictionaries = {
       textColorLabel: 'لون النص',
       addCta: 'إضافة إعلان جديد',
       empty: 'لا توجد إعلانات بعد',
+      titleRequired: 'يرجى تعبئة العنوان بالعربية والكردية قبل الإضافة',
     },
     founderProducts: {
       title: 'إدارة المنتجات',
@@ -546,6 +547,7 @@ const dictionaries = {
       textColorLabel: 'ڕەنگی دەق',
       addCta: 'زیادکردنی ڕاگەیاندنێکی نوێ',
       empty: 'هێشتا هیچ ڕاگەیاندنێک نییە',
+      titleRequired: 'تکایە ناونیشان بە عەرەبی و کوردی پڕبکەرەوە پێش زیادکردن',
     },
     founderProducts: {
       title: 'بەڕێوەبردنی بەرهەمەکان',
