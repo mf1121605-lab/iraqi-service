@@ -126,7 +126,7 @@ export default function UnifiedLogin() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-6 text-white">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-6 font-display text-white">
       <div className="pointer-events-none absolute left-1/2 top-0 h-[36rem] w-[36rem] -translate-x-1/2 animate-spotlight-sweep rounded-full bg-gold-400/10 blur-[100px]" />
       <div className="pointer-events-none absolute -left-24 bottom-10 h-72 w-72 animate-float rounded-full bg-brand-500/15 blur-3xl" />
       <div className="pointer-events-none absolute -right-16 bottom-0 h-80 w-80 animate-float rounded-full bg-gold-400/10 blur-3xl [animation-delay:1.5s]" />
@@ -139,7 +139,7 @@ export default function UnifiedLogin() {
 
         <form onSubmit={handlePasswordSubmit} className="mt-8 space-y-4">
           <div>
-            <label htmlFor="identifier" className="mb-1.5 block text-sm text-white/80">
+            <label htmlFor="identifier" className="mb-1.5 block text-sm font-bold text-white/80">
               {t('authEmployee.identifierLabel')}
             </label>
             <input
@@ -153,7 +153,7 @@ export default function UnifiedLogin() {
             />
           </div>
           <div>
-            <label htmlFor="password" className="mb-1.5 flex items-center gap-1.5 text-sm text-white/80">
+            <label htmlFor="password" className="mb-1.5 flex items-center gap-1.5 text-sm font-bold text-white/80">
               <Lock className="h-3.5 w-3.5" aria-hidden="true" />
               {t('authEmployee.passwordLabel')}
             </label>
@@ -174,7 +174,7 @@ export default function UnifiedLogin() {
               {t('authLogin.forgotPasswordCta')}
             </MotionLink>
           </div>
-          {error && <p className="animate-slide-down text-sm font-semibold text-red-300">{error}</p>}
+          {error && <p className="animate-slide-down text-sm font-bold text-red-300">{error}</p>}
           <motion.button
             type="submit"
             disabled={submitting}

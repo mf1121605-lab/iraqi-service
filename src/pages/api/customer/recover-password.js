@@ -1,9 +1,9 @@
 import bcrypt from 'bcryptjs';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
-import { toLocalFormat } from '../../../utils/phoneHelper';
 
 const MIN_PASSWORD_LENGTH = 8;
-const GENERIC_ERROR = 'تعذر التحقق من بياناتك، تأكد من رقم الهاتف والإجابة';
+const USERNAME_PATTERN = /^[a-z][a-z0-9_]{2,}$/;
+const GENERIC_ERROR = 'تعذر التحقق من بياناتك، تأكد من اسم المستخدم والإجابة';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -11,13 +11,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method not allowed' });
   }
 
-  const { phone, questionAnswer, newPassword } = req.body ?? {};
-  // Normalize the same way register.js stores it, so lookup succeeds
-  // regardless of how the user formats the phone this time.
-  const normalizedPhone = toLocalFormat(String(phone ?? ''));
+  const { username, questionAnswer, newPassword } = req.body ?? {};
+  const normalizedUsername = String(username ?? '').trim().toLowerCase();
 
-  if (!normalizedPhone) {
-    return res.status(400).json({ error: 'phone is required' });
+  if (!USERNAME_PATTERN.test(normalizedUsername)) {
+    return res.status(400).json({ error: 'invalid username format' });
   }
   if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
     return res.status(400).json({ error: 'password too short' });
@@ -26,7 +24,7 @@ export default async function handler(req, res) {
   const { data: profile } = await supabaseAdmin
     .from('profiles')
     .select('id, recovery_answer_hash')
-    .eq('phone', normalizedPhone)
+    .eq('username', normalizedUsername)
     .maybeSingle();
 
   if (!profile?.recovery_answer_hash) {

@@ -272,7 +272,7 @@ module.exports = {
           backgroundColor: 'rgba(255,255,255,0.05)',
           padding: '0.9rem 1.1rem',
           color: '#fff',
-          fontWeight: '600',
+          fontWeight: '700',
           transition: 'all 250ms ease',
         },
         '.input-cinematic:focus': {
@@ -283,7 +283,7 @@ module.exports = {
         },
         '.input-cinematic::placeholder': {
           color: 'rgba(255,255,255,0.4)',
-          fontWeight: '600',
+          fontWeight: '700',
         },
         '.section-title-cinematic': {
           position: 'relative',
