@@ -1,6 +1,5 @@
 import bcrypt from 'bcryptjs';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
-import { isValidIraqiPhone, toLocalFormat } from '../../../utils/phoneHelper';
 
 const MIN_PASSWORD_LENGTH = 8;
 const GENERIC_ERROR = 'تعذر التحقق من بياناتك، تأكد من رقم الهاتف والإجابة';
@@ -12,9 +11,10 @@ export default async function handler(req, res) {
   }
 
   const { phone, questionAnswer, newPassword } = req.body ?? {};
+  const trimmedPhone = String(phone ?? '').trim();
 
-  if (!phone || !isValidIraqiPhone(phone)) {
-    return res.status(400).json({ error: 'invalid Iraqi phone number' });
+  if (!trimmedPhone) {
+    return res.status(400).json({ error: 'phone is required' });
   }
   if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
     return res.status(400).json({ error: 'password too short' });
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   const { data: profile } = await supabaseAdmin
     .from('profiles')
     .select('id, recovery_answer_hash')
-    .eq('phone', toLocalFormat(phone))
+    .eq('phone', trimmedPhone)
     .maybeSingle();
 
   if (!profile?.recovery_answer_hash) {

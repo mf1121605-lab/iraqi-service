@@ -7,12 +7,12 @@ import GoogleGlyph from '../../components/UI/GoogleGlyph';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { dashboardPathForRole, useSession } from '../../utils/useSession';
 import { defaultLocale, getDirection, getStoredLocale, translate } from '../../utils/i18n';
-import { isValidIraqiPhone, toE164 } from '../../utils/phoneHelper';
 import { logLoginEvent } from '../../utils/logLoginEvent';
 import { MotionLink, buttonTap } from '../../components/UI/Motion';
 
 const MIN_PASSWORD_LENGTH = 8;
 const USERNAME_PATTERN = /^[a-z][a-z0-9_]{2,}$/;
+const USERNAME_EMAIL_DOMAIN = 'iraqi-service.vercel.app';
 
 export default function CustomerAuth() {
   const router = useRouter();
@@ -54,12 +54,17 @@ export default function CustomerAuth() {
     event.preventDefault();
     setError('');
 
-    if (!isValidIraqiPhone(phone)) {
-      setError(t('authCustomer.errorInvalidPhone'));
+    const normalizedUsername = username.trim().toLowerCase();
+    if (!USERNAME_PATTERN.test(normalizedUsername)) {
+      setError(t('authCustomer.errorUsernameFormat'));
       return;
     }
     if (!fullName.trim() || !surname.trim()) {
       setError(t('authCustomer.errorNameRequired'));
+      return;
+    }
+    if (!phone.trim()) {
+      setError(t('authCustomer.errorPhoneRequired'));
       return;
     }
     if (password.length < MIN_PASSWORD_LENGTH) {
@@ -68,10 +73,6 @@ export default function CustomerAuth() {
     }
     if (password !== confirmPassword) {
       setError(t('authCustomer.errorPasswordMismatch'));
-      return;
-    }
-    if (username.trim() && !USERNAME_PATTERN.test(username.trim().toLowerCase())) {
-      setError(t('authCustomer.errorUsernameFormat'));
       return;
     }
 
@@ -83,11 +84,11 @@ export default function CustomerAuth() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phone,
+          phone: phone.trim(),
           password,
           fullName: fullName.trim(),
           surname: surname.trim(),
-          username: username.trim() || undefined,
+          username: normalizedUsername,
           recoveryQuestionId: recoveryQuestionId || undefined,
           recoveryAnswer: recoveryAnswer.trim() || undefined,
         }),
@@ -109,12 +110,12 @@ export default function CustomerAuth() {
       return;
     }
 
-    // The account is created server-side via the privileged Admin API
-    // (phone as Supabase's native identity, no OTP) — sign in client-side
-    // right after to establish the actual session, same as any other
-    // password login.
+    // The account is created server-side via the privileged Admin API,
+    // keyed off a deterministic internal email derived from the username
+    // (Supabase's native phone provider is no longer used for customers) —
+    // sign in client-side right after to establish the actual session.
     const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
-      phone: toE164(phone),
+      email: `${normalizedUsername}@${USERNAME_EMAIL_DOMAIN}`,
       password,
     });
     setSubmitting(false);

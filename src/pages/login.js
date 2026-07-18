@@ -12,6 +12,13 @@ import { logLoginEvent } from '../utils/logLoginEvent';
 import { MotionLink, buttonTap } from '../components/UI/Motion';
 
 const USERNAME_PATTERN = /^[a-z][a-z0-9_]{2,}$/;
+const USERNAME_EMAIL_DOMAIN = 'iraqi-service.vercel.app';
+
+function usableErrorMessage(supabaseError, fallback) {
+  const message = supabaseError?.message?.trim();
+  const looksUsable = message && !message.startsWith('{') && !message.startsWith('[');
+  return looksUsable ? message : fallback;
+}
 
 // A single "لديه حساب" entry point for every role — phone-or-email +
 // password now covers customers, employees, and the founder alike (all
@@ -67,45 +74,40 @@ export default function UnifiedLogin() {
     setError('');
     setSubmitting(true);
 
-    if (isValidIraqiPhone(identifier)) {
-      // Customers and employees alike are created with phone as
-      // Supabase's native auth.users identity (via the privileged Admin
-      // API — see api/customer/register.js and api/founder/create-employee.js),
-      // so a single native phone sign-in covers both.
-      const { data, error: phoneError } = await supabaseClient.auth.signInWithPassword({
-        phone: toE164(identifier),
+    const trimmedIdentifier = identifier.trim().toLowerCase();
+
+    if (USERNAME_PATTERN.test(trimmedIdentifier)) {
+      // Customers register with a username, stored server-side only as a
+      // deterministic internal email alias (no native phone/Supabase
+      // identity involved) — recomputing the same alias here is a pure
+      // string transform, no lookup needed.
+      const { data, error: signInError } = await supabaseClient.auth.signInWithPassword({
+        email: `${trimmedIdentifier}@${USERNAME_EMAIL_DOMAIN}`,
         password,
       });
       setSubmitting(false);
-      if (phoneError) {
-        setError(t('authEmployee.errorInvalid'));
+      if (signInError) {
+        console.error('username sign-in failed', signInError);
+        setError(usableErrorMessage(signInError, t('authEmployee.errorInvalid')));
         return;
       }
       logLoginEvent(data.session?.access_token);
       return;
     }
 
-    const trimmedIdentifier = identifier.trim().toLowerCase();
-    if (USERNAME_PATTERN.test(trimmedIdentifier)) {
-      // Username is only ever a stored alias for a customer's real,
-      // native-identity phone number — resolve it server-side, then sign
-      // in through the exact same proven phone path, never a synthetic
-      // identity.
-      const resolveResponse = await fetch('/api/auth/resolve-username', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: trimmedIdentifier }),
+    if (isValidIraqiPhone(identifier)) {
+      // Employees/founder can still be created with a native phone
+      // identity (src/pages/api/founder/create-employee.js) — customers no
+      // longer use this path, but existing phone-based staff accounts
+      // still need to sign in.
+      const { data, error: phoneError } = await supabaseClient.auth.signInWithPassword({
+        phone: toE164(identifier),
+        password,
       });
-      const { phone } = await resolveResponse.json().catch(() => ({ phone: null }));
-      if (!phone) {
-        setSubmitting(false);
-        setError(t('authEmployee.errorInvalid'));
-        return;
-      }
-      const { data, error: phoneError } = await supabaseClient.auth.signInWithPassword({ phone, password });
       setSubmitting(false);
       if (phoneError) {
-        setError(t('authEmployee.errorInvalid'));
+        console.error('phone sign-in failed', phoneError);
+        setError(usableErrorMessage(phoneError, t('authEmployee.errorInvalid')));
         return;
       }
       logLoginEvent(data.session?.access_token);
@@ -115,7 +117,8 @@ export default function UnifiedLogin() {
     const { data, error: signInError } = await supabaseClient.auth.signInWithPassword({ email: identifier, password });
     setSubmitting(false);
     if (signInError) {
-      setError(t('authEmployee.errorInvalid'));
+      console.error('email sign-in failed', signInError);
+      setError(usableErrorMessage(signInError, t('authEmployee.errorInvalid')));
       return;
     }
     logLoginEvent(data.session?.access_token);

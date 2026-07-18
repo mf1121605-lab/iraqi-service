@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, KeyRound, Lock } from 'lucide-react';
 import { defaultLocale, getDirection, getStoredLocale, translate } from '../utils/i18n';
-import { isValidIraqiPhone } from '../utils/phoneHelper';
 import { MotionLink, buttonTap } from '../components/UI/Motion';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -36,13 +35,13 @@ export default function ForgotPassword() {
     event.preventDefault();
     setError('');
 
-    if (!isValidIraqiPhone(phone)) {
-      setError(t('authCustomer.errorInvalidPhone'));
+    if (!phone.trim()) {
+      setError(t('authCustomer.errorPhoneRequired'));
       return;
     }
 
     setSubmitting(true);
-    const response = await fetch(`/api/customer/recovery-question?phone=${encodeURIComponent(phone)}`);
+    const response = await fetch(`/api/customer/recovery-question?phone=${encodeURIComponent(phone.trim())}`);
     const { questionId: foundQuestionId } = await response.json().catch(() => ({ questionId: null }));
     setSubmitting(false);
 
@@ -71,7 +70,7 @@ export default function ForgotPassword() {
     const response = await fetch('/api/customer/recover-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, questionAnswer: answer, newPassword }),
+      body: JSON.stringify({ phone: phone.trim(), questionAnswer: answer, newPassword }),
     });
     setSubmitting(false);
 
