@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ClipboardList, Inbox, LayoutGrid } from 'lucide-react';
+import { ClipboardList, GraduationCap, Inbox, LayoutGrid } from 'lucide-react';
 import AppShell, { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import StatusBadge from '../../../components/UI/StatusBadge';
@@ -33,6 +33,7 @@ export default function CustomerRequests() {
   const navItems = [
     { href: '/customer/dashboard', label: t('customerHub.categoriesTitle'), icon: LayoutGrid },
     { href: '/customer/requests', label: t('customerHub.myRequestsCta'), active: true, icon: ClipboardList },
+    { href: '/customer/tutor', label: t('aiTutor.navCta'), icon: GraduationCap },
   ];
 
   return (
