@@ -86,7 +86,9 @@ export default function CustomerAuth() {
     if (!response.ok) {
       setSubmitting(false);
       console.error('register failed', payload);
-      setError(t('common.errorGeneric'));
+      const message = typeof payload.error === 'string' ? payload.error.trim() : '';
+      const looksUsable = message && !message.startsWith('{') && !message.startsWith('[');
+      setError(looksUsable ? message : t('common.errorGeneric'));
       return;
     }
 

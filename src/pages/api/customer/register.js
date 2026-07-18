@@ -33,7 +33,10 @@ export default async function handler(req, res) {
   });
 
   if (createError) {
-    return res.status(400).json({ error: createError.message });
+    const alreadyRegistered = /already.*registered|duplicate|unique/i.test(createError.message ?? '');
+    return res.status(400).json({
+      error: alreadyRegistered ? 'هذا الرقم مسجل مسبقاً، جرّب تسجيل الدخول' : createError.message,
+    });
   }
 
   const { error: profileError } = await supabaseAdmin
