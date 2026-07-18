@@ -16,6 +16,12 @@
 const MAX_DIMENSION = 360; // px — these render inside small UI icons only
 const TARGET_BITRATE_KBPS = 250;
 const EXEC_TIMEOUT_MS = 60_000;
+// Mobile browsers (constrained memory/CPU, sometimes flaky WASM threading)
+// can make ffmpeg.wasm's initial core download+init hang indefinitely
+// instead of failing outright — with no timeout here, that hang blocks the
+// upload forever with no error and no fallback. This wraps the entire
+// attempt so it always resolves one way or another within a bounded time.
+const OVERALL_TIMEOUT_MS = 45_000;
 
 let ffmpegPromise = null;
 
@@ -32,10 +38,22 @@ async function getFFmpeg() {
 }
 
 // Returns a compressed File on success. On any failure (WASM failed to
-// load, encode timed out, unsupported input, etc.) returns the original
-// file unchanged — a failed optimization should never block an upload
-// that would have worked today.
-export async function compressVideo(file, { onProgress } = {}) {
+// load or hung, encode timed out, unsupported input, etc.) returns the
+// original file unchanged — a failed optimization should never block an
+// upload that would have worked today.
+export async function compressVideo(file, options = {}) {
+  let timedOut = false;
+  const timeout = new Promise((resolve) => {
+    setTimeout(() => {
+      timedOut = true;
+      resolve(file);
+    }, OVERALL_TIMEOUT_MS);
+  });
+  const attempt = compressVideoAttempt(file, options).then((result) => (timedOut ? file : result));
+  return Promise.race([attempt, timeout]);
+}
+
+async function compressVideoAttempt(file, { onProgress } = {}) {
   try {
     const ffmpeg = await getFFmpeg();
     const { fetchFile } = await import('@ffmpeg/util');
