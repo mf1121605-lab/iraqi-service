@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ChevronDown, Lock, Phone, ShieldCheck, User } from 'lucide-react';
-import FacebookGlyph from '../../components/UI/FacebookGlyph';
 import GoogleGlyph from '../../components/UI/GoogleGlyph';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { dashboardPathForRole, useSession } from '../../utils/useSession';
@@ -302,26 +301,15 @@ export default function CustomerAuth() {
             <span className="h-px flex-1 bg-gradient-to-r from-transparent via-white/25 to-transparent" />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <motion.button
-              type="button"
-              onClick={() => handleOAuthLogin('facebook')}
-              {...buttonTap}
-              className="btn-cinematic-outline px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gold-300"
-            >
-              <FacebookGlyph className="h-4 w-4" />
-              {t('authCustomer.continueWithFacebook')}
-            </motion.button>
-            <motion.button
-              type="button"
-              onClick={() => handleOAuthLogin('google')}
-              {...buttonTap}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 font-semibold text-brand-950 shadow-[0_8px_24px_-8px_rgba(255,255,255,0.4)] transition-shadow duration-300 hover:shadow-[0_12px_30px_-8px_rgba(255,255,255,0.55)] focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-brand-900"
-            >
-              <GoogleGlyph className="h-4 w-4" />
-              {t('authCustomer.continueWithGoogle')}
-            </motion.button>
-          </div>
+          <motion.button
+            type="button"
+            onClick={() => handleOAuthLogin('google')}
+            {...buttonTap}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 font-semibold text-brand-950 shadow-[0_8px_24px_-8px_rgba(255,255,255,0.4)] transition-shadow duration-300 hover:shadow-[0_12px_30px_-8px_rgba(255,255,255,0.55)] focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-brand-900"
+          >
+            <GoogleGlyph className="h-4 w-4" />
+            {t('authCustomer.continueWithGoogle')}
+          </motion.button>
         </form>
 
         <MotionLink
