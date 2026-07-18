@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { toLocalFormat } from '../../../utils/phoneHelper';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -6,7 +7,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method not allowed' });
   }
 
-  const phone = String(req.query.phone ?? '').trim();
+  // Normalize the same way register.js stores it, so lookup succeeds
+  // regardless of how the user formats the phone this time.
+  const phone = toLocalFormat(String(req.query.phone ?? ''));
   if (!phone) {
     return res.status(200).json({ questionId: null });
   }

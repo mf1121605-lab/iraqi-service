@@ -7,6 +7,7 @@ import GoogleGlyph from '../../components/UI/GoogleGlyph';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { dashboardPathForRole, useSession } from '../../utils/useSession';
 import { defaultLocale, getDirection, getStoredLocale, translate } from '../../utils/i18n';
+import { isValidIraqiPhone } from '../../utils/phoneHelper';
 import { logLoginEvent } from '../../utils/logLoginEvent';
 import { MotionLink, buttonTap } from '../../components/UI/Motion';
 
@@ -65,6 +66,10 @@ export default function CustomerAuth() {
     }
     if (!phone.trim()) {
       setError(t('authCustomer.errorPhoneRequired'));
+      return;
+    }
+    if (!isValidIraqiPhone(phone)) {
+      setError(t('authCustomer.errorInvalidPhone'));
       return;
     }
     if (password.length < MIN_PASSWORD_LENGTH) {
@@ -211,6 +216,7 @@ export default function CustomerAuth() {
               placeholder={t('authCustomer.usernamePlaceholder')}
               className="input-cinematic"
             />
+            <p className="mt-1.5 text-xs font-semibold text-white/60">{t('authCustomer.usernameHint')}</p>
           </div>
           <div>
             <label htmlFor="password" className="mb-1.5 flex items-center gap-1.5 text-sm text-white/80">
@@ -280,7 +286,7 @@ export default function CustomerAuth() {
               )}
             </div>
           </details>
-          {error && <p className="animate-slide-down text-sm text-red-300">{error}</p>}
+          {error && <p className="animate-slide-down text-sm font-semibold text-red-300">{error}</p>}
           <motion.button
             type="submit"
             disabled={submitting}

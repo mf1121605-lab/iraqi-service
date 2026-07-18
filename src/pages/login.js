@@ -174,7 +174,7 @@ export default function UnifiedLogin() {
               {t('authLogin.forgotPasswordCta')}
             </MotionLink>
           </div>
-          {error && <p className="animate-slide-down text-sm text-red-300">{error}</p>}
+          {error && <p className="animate-slide-down text-sm font-semibold text-red-300">{error}</p>}
           <motion.button
             type="submit"
             disabled={submitting}

@@ -128,7 +128,7 @@ export default function ForgotPassword() {
                 className="input-cinematic"
               />
             </div>
-            {error && <p className="animate-slide-down text-sm text-red-300">{error}</p>}
+            {error && <p className="animate-slide-down text-sm font-semibold text-red-300">{error}</p>}
             <motion.button
               type="submit"
               disabled={submitting}
@@ -184,7 +184,7 @@ export default function ForgotPassword() {
                 className="input-cinematic"
               />
             </div>
-            {error && <p className="animate-slide-down text-sm text-red-300">{error}</p>}
+            {error && <p className="animate-slide-down text-sm font-semibold text-red-300">{error}</p>}
             <motion.button
               type="submit"
               disabled={submitting}

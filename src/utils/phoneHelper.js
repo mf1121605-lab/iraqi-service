@@ -1,5 +1,5 @@
 const IRAQ_COUNTRY_CODE = '964';
-const LOCAL_PATTERN = /^07\d{9}$/;
+const LOCAL_PATTERN = /^07[789]\d{8}$/;
 
 const CARRIER_PREFIXES = {
   77: 'Asiacell',

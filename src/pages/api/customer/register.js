@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { isValidIraqiPhone, toLocalFormat } from '../../../utils/phoneHelper';
 
 const MIN_PASSWORD_LENGTH = 8;
 const USERNAME_PATTERN = /^[a-z][a-z0-9_]{2,}$/;
@@ -26,6 +27,9 @@ export default async function handler(req, res) {
   }
   if (!String(phone ?? '').trim()) {
     return res.status(400).json({ error: 'phone is required' });
+  }
+  if (!isValidIraqiPhone(phone)) {
+    return res.status(400).json({ error: 'يجب أن يكون رقم هاتف عراقي صحيح مكون من 11 رقماً ويبدأ بـ 077 أو 078 أو 079' });
   }
   const hasRecovery = recoveryQuestionId != null && recoveryAnswer;
   if (hasRecovery && !RECOVERY_QUESTION_IDS.includes(Number(recoveryQuestionId))) {
@@ -54,7 +58,10 @@ export default async function handler(req, res) {
       given_name: fullName.trim(),
       family_name: surname.trim(),
       username: normalizedUsername,
-      phone: String(phone).trim(),
+      // Stored in canonical 07XXXXXXXXX form (not raw user input) so exact-
+      // match lookups later (recovery-question.js, recover-password.js)
+      // work regardless of how the user formats it each time.
+      phone: toLocalFormat(phone),
     };
     if (hasRecovery) {
       const normalizedAnswer = String(recoveryAnswer).trim().toLowerCase();

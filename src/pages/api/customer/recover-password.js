@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { toLocalFormat } from '../../../utils/phoneHelper';
 
 const MIN_PASSWORD_LENGTH = 8;
 const GENERIC_ERROR = 'تعذر التحقق من بياناتك، تأكد من رقم الهاتف والإجابة';
@@ -11,9 +12,11 @@ export default async function handler(req, res) {
   }
 
   const { phone, questionAnswer, newPassword } = req.body ?? {};
-  const trimmedPhone = String(phone ?? '').trim();
+  // Normalize the same way register.js stores it, so lookup succeeds
+  // regardless of how the user formats the phone this time.
+  const normalizedPhone = toLocalFormat(String(phone ?? ''));
 
-  if (!trimmedPhone) {
+  if (!normalizedPhone) {
     return res.status(400).json({ error: 'phone is required' });
   }
   if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
@@ -23,7 +26,7 @@ export default async function handler(req, res) {
   const { data: profile } = await supabaseAdmin
     .from('profiles')
     .select('id, recovery_answer_hash')
-    .eq('phone', trimmedPhone)
+    .eq('phone', normalizedPhone)
     .maybeSingle();
 
   if (!profile?.recovery_answer_hash) {
