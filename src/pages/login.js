@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Lock } from 'lucide-react';
 import GoogleGlyph from '../components/UI/GoogleGlyph';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { supabaseClient } from '../lib/supabaseClient';
 import { dashboardPathForRole, useSession } from '../utils/useSession';
 import { defaultLocale, getDirection, getStoredLocale, translate } from '../utils/i18n';
@@ -178,9 +179,9 @@ export default function UnifiedLogin() {
             type="submit"
             disabled={submitting}
             {...buttonTap}
-            className="btn-cinematic-gold w-full px-4 py-3.5 disabled:opacity-50"
+            className="btn-cinematic-gold flex w-full items-center justify-center px-4 py-3.5 disabled:opacity-50"
           >
-            {t('authEmployee.submitCta')}
+            {submitting ? <LoadingSpinner inline showLabel={false} size={18} /> : t('authEmployee.submitCta')}
           </motion.button>
 
           <div className="flex items-center gap-3 text-xs text-white/50">

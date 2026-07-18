@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { ClipboardList, LayoutGrid, MessageCircle, ShoppingBag, Tag } from 'lucide-react';
 import AppShell from '../../components/Layout/AppShell';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import SafeImage from '../../components/UI/SafeImage';
 import AnnouncementSlider from '../../components/UI/AnnouncementSlider';
 import LazyVideo from '../../components/UI/LazyVideo';
@@ -108,7 +109,7 @@ export default function CustomerDashboard() {
   if (loading || !profile) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-mesh-hero text-white">
-        {t('common.loading')}
+        <LoadingSpinner locale={locale} />
       </main>
     );
   }

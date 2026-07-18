@@ -138,6 +138,7 @@ module.exports = {
           '100%': { transform: 'translateY(-46px) scale(1)', opacity: '0' },
         },
       },
+
       animation: {
         float: 'float 6s ease-in-out infinite',
         'fade-in': 'fade-in 0.5s ease-out both',
@@ -151,6 +152,9 @@ module.exports = {
         'wave-drift-fast': 'wave-drift 11s linear infinite',
         'particle-fall': 'particle-fall 12s linear infinite',
         'spark-rise': 'spark-rise 1.8s ease-out infinite',
+        'spin-slow': 'spin 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite',
+        'spin-medium-reverse': 'spin 1.7s cubic-bezier(0.45, 0, 0.55, 1) infinite reverse',
+        'spin-fast': 'spin 1s cubic-bezier(0.34, 1.56, 0.64, 1) infinite',
       },
     },
   },

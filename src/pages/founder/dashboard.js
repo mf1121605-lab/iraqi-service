@@ -3,6 +3,7 @@ import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { LayoutDashboard } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import StatusBadge from '../../components/UI/StatusBadge';
 import AnnouncementSlider from '../../components/UI/AnnouncementSlider';
 import EditCardModal from '../../components/UI/EditCardModal';
@@ -101,7 +102,11 @@ export default function FounderDashboard() {
   }
 
   if (loading || !profile) {
-    return <main className="flex min-h-screen items-center justify-center text-white">{t('common.loading')}</main>;
+    return (
+      <main className="flex min-h-screen items-center justify-center text-white">
+        <LoadingSpinner locale={locale} />
+      </main>
+    );
   }
 
   return (
