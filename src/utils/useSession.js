@@ -18,7 +18,17 @@ export function useSession() {
       setProfile(null);
       return;
     }
-    const { data } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
+    // Explicit column list (not '*') — recovery_answer_hash is
+    // intentionally excluded from the authenticated role's SELECT grant
+    // (see 20260718140000_restrict_recovery_hash_select.sql), so a
+    // wildcard select would fail with "permission denied for column".
+    const { data } = await supabaseClient
+      .from('profiles')
+      .select(
+        'id, role, admin_level, account_status, phone, phone_verified, email, given_name, father_name, grandfather_name, family_name, avatar_key, specialization, active_services, created_at, updated_at, pinned_room_ids, username, recovery_question_id'
+      )
+      .eq('id', userId)
+      .single();
     if (!data && attempt < 5) {
       // A profile row is created by a DB trigger right after signup (e.g. a
       // fresh Google OAuth account); it can lag a moment behind the redirect
