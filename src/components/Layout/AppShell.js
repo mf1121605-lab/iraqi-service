@@ -8,9 +8,11 @@ import {
   setStoredLocale,
   translate,
 } from '../../utils/i18n';
+import { supabaseClient } from '../../lib/supabaseClient';
 import NotificationBell from '../UI/NotificationBell';
 
 const THEME_KEY = 'iraqi-services:theme';
+const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
 
 function getStoredTheme() {
   if (typeof window === 'undefined') return 'light';
@@ -40,6 +42,28 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
   useEffect(() => {
     setMobileOpen(false);
   }, [navItems]);
+
+  // Powers the founder's online/offline presence badge — a light
+  // periodic ping while this authenticated page is open, not a full
+  // real-time channel.
+  useEffect(() => {
+    if (!userId) return undefined;
+
+    async function ping() {
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
+      if (!session?.access_token) return;
+      fetch('/api/auth/heartbeat', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      }).catch(() => {});
+    }
+
+    ping();
+    const interval = setInterval(ping, HEARTBEAT_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [userId]);
 
   function toggleLocale() {
     const next = LOCALE_META.find((meta) => meta.code !== locale)?.code ?? defaultLocale;

@@ -1,7 +1,7 @@
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { requireFounderOrCoAdmin } from '../../../lib/founderAuth';
 
-const PROFILE_FIELDS = 'id, given_name, family_name, username, phone, account_status, admin_level, created_at';
+const PROFILE_FIELDS = 'id, given_name, family_name, username, phone, account_status, admin_level, created_at, last_active_at';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

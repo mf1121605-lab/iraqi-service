@@ -1,15 +1,56 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Database, KeyRound } from 'lucide-react';
+import { ClipboardList, Database, KeyRound, X } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
 import { translate } from '../../utils/i18n';
 
+const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
+const REFRESH_INTERVAL_MS = 60 * 1000;
+
 function formatDate(value, locale) {
   if (!value) return '—';
   return new Date(value).toLocaleString(locale === 'ar' ? 'ar-IQ' : 'ckb');
+}
+
+function isOnline(lastActiveAt) {
+  if (!lastActiveAt) return false;
+  return Date.now() - new Date(lastActiveAt).getTime() < ONLINE_THRESHOLD_MS;
+}
+
+function PresenceBadge({ lastActiveAt, t, locale }) {
+  const online = isOnline(lastActiveAt);
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-bold">
+      <span className={`h-2 w-2 rounded-full ${online ? 'bg-green-500' : 'bg-black/30 dark:bg-white/30'}`} aria-hidden="true" />
+      {online ? (
+        t('founderUsersData.onlineNow')
+      ) : lastActiveAt ? (
+        <span className="text-ink-muted dark:text-ink-dark-muted">
+          {t('founderUsersData.lastSeenPrefix')} {formatDate(lastActiveAt, locale)}
+        </span>
+      ) : (
+        <span className="text-ink-muted dark:text-ink-dark-muted">{t('founderUsersData.neverSeen')}</span>
+      )}
+    </span>
+  );
+}
+
+async function callFounderApi(path, body) {
+  const {
+    data: { session },
+  } = await supabaseClient.auth.getSession();
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session?.access_token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  return { ok: response.ok, payload: await response.json().catch(() => ({})) };
 }
 
 export default function FounderUsersData() {
@@ -24,32 +65,40 @@ export default function FounderUsersData() {
   const [submitting, setSubmitting] = useState(false);
   const [data, setData] = useState(null);
   const [activeTab, setActiveTab] = useState('customers');
+  const [activityUser, setActivityUser] = useState(null);
+  const [activityLogins, setActivityLogins] = useState(null);
+
+  const refreshData = useCallback(async () => {
+    const { ok, payload } = await callFounderApi('/api/founder/users-list', { passcode });
+    if (ok) setData(payload);
+  }, [passcode]);
+
+  useEffect(() => {
+    if (!unlocked) return undefined;
+    const interval = setInterval(refreshData, REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [unlocked, refreshData]);
 
   async function handlePasscodeSubmit(event) {
     event.preventDefault();
     setPasscodeError('');
     setSubmitting(true);
-
-    const {
-      data: { session },
-    } = await supabaseClient.auth.getSession();
-    const response = await fetch('/api/founder/users-list', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.access_token}`,
-      },
-      body: JSON.stringify({ passcode }),
-    });
-    const payload = await response.json().catch(() => ({}));
+    const { ok, payload } = await callFounderApi('/api/founder/users-list', { passcode });
     setSubmitting(false);
 
-    if (!response.ok) {
+    if (!ok) {
       setPasscodeError(payload.error === 'invalid_passcode' ? t('founderUsersData.errorPasscodeWrong') : t('founderUsersData.errorGeneric'));
       return;
     }
     setData(payload);
     setUnlocked(true);
+  }
+
+  async function openActivityLog(user) {
+    setActivityUser(user);
+    setActivityLogins(null);
+    const { ok, payload } = await callFounderApi('/api/founder/user-activity', { userId: user.id });
+    setActivityLogins(ok ? payload.logins : []);
   }
 
   if (loading || !profile) {
@@ -91,11 +140,7 @@ export default function FounderUsersData() {
               autoFocus
             />
             {passcodeError && <p className="mt-2 text-sm font-bold text-red-300">{passcodeError}</p>}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="btn-cinematic-gold mt-4 w-full px-4 py-3 disabled:opacity-50"
-            >
+            <button type="submit" disabled={submitting} className="btn-cinematic-gold mt-4 w-full px-4 py-3 disabled:opacity-50">
               {t('founderUsersData.passcodeCta')}
             </button>
           </motion.form>
@@ -139,6 +184,8 @@ export default function FounderUsersData() {
                       <th className="p-3 text-start font-display font-bold">{t('founderUsersData.colUsername')}</th>
                       <th className="p-3 text-start font-display font-bold">{t('founderUsersData.colPhone')}</th>
                       <th className="p-3 text-start font-display font-bold">{t('founderUsersData.colCreatedAt')}</th>
+                      <th className="p-3 text-start font-display font-bold">{t('founderUsersData.colPresence')}</th>
+                      <th className="p-3 text-start font-display font-bold" />
                     </tr>
                   </thead>
                   <tbody>
@@ -152,6 +199,19 @@ export default function FounderUsersData() {
                           {customer.phone || '—'}
                         </td>
                         <td className="p-3 text-xs text-ink-muted dark:text-ink-dark-muted">{formatDate(customer.created_at, locale)}</td>
+                        <td className="p-3">
+                          <PresenceBadge lastActiveAt={customer.last_active_at} t={t} locale={locale} />
+                        </td>
+                        <td className="p-3">
+                          <button
+                            type="button"
+                            onClick={() => openActivityLog(customer)}
+                            className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold text-brand-700 transition-colors hover:bg-brand-500/10 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:text-brand-300"
+                          >
+                            <ClipboardList className="h-3.5 w-3.5" aria-hidden="true" />
+                            {t('founderUsersData.activityLogCta')}
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -169,7 +229,9 @@ export default function FounderUsersData() {
                     <th className="p-3 text-start font-display font-bold">{t('founderUsersData.colPhone')}</th>
                     <th className="p-3 text-start font-display font-bold">{t('founderUsersData.colCreatedAt')}</th>
                     <th className="p-3 text-start font-display font-bold">{t('founderUsersData.colLastLogin')}</th>
+                    <th className="p-3 text-start font-display font-bold">{t('founderUsersData.colPresence')}</th>
                     <th className="p-3 text-start font-display font-bold">{t('founderUsersData.colStatus')}</th>
+                    <th className="p-3 text-start font-display font-bold" />
                   </tr>
                 </thead>
                 <tbody>
@@ -184,6 +246,9 @@ export default function FounderUsersData() {
                         {employee.last_login_at ? formatDate(employee.last_login_at, locale) : t('founderUsersData.neverLoggedIn')}
                       </td>
                       <td className="p-3">
+                        <PresenceBadge lastActiveAt={employee.last_active_at} t={t} locale={locale} />
+                      </td>
+                      <td className="p-3">
                         <span
                           className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                             employee.account_status === 'active'
@@ -194,6 +259,16 @@ export default function FounderUsersData() {
                           {employee.account_status === 'active' ? t('founderUsersData.statusActive') : t('founderUsersData.statusInactive')}
                         </span>
                       </td>
+                      <td className="p-3">
+                        <button
+                          type="button"
+                          onClick={() => openActivityLog(employee)}
+                          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold text-brand-700 transition-colors hover:bg-brand-500/10 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:text-brand-300"
+                        >
+                          <ClipboardList className="h-3.5 w-3.5" aria-hidden="true" />
+                          {t('founderUsersData.activityLogCta')}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -201,6 +276,55 @@ export default function FounderUsersData() {
             </div>
           )}
         </>
+      )}
+
+      {activityUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActivityUser(null)} aria-hidden="true" />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+            className="relative z-10 flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-[1.5rem] border border-gold-400/20 bg-surface-dark text-white shadow-[0_0_60px_-15px_rgba(230,171,44,0.4)]"
+          >
+            <div className="flex items-center justify-between border-b border-white/10 p-5">
+              <div>
+                <h3 className="font-display text-lg font-bold">{t('founderUsersData.activityLogTitle')}</h3>
+                <p className="mt-0.5 text-sm font-semibold text-white/60">
+                  {[activityUser.given_name, activityUser.family_name].filter(Boolean).join(' ')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActivityUser(null)}
+                aria-label={t('common.close')}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-gold-300"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-5">
+              {activityLogins === null ? (
+                <p className="text-sm font-semibold text-white/70">{t('common.loading')}</p>
+              ) : activityLogins.length === 0 ? (
+                <p className="text-sm font-semibold text-white/70">{t('founderUsersData.activityLogEmpty')}</p>
+              ) : (
+                <ul className="space-y-3">
+                  {activityLogins.map((login) => (
+                    <li key={login.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                      <p className="text-sm font-bold">
+                        {t('founderUsersData.activityLoginAt')}: {formatDate(login.logged_at, locale)}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-white/60" dir="ltr">
+                        {t('founderUsersData.activityIp')}: {login.ip_address || '—'}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </motion.div>
+        </div>
       )}
     </AppShell>
   );
