@@ -7,7 +7,7 @@ import GoogleGlyph from '../../components/UI/GoogleGlyph';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { dashboardPathForRole, useSession } from '../../utils/useSession';
 import { defaultLocale, getDirection, getStoredLocale, translate } from '../../utils/i18n';
-import { isValidIraqiPhone, phoneToSyntheticEmail, toE164, toLocalFormat } from '../../utils/phoneHelper';
+import { isValidIraqiPhone, toE164 } from '../../utils/phoneHelper';
 import { MotionLink, buttonTap } from '../../components/UI/Motion';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -67,39 +67,43 @@ export default function CustomerAuth() {
     }
 
     setSubmitting(true);
-    const e164Phone = toE164(phone);
-    const { data, error: signUpError } = await supabaseClient.auth.signUp({
-      email: phoneToSyntheticEmail(e164Phone),
-      password,
-      // profiles.phone has a check constraint requiring the local
-      // 07XXXXXXXXX format (profiles_phone_format) — the trigger that
-      // creates the profile row reads phone straight from this metadata
-      // with no reformatting, so it has to already be local, not E.164.
-      options: { data: { phone: toLocalFormat(phone) } },
-    });
-    if (signUpError) {
+
+    let response;
+    try {
+      response = await fetch('/api/customer/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, password, fullName: fullName.trim(), surname: surname.trim() }),
+      });
+    } catch (fetchError) {
       setSubmitting(false);
-      // Supabase's SDK occasionally surfaces a raw, unparsed error payload
-      // (e.g. literally "{}") instead of a real human-readable message —
-      // only show .message when it actually looks like one; the raw
-      // object still goes to the console for real debugging.
-      console.error('signUp failed', signUpError);
-      const message = signUpError.message?.trim();
-      const looksLikeRawPayload = !message || message.startsWith('{') || message.startsWith('[');
-      setError(looksLikeRawPayload ? t('common.errorGeneric') : message);
+      console.error('register request failed', fetchError);
+      setError(t('common.errorGeneric'));
       return;
     }
 
-    // The signup trigger only ever inserts id/phone/email/role — name
-    // fields are filled in with a direct follow-up update, same two-step
-    // pattern founder/employees.js already uses for staff creation.
-    if (data.user) {
-      await supabaseClient
-        .from('profiles')
-        .update({ given_name: fullName.trim(), family_name: surname.trim() })
-        .eq('id', data.user.id);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setSubmitting(false);
+      console.error('register failed', payload);
+      setError(t('common.errorGeneric'));
+      return;
     }
+
+    // The account is created server-side via the privileged Admin API
+    // (phone as Supabase's native identity, no OTP) — sign in client-side
+    // right after to establish the actual session, same as any other
+    // password login.
+    const { error: signInError } = await supabaseClient.auth.signInWithPassword({
+      phone: toE164(phone),
+      password,
+    });
     setSubmitting(false);
+    if (signInError) {
+      console.error('post-register sign-in failed', signInError);
+      router.replace('/login');
+      return;
+    }
     router.replace('/customer/onboarding');
   }
 

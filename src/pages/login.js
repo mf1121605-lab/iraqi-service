@@ -7,7 +7,7 @@ import GoogleGlyph from '../components/UI/GoogleGlyph';
 import { supabaseClient } from '../lib/supabaseClient';
 import { dashboardPathForRole, useSession } from '../utils/useSession';
 import { defaultLocale, getDirection, getStoredLocale, translate } from '../utils/i18n';
-import { isValidIraqiPhone, phoneToSyntheticEmail, toE164 } from '../utils/phoneHelper';
+import { isValidIraqiPhone, toE164 } from '../utils/phoneHelper';
 import { MotionLink, buttonTap } from '../components/UI/Motion';
 
 // A single "لديه حساب" entry point for every role — phone-or-email +
@@ -65,26 +65,16 @@ export default function UnifiedLogin() {
     setSubmitting(true);
 
     if (isValidIraqiPhone(identifier)) {
-      const e164 = toE164(identifier);
-      // Customers now authenticate via a synthetic email keyed off their
-      // phone number (see phoneToSyntheticEmail) — Supabase's hosted
-      // Phone provider requires a configured SMS provider just to allow
-      // signups at all, which this sidesteps entirely. Employees created
-      // with a real phone (founder/employees.js, via the privileged Admin
-      // API) still have a native auth.users.phone, so fall back to that
-      // if the synthetic-email attempt fails, rather than assuming which
-      // kind of account this phone number belongs to.
-      const { error: syntheticError } = await supabaseClient.auth.signInWithPassword({
-        email: phoneToSyntheticEmail(e164),
+      // Customers and employees alike are created with phone as
+      // Supabase's native auth.users identity (via the privileged Admin
+      // API — see api/customer/register.js and api/founder/create-employee.js),
+      // so a single native phone sign-in covers both.
+      const { error: phoneError } = await supabaseClient.auth.signInWithPassword({
+        phone: toE164(identifier),
         password,
       });
-      if (!syntheticError) {
-        setSubmitting(false);
-        return;
-      }
-      const { error: nativePhoneError } = await supabaseClient.auth.signInWithPassword({ phone: e164, password });
       setSubmitting(false);
-      if (nativePhoneError) {
+      if (phoneError) {
         setError(t('authEmployee.errorInvalid'));
       }
       return;
