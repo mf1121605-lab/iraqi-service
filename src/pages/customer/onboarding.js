@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Sparkles } from 'lucide-react';
 import AvatarPicker from '../../components/UI/AvatarPicker';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { translate } from '../../utils/i18n';
@@ -33,7 +34,11 @@ export default function CustomerOnboarding() {
   }
 
   if (loading || !profile || profile.avatar_key) {
-    return <main className="flex min-h-screen items-center justify-center text-white">{t('common.loading')}</main>;
+    return (
+      <main className="flex min-h-screen items-center justify-center text-white">
+        <LoadingSpinner locale={locale} />
+      </main>
+    );
   }
 
   return (

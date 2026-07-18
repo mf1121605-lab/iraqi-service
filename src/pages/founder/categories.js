@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Film, Pencil, Plus, Tags, Trash2 } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import EditCardModal from '../../components/UI/EditCardModal';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
@@ -90,7 +91,11 @@ export default function FounderCategories() {
   }
 
   if (loading || !profile) {
-    return <main className="flex min-h-screen items-center justify-center text-white">{t('common.loading')}</main>;
+    return (
+      <main className="flex min-h-screen items-center justify-center text-white">
+        <LoadingSpinner locale={locale} />
+      </main>
+    );
   }
 
   return (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BarChart3, ClipboardList, Timer, UserCog, Users } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
@@ -25,7 +26,7 @@ export default function FounderStats() {
   if (loading || !profile) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
-        {t('common.loading')}
+        <LoadingSpinner locale={locale} />
       </main>
     );
   }
@@ -38,7 +39,7 @@ export default function FounderStats() {
       </h2>
 
       {!stats ? (
-        <p className="mt-4 text-sm">{t('common.loading')}</p>
+        <LoadingSpinner inline locale={locale} className="mt-4" />
       ) : (
         <div className="mt-6 animate-fade-in space-y-8">
           <div className="grid gap-4 sm:grid-cols-3">

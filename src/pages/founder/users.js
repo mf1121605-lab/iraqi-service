@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Crown, ShieldOff, UserCheck, UserPlus, UserX } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
@@ -78,7 +79,7 @@ export default function FounderUsers() {
   if (loading || !profile) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
-        {t('common.loading')}
+        <LoadingSpinner locale={locale} />
       </main>
     );
   }
@@ -91,7 +92,7 @@ export default function FounderUsers() {
       </h2>
 
       {employees === null ? (
-        <p className="mt-4 text-sm">{t('common.loading')}</p>
+        <LoadingSpinner inline locale={locale} className="mt-4" />
       ) : (
         <ul className="mt-4 space-y-2">
           {employees.map((employee) => (

@@ -10,6 +10,7 @@ import {
   UserRoundCog,
 } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import StatusBadge from '../../components/UI/StatusBadge';
 import AttachmentUploader from '../../components/Chat/AttachmentUploader';
 import MessageAttachment from '../../components/Chat/MessageAttachment';
@@ -130,7 +131,7 @@ export default function EmployeeDashboard() {
   if (loading || !profile) {
     return (
       <main className="flex min-h-screen items-center justify-center text-white">
-        {t('common.loading')}
+        <LoadingSpinner locale={locale} />
       </main>
     );
   }
@@ -209,7 +210,7 @@ export default function EmployeeDashboard() {
               {t('employeeDesk.queueTitle')}
             </h3>
             {queue === null ? (
-              <p className="text-sm text-white/70">{t('common.loading')}</p>
+              <LoadingSpinner inline locale={locale} />
             ) : queue.length === 0 ? (
               <p className="text-sm text-white/60">{t('employeeDesk.queueEmpty')}</p>
             ) : (

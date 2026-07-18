@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { CircleCheck as CheckCircle2, LayoutGrid, RotateCcw, Circle as XCircle } from 'lucide-react';
 import { useLocale } from '../../../../components/Layout/AppShell';
+import LoadingSpinner from '../../../../components/LoadingSpinner';
 import { useRequireRole } from '../../../../utils/useSession';
 import { translate } from '../../../../utils/i18n';
 
@@ -15,7 +16,7 @@ export default function PaymentResult() {
   if (loading || !profile) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
-        {t('common.loading')}
+        <LoadingSpinner locale={locale} />
       </main>
     );
   }

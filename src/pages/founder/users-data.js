@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ClipboardList, Database, KeyRound, X } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
@@ -102,7 +103,11 @@ export default function FounderUsersData() {
   }
 
   if (loading || !profile) {
-    return <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">{t('common.loading')}</main>;
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
+        <LoadingSpinner locale={locale} />
+      </main>
+    );
   }
 
   return (
@@ -305,7 +310,7 @@ export default function FounderUsersData() {
             </div>
             <div className="overflow-y-auto p-5">
               {activityLogins === null ? (
-                <p className="text-sm font-semibold text-white/70">{t('common.loading')}</p>
+                <LoadingSpinner inline locale={locale} />
               ) : activityLogins.length === 0 ? (
                 <p className="text-sm font-semibold text-white/70">{t('founderUsersData.activityLogEmpty')}</p>
               ) : (

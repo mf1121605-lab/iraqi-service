@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ScrollText } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
@@ -19,7 +20,11 @@ export default function FounderAuditLog() {
   }, [profile]);
 
   if (loading || !profile) {
-    return <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">{t('common.loading')}</main>;
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
+        <LoadingSpinner locale={locale} />
+      </main>
+    );
   }
 
   return (
@@ -30,7 +35,7 @@ export default function FounderAuditLog() {
       </h2>
 
       {entries === null ? (
-        <p className="mt-4 text-sm">{t('common.loading')}</p>
+        <LoadingSpinner inline locale={locale} className="mt-4" />
       ) : entries.length === 0 ? (
         <p className="mt-4 text-sm text-ink-muted dark:text-ink-dark-muted">{t('founderAuditLog.empty')}</p>
       ) : (

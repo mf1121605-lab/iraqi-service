@@ -5,6 +5,7 @@ import { supabaseClient } from '../../lib/supabaseClient';
 import { translate } from '../../utils/i18n';
 import { safeSlug } from '../../utils/safeStorageName';
 import { compressVideo } from '../../utils/compressVideo';
+import LoadingSpinner from '../LoadingSpinner';
 import CanvaDesignLink from './CanvaDesignLink';
 
 const DEFAULT_MAX_VIDEO_SECONDS = 5;
@@ -211,7 +212,7 @@ export default function MediaStudioModal({ open, onClose, onSelect, locale, maxV
 
         <div className="flex-1 overflow-y-auto px-5 pb-5">
           {(() => {
-            if (items === null) return <p className="text-sm text-white/50">{t('common.loading')}</p>;
+            if (items === null) return <LoadingSpinner inline locale={locale} />;
             const visibleItems = filterType ? items.filter((item) => item.type === filterType) : items;
             if (visibleItems.length === 0) return <p className="text-sm text-white/50">{t('mediaStudio.empty')}</p>;
             return (

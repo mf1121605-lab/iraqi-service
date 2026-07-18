@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { ArrowRight, Eye, EyeOff, Info, Pencil, Pin, Send, Volume2, VolumeX } from 'lucide-react';
 import { useLocale } from '../../components/Layout/AppShell';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import AttachmentUploader from '../../components/Chat/AttachmentUploader';
 import MessageAttachment from '../../components/Chat/MessageAttachment';
 import Avatar from '../../components/Chat/Avatar';
@@ -301,7 +302,7 @@ export default function ChatRoom() {
   if (loading || !profile || !room) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
-        {t('common.loading')}
+        <LoadingSpinner locale={locale} />
       </main>
     );
   }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Megaphone, Settings } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import ImageUploader from '../../components/UI/ImageUploader';
 import CanvaDesignLink from '../../components/UI/CanvaDesignLink';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -94,7 +95,11 @@ export default function FounderSettings() {
   }
 
   if (loading || !profile) {
-    return <main className="flex min-h-screen items-center justify-center text-white">{t('common.loading')}</main>;
+    return (
+      <main className="flex min-h-screen items-center justify-center text-white">
+        <LoadingSpinner locale={locale} />
+      </main>
+    );
   }
 
   return (

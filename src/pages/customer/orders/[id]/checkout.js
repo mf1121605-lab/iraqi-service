@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { CreditCard, Landmark, Loader as Loader2, Receipt, Smartphone } from 'lucide-react';
 import { useLocale } from '../../../../components/Layout/AppShell';
+import LoadingSpinner from '../../../../components/LoadingSpinner';
 import { supabaseClient } from '../../../../lib/supabaseClient';
 import { useRequireRole } from '../../../../utils/useSession';
 import { translate } from '../../../../utils/i18n';
@@ -92,7 +93,7 @@ export default function Checkout() {
   if (loading || !profile || !order) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
-        {t('common.loading')}
+        <LoadingSpinner locale={locale} />
       </main>
     );
   }

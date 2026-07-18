@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { CircleCheck as CheckCircle2, File as FileEdit } from 'lucide-react';
 import AppShell, { useLocale } from '../../../components/Layout/AppShell';
+import LoadingSpinner from '../../../components/LoadingSpinner';
 import { supabaseClient } from '../../../lib/supabaseClient';
 import { useRequireRole } from '../../../utils/useSession';
 import { translate } from '../../../utils/i18n';
@@ -44,7 +45,7 @@ export default function NewRequest() {
   if (loading || !profile) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
-        {t('common.loading')}
+        <LoadingSpinner locale={locale} />
       </main>
     );
   }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MessageCircle, MessagesSquare, Pin } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { translate } from '../../utils/i18n';
@@ -54,7 +55,7 @@ export default function ChatRooms() {
   if (loading || !profile) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
-        {t('common.loading')}
+        <LoadingSpinner locale={locale} />
       </main>
     );
   }
@@ -92,7 +93,7 @@ export default function ChatRooms() {
         {t('chat.roomsTitle')}
       </h2>
       {rooms === null ? (
-        <p className="mt-4 text-sm">{t('common.loading')}</p>
+        <LoadingSpinner inline locale={locale} className="mt-4" />
       ) : (
         <>
           {pinnedRooms.length > 0 && (

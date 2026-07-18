@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ClipboardList, Inbox, LayoutGrid } from 'lucide-react';
 import AppShell, { useLocale } from '../../../components/Layout/AppShell';
+import LoadingSpinner from '../../../components/LoadingSpinner';
 import StatusBadge from '../../../components/UI/StatusBadge';
 import { supabaseClient } from '../../../lib/supabaseClient';
 import { useRequireRole } from '../../../utils/useSession';
@@ -24,7 +25,7 @@ export default function CustomerRequests() {
   if (loading || !profile) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
-        {t('common.loading')}
+        <LoadingSpinner locale={locale} />
       </main>
     );
   }
@@ -41,7 +42,7 @@ export default function CustomerRequests() {
         {t('customerHub.myRequestsCta')}
       </h2>
       {requests === null ? (
-        <p className="mt-4 text-sm">{t('common.loading')}</p>
+        <LoadingSpinner inline locale={locale} className="mt-4" />
       ) : requests.length === 0 ? (
         <div className="mt-6 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-black/10 p-10 text-center dark:border-white/10">
           <Inbox className="h-10 w-10 text-ink-muted opacity-50 dark:text-ink-dark-muted" aria-hidden="true" />
