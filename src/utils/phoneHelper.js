@@ -63,8 +63,13 @@ export function getCarrier(raw) {
 // profiles.phone via user_metadata, same as before.
 export function phoneToSyntheticEmail(e164Phone) {
   const digits = String(e164Phone ?? '').replace(/^\+/, '');
-  // A ".local" TLD is reserved for mDNS (RFC 6762) and some server-side
-  // email validators reject it as malformed — use an ordinary-looking
-  // domain instead, since nothing ever needs to actually deliver here.
-  return `${digits}@phone.iraqiservices.com`;
+  // Supabase Cloud's hosted signup endpoint rejects email domains beyond
+  // its open-source format regex — confirmed live against both a ".local"
+  // TLD and a made-up-but-unregistered ".com" domain, both "is invalid".
+  // Community reports of the same failure on other unregistered domains
+  // (e.g. example.com) point to an undocumented deliverability/registration
+  // check on Supabase's hosted layer. Using the app's own real, resolvable
+  // domain instead, since that's an actual registered/DNS-backed domain —
+  // nothing ever needs to receive mail here regardless.
+  return `${digits}@iraqi-service.vercel.app`;
 }
