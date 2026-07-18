@@ -45,7 +45,7 @@ export default function Home({ siteSettings }) {
   const heroSubtitle = siteText(siteSettings, activeLocale, 'hero_subtitle') || t('gateway.welcomeSubtitle');
   const footerLegal = siteText(siteSettings, activeLocale, 'footer_legal') || t('common.footerDisclaimer');
   const hasContactRow =
-    siteSettings?.footer_phone || siteSettings?.footer_email || siteSettings?.footer_facebook_url || siteSettings?.footer_instagram_url || siteSettings?.footer_twitter_url;
+    siteSettings?.footer_phone || siteSettings?.footer_email || siteSettings?.footer_instagram_url || siteSettings?.footer_twitter_url;
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-6">
@@ -140,12 +140,6 @@ export default function Home({ siteSettings }) {
               <a href={`mailto:${siteSettings.footer_email}`} className="flex items-center gap-1 hover:text-gold-300">
                 <Mail className="h-3.5 w-3.5" aria-hidden="true" />
                 <span dir="ltr">{siteSettings.footer_email}</span>
-              </a>
-            )}
-            {siteSettings.footer_facebook_url && (
-              <a href={siteSettings.footer_facebook_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-gold-300">
-                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                Facebook
               </a>
             )}
             {siteSettings.footer_instagram_url && (

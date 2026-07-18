@@ -19,7 +19,6 @@ const FIELD_KEYS = [
   'footer_email',
   'footer_legal_ar',
   'footer_legal_ckb',
-  'footer_facebook_url',
   'footer_instagram_url',
   'footer_twitter_url',
   'announcement_enabled',
@@ -180,10 +179,6 @@ export default function FounderSettings() {
             <div>
               <label className="mb-1 block text-sm text-white/70">{t('founderSettings.footerEmailLabel')}</label>
               <input value={fields.footer_email} onChange={(e) => setField('footer_email', e.target.value)} dir="ltr" className="input-cinematic text-sm" />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-white/70">{t('founderSettings.footerFacebookLabel')}</label>
-              <input value={fields.footer_facebook_url} onChange={(e) => setField('footer_facebook_url', e.target.value)} dir="ltr" className="input-cinematic text-sm" />
             </div>
             <div>
               <label className="mb-1 block text-sm text-white/70">{t('founderSettings.footerInstagramLabel')}</label>
