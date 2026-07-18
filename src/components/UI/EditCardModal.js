@@ -6,8 +6,7 @@ import { translate } from '../../utils/i18n';
 
 // Reusable pencil-icon-triggered edit surface: a bilingual title plus two
 // independent Media Studio pickers — an image and a video can both be set
-// at once (the image doubles as the slow-connection fallback shown when
-// LazyVideo/useSlowConnection decide not to play the video). Shared by
+// at once (the image is used whenever no video is set at all). Shared by
 // founder/categories.js, founder/banners.js, and founder/dashboard.js so
 // the "click pencil → modal with title + media pickers" pattern is the
 // same everywhere it appears, rather than each admin page rebuilding it.

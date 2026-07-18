@@ -14,7 +14,6 @@ import { useRequireRole } from '../../utils/useSession';
 import { useLocale } from '../../components/Layout/AppShell';
 import { translate } from '../../utils/i18n';
 import { categoryLabel, useCategories } from '../../utils/useCategories';
-import { useSlowConnection } from '../../utils/useSlowConnection';
 
 // WebGL needs a browser, so the 3D badge is client-only.
 const Icon3D = dynamic(() => import('../../components/UI/Icon3D'), { ssr: false });
@@ -40,7 +39,6 @@ export default function CustomerDashboard() {
   const [products, setProducts] = useState([]);
   const [orderMessage, setOrderMessage] = useState('');
   const categories = useCategories();
-  const isSlowConnection = useSlowConnection();
 
   useEffect(() => {
     if (!profile) return undefined;
@@ -135,10 +133,12 @@ export default function CustomerDashboard() {
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {(categories ?? []).map((category) => {
             const visual = CATEGORY_3D[category.key] ?? CATEGORY_3D.general;
-            // On a detected slow/data-saver connection, skip the video
-            // entirely rather than let it stall — the medallion+icon
-            // fallback below already exists for categories with no media.
-            const showVideo = Boolean(category.icon_video_url) && !isSlowConnection;
+            // Every video uploaded through the Media Studio is now
+            // auto-compressed to well under 1MB (see compressVideo.js), so
+            // there's no longer a meaningful bandwidth cost to skip on a
+            // slow connection — showing it is strictly better than a
+            // generic icon fallback the founder didn't intend.
+            const showVideo = Boolean(category.icon_video_url);
             const showImage = !showVideo && Boolean(category.icon_path);
             const hasMedia = showVideo || showImage;
             return (
