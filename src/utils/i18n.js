@@ -121,8 +121,9 @@ const dictionaries = {
       goToSlide: 'الانتقال إلى الشريحة',
       tutorCta: 'المدرس الخصوصي الذكي',
       toolsTitle: 'الأدوات المهمة',
+      toolsEmpty: 'لا توجد أدوات مضافة حاليًا',
       communityTitle: 'مجتمع المحادثات الهادفة',
-      communityEmpty: 'لا توجد محادثات مجتمعية متاحة حاليًا',
+      communityCardSubtitle: 'شارك بأفكارك وتواصل مع مجتمع المنصة في غرف نقاش متنوعة',
       offersTitle: 'العروض والمتاجر',
     },
     aiTutor: {
@@ -574,8 +575,9 @@ const dictionaries = {
       goToSlide: 'بچۆ بۆ سلایدی',
       tutorCta: 'مامۆستای تایبەتی زیرەک',
       toolsTitle: 'ئامرازە گرنگەکان',
+      toolsEmpty: 'لە ئێستادا هیچ ئامرازێک زیاد نەکراوە',
       communityTitle: 'کۆمەڵگای گفتوگۆی بەسوود',
-      communityEmpty: 'لە ئێستادا هیچ گفتوگۆیەکی کۆمەڵایەتی بەردەست نییە',
+      communityCardSubtitle: 'بیرۆکەکانت هاوبەش بکە و پەیوەندی بکە لەگەڵ کۆمەڵگای پلاتفۆرمەکە لە ژوورە گفتوگۆ جیاوازەکاندا',
       offersTitle: 'ئۆفەر و فرۆشگاکان',
     },
     aiTutor: {

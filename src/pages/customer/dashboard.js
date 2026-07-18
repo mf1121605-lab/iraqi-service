@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
-import { ClipboardList, GraduationCap, LayoutGrid, MessageCircle, MessagesSquare, ShoppingBag, Tag, Wrench } from 'lucide-react';
+import { ArrowLeft, ClipboardList, GraduationCap, LayoutGrid, MessageCircle, MessagesSquare, ShoppingBag, Tag, Wrench } from 'lucide-react';
 import AppShell from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import SafeImage from '../../components/UI/SafeImage';
@@ -107,7 +107,6 @@ export default function CustomerDashboard() {
 
   const [banners, setBanners] = useState([]);
   const [products, setProducts] = useState([]);
-  const [chatRooms, setChatRooms] = useState([]);
   const [orderMessage, setOrderMessage] = useState('');
   const categories = useCategories();
 
@@ -136,23 +135,13 @@ export default function CustomerDashboard() {
         .then(({ data }) => setProducts(data ?? []));
     }
 
-    function loadChatRooms() {
-      supabaseClient
-        .from('chat_rooms')
-        .select('id, slug, name_ar, name_ckb')
-        .eq('is_active', true)
-        .then(({ data }) => setChatRooms(data ?? []));
-    }
-
     loadBanners();
     loadProducts();
-    loadChatRooms();
 
     const channel = supabaseClient
       .channel('customer-hub-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, loadBanners)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, loadProducts)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_rooms' }, loadChatRooms)
       .subscribe();
 
     return () => supabaseClient.removeChannel(channel);
@@ -219,42 +208,47 @@ export default function CustomerDashboard() {
         <CategoryGrid categories={serviceCategories} locale={locale} />
       </section>
 
-      {/* 2. الأدوات المهمة */}
-      {toolCategories.length > 0 && (
-        <section className="mt-10">
-          <h3 className="section-title-cinematic font-display text-xl font-bold">
-            <Wrench className="h-5 w-5 text-gold-300" aria-hidden="true" />
-            {t('customerHub.toolsTitle')}
-          </h3>
+      {/* 2. الأدوات المهمة — header and container always render, even
+          with zero tool-tagged categories yet, so the section exists as
+          soon as the founder adds one instead of appearing/disappearing. */}
+      <section className="mt-10">
+        <h3 className="section-title-cinematic font-display text-xl font-bold">
+          <Wrench className="h-5 w-5 text-gold-300" aria-hidden="true" />
+          {t('customerHub.toolsTitle')}
+        </h3>
+        {toolCategories.length === 0 ? (
+          <p className="mt-4 text-sm text-white/60">{t('customerHub.toolsEmpty')}</p>
+        ) : (
           <CategoryGrid categories={toolCategories} locale={locale} />
-        </section>
-      )}
+        )}
+      </section>
 
-      {/* 3. مجتمع المحادثات الهادفة */}
+      {/* 3. مجتمع المحادثات الهادفة — a single standalone promo card, not
+          individual chat_rooms rows scattered across the grid; it links
+          out to the dedicated /chat rooms list. */}
       <section className="mt-10">
         <h3 className="section-title-cinematic font-display text-xl font-bold">
           <MessagesSquare className="h-5 w-5 text-gold-300" aria-hidden="true" />
           {t('customerHub.communityTitle')}
         </h3>
-        {chatRooms.length === 0 ? (
-          <p className="mt-4 text-sm text-white/60">{t('customerHub.communityEmpty')}</p>
-        ) : (
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {chatRooms.map((room) => (
-              <MotionLink
-                key={room.id}
-                href={`/chat/${room.slug}`}
-                {...cardLift}
-                className="glass-panel-dark group flex items-center gap-3 rounded-2xl p-6 font-semibold text-white shadow-soft transition-colors duration-300 hover:border-gold-400/30 hover:shadow-elevate"
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold-400/10 text-gold-300 ring-1 ring-inset ring-gold-400/25 transition-transform duration-300 group-hover:scale-110">
-                  <MessageCircle className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
-                </span>
-                <span className="min-w-0 flex-1 truncate">{locale === 'ar' ? room.name_ar : room.name_ckb}</span>
-              </MotionLink>
-            ))}
+        <MotionLink
+          href="/chat"
+          {...cardLift}
+          className="cinematic-card group relative mt-5 flex items-center gap-4 overflow-hidden p-6 text-white sm:p-8"
+        >
+          <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 animate-float rounded-full bg-gold-300/10 blur-3xl" />
+          <span className="icon-medallion relative h-16 w-16 shrink-0 sm:h-20 sm:w-20" style={{ '--medallion-glow': 'rgba(230,171,44,0.5)' }}>
+            <MessagesSquare className="h-8 w-8 sm:h-9 sm:w-9" strokeWidth={2} aria-hidden="true" />
+          </span>
+          <div className="relative min-w-0 flex-1">
+            <h4 className="font-display text-lg font-bold sm:text-xl">{t('customerHub.communityTitle')}</h4>
+            <p className="mt-1 text-sm text-white/70">{t('customerHub.communityCardSubtitle')}</p>
           </div>
-        )}
+          <ArrowLeft
+            className="relative h-5 w-5 shrink-0 text-gold-300 transition-transform duration-300 rtl:rotate-180 group-hover:-translate-x-1 rtl:group-hover:translate-x-1"
+            aria-hidden="true"
+          />
+        </MotionLink>
       </section>
 
       {/* 4. العروض والمتاجر */}
