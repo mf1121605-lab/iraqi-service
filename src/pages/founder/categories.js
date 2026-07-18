@@ -9,7 +9,7 @@ import { useFounderNav } from '../../utils/founderNav';
 import { categoryLabel, useCategories } from '../../utils/useCategories';
 import { translate } from '../../utils/i18n';
 
-const emptyForm = { key: '', labelAr: '', labelCkb: '' };
+const emptyForm = { key: '', labelAr: '', labelCkb: '', sectionType: 'services' };
 
 export default function FounderCategories() {
   const { profile, loading, signOut } = useRequireRole(['founder']);
@@ -22,10 +22,15 @@ export default function FounderCategories() {
 
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
+  const [sectionFilter, setSectionFilter] = useState('all');
   const [editingKey, setEditingKey] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState('');
+
+  const visibleCategories = (categories ?? []).filter(
+    (category) => sectionFilter === 'all' || category.section_type === sectionFilter
+  );
 
   async function handleAdd(event) {
     event.preventDefault();
@@ -35,6 +40,7 @@ export default function FounderCategories() {
       key: form.key.trim(),
       label_ar: form.labelAr,
       label_ckb: form.labelCkb,
+      section_type: form.sectionType,
       sort_order: (categories?.length ?? 0),
       created_by: profile.id,
     });
@@ -47,6 +53,10 @@ export default function FounderCategories() {
 
   async function toggleActive(category) {
     await supabaseClient.from('categories').update({ is_active: !category.is_active }).eq('key', category.key);
+  }
+
+  async function changeSection(category, sectionType) {
+    await supabaseClient.from('categories').update({ section_type: sectionType }).eq('key', category.key);
   }
 
   async function handleDelete(category) {
@@ -107,8 +117,23 @@ export default function FounderCategories() {
 
       {error && <p className="mt-3 animate-slide-down text-sm text-red-400">{error}</p>}
 
+      <div className="mt-4 flex flex-wrap gap-2">
+        {['all', 'services', 'tools'].map((section) => (
+          <button
+            key={section}
+            type="button"
+            onClick={() => setSectionFilter(section)}
+            className={`rounded-xl2 px-3 py-1.5 text-xs font-semibold transition-colors ${
+              sectionFilter === section ? 'bg-gold-400 text-brand-950' : 'bg-white/5 text-white/70 hover:bg-white/10'
+            }`}
+          >
+            {t(`founderCategories.section_${section}`)}
+          </button>
+        ))}
+      </div>
+
       <ul className="mt-4 space-y-2">
-        {(categories ?? []).map((category) => (
+        {visibleCategories.map((category) => (
           <li key={category.key} className="metal-panel flex flex-wrap items-center justify-between gap-2 p-4 text-white">
             <div className="flex items-center gap-3">
               {(category.icon_video_url || category.icon_path) && (
@@ -134,6 +159,19 @@ export default function FounderCategories() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <select
+                value={category.section_type}
+                onChange={(event) => changeSection(category, event.target.value)}
+                aria-label={t('founderCategories.sectionLabel')}
+                className="rounded-lg border border-white/10 bg-transparent px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-gold-400"
+              >
+                <option className="text-black" value="services">
+                  {t('founderCategories.section_services')}
+                </option>
+                <option className="text-black" value="tools">
+                  {t('founderCategories.section_tools')}
+                </option>
+              </select>
               <label className="flex items-center gap-1 text-xs text-white/80">
                 <input
                   type="checkbox"
@@ -164,7 +202,7 @@ export default function FounderCategories() {
         ))}
       </ul>
 
-      <form onSubmit={handleAdd} className="metal-panel mt-8 grid gap-3 p-6 sm:grid-cols-3">
+      <form onSubmit={handleAdd} className="metal-panel mt-8 grid gap-3 p-6 sm:grid-cols-2 lg:grid-cols-4">
         <input
           value={form.key}
           onChange={(event) => setForm({ ...form, key: event.target.value.trim() })}
@@ -187,7 +225,20 @@ export default function FounderCategories() {
           placeholder={t('founderCategories.labelCkbLabel')}
           className="input-cinematic text-sm"
         />
-        <button type="submit" className="btn-cinematic-gold flex items-center justify-center gap-1.5 px-4 py-2 text-sm sm:col-span-3">
+        <select
+          value={form.sectionType}
+          onChange={(event) => setForm({ ...form, sectionType: event.target.value })}
+          aria-label={t('founderCategories.sectionLabel')}
+          className="input-cinematic text-sm"
+        >
+          <option className="text-black" value="services">
+            {t('founderCategories.section_services')}
+          </option>
+          <option className="text-black" value="tools">
+            {t('founderCategories.section_tools')}
+          </option>
+        </select>
+        <button type="submit" className="btn-cinematic-gold flex items-center justify-center gap-1.5 px-4 py-2 text-sm sm:col-span-2 lg:col-span-4">
           <Plus className="h-4 w-4" aria-hidden="true" />
           {t('founderCategories.addCta')}
         </button>

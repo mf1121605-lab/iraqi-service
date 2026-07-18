@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
-import { ClipboardList, GraduationCap, LayoutGrid, MessageCircle, ShoppingBag, Tag } from 'lucide-react';
+import { ClipboardList, GraduationCap, LayoutGrid, MessageCircle, MessagesSquare, ShoppingBag, Tag, Wrench } from 'lucide-react';
 import AppShell from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import SafeImage from '../../components/UI/SafeImage';
@@ -30,6 +30,75 @@ function bilingualText(row, base, locale) {
   return (locale === 'ckb' ? row[`${base}_ckb`] : row[`${base}_ar`]) || row[`${base}_ar`] || '';
 }
 
+// Shared by the "الخدمات" and "الأدوات المهمة" sections — both render the
+// exact same category-tile markup (media handling, LazyVideo, 3D fallback
+// icon), just filtered to a different section_type, so the recent video
+// performance fix (lazy IntersectionObserver playback in LazyVideo) is
+// never duplicated or re-implemented, only reused.
+function CategoryGrid({ categories, locale }) {
+  return (
+    <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {categories.map((category) => {
+        const visual = CATEGORY_3D[category.key] ?? CATEGORY_3D.general;
+        // Every video uploaded through the Media Studio is now
+        // auto-compressed to well under 1MB (see compressVideo.js), so
+        // there's no longer a meaningful bandwidth cost to skip on a
+        // slow connection — showing it is strictly better than a
+        // generic icon fallback the founder didn't intend.
+        const showVideo = Boolean(category.icon_video_url);
+        const showImage = !showVideo && Boolean(category.icon_path);
+        const hasMedia = showVideo || showImage;
+        return (
+          <MotionLink
+            key={category.key}
+            href={`/customer/requests/new?category=${category.key}`}
+            {...cardLift}
+            className={
+              hasMedia
+                ? 'group relative flex h-40 flex-col items-center justify-end overflow-hidden rounded-[1.5rem] border border-gold-400/20 text-center font-semibold text-white shadow-[0_0_30px_-12px_rgba(230,171,44,0.35)] sm:h-48'
+                : 'metal-panel group flex flex-col items-center gap-3 p-6 text-center font-semibold text-white'
+            }
+          >
+            {hasMedia ? (
+              <>
+                {/* The card itself is the frame — media fills it edge to
+                    edge instead of sitting inside a small icon circle. */}
+                {showVideo ? (
+                  <LazyVideo
+                    src={category.icon_video_url}
+                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                ) : (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={category.icon_path}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <SparkOverlay />
+                  </>
+                )}
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+                <span className="relative z-10 p-4 text-base drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">
+                  {categoryLabel(category, locale)}
+                </span>
+              </>
+            ) : (
+              <>
+                <div className="icon-medallion h-24 w-24" style={{ '--medallion-glow': visual.glow }}>
+                  <Icon3D variant={category.key} color={visual.color} className="h-20 w-20" />
+                </div>
+                <span>{categoryLabel(category, locale)}</span>
+              </>
+            )}
+          </MotionLink>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function CustomerDashboard() {
   const { profile, loading, signOut } = useRequireRole(['customer']);
   const router = useRouter();
@@ -38,8 +107,12 @@ export default function CustomerDashboard() {
 
   const [banners, setBanners] = useState([]);
   const [products, setProducts] = useState([]);
+  const [chatRooms, setChatRooms] = useState([]);
   const [orderMessage, setOrderMessage] = useState('');
   const categories = useCategories();
+
+  const serviceCategories = useMemo(() => (categories ?? []).filter((category) => category.section_type !== 'tools'), [categories]);
+  const toolCategories = useMemo(() => (categories ?? []).filter((category) => category.section_type === 'tools'), [categories]);
 
   useEffect(() => {
     if (!profile) return undefined;
@@ -63,13 +136,23 @@ export default function CustomerDashboard() {
         .then(({ data }) => setProducts(data ?? []));
     }
 
+    function loadChatRooms() {
+      supabaseClient
+        .from('chat_rooms')
+        .select('id, slug, name_ar, name_ckb')
+        .eq('is_active', true)
+        .then(({ data }) => setChatRooms(data ?? []));
+    }
+
     loadBanners();
     loadProducts();
+    loadChatRooms();
 
     const channel = supabaseClient
       .channel('customer-hub-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, loadBanners)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, loadProducts)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_rooms' }, loadChatRooms)
       .subscribe();
 
     return () => supabaseClient.removeChannel(channel);
@@ -130,73 +213,55 @@ export default function CustomerDashboard() {
         </section>
       )}
 
+      {/* 1. الخدمات */}
       <section className="mt-10">
         <h3 className="section-title-cinematic font-display text-xl font-bold">{t('customerHub.categoriesTitle')}</h3>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {(categories ?? []).map((category) => {
-            const visual = CATEGORY_3D[category.key] ?? CATEGORY_3D.general;
-            // Every video uploaded through the Media Studio is now
-            // auto-compressed to well under 1MB (see compressVideo.js), so
-            // there's no longer a meaningful bandwidth cost to skip on a
-            // slow connection — showing it is strictly better than a
-            // generic icon fallback the founder didn't intend.
-            const showVideo = Boolean(category.icon_video_url);
-            const showImage = !showVideo && Boolean(category.icon_path);
-            const hasMedia = showVideo || showImage;
-            return (
-              <MotionLink
-                key={category.key}
-                href={`/customer/requests/new?category=${category.key}`}
-                {...cardLift}
-                className={
-                  hasMedia
-                    ? 'group relative flex h-40 flex-col items-center justify-end overflow-hidden rounded-[1.5rem] border border-gold-400/20 text-center font-semibold text-white shadow-[0_0_30px_-12px_rgba(230,171,44,0.35)] sm:h-48'
-                    : 'metal-panel group flex flex-col items-center gap-3 p-6 text-center font-semibold text-white'
-                }
-              >
-                {hasMedia ? (
-                  <>
-                    {/* The card itself is the frame — media fills it edge to
-                        edge instead of sitting inside a small icon circle. */}
-                    {showVideo ? (
-                      <LazyVideo
-                        src={category.icon_video_url}
-                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={category.icon_path}
-                          alt=""
-                          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                        <SparkOverlay />
-                      </>
-                    )}
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
-                    <span className="relative z-10 p-4 text-base drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">
-                      {categoryLabel(category, locale)}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <div className="icon-medallion h-24 w-24" style={{ '--medallion-glow': visual.glow }}>
-                      <Icon3D variant={category.key} color={visual.color} className="h-20 w-20" />
-                    </div>
-                    <span>{categoryLabel(category, locale)}</span>
-                  </>
-                )}
-              </MotionLink>
-            );
-          })}
-        </div>
+        <CategoryGrid categories={serviceCategories} locale={locale} />
       </section>
 
+      {/* 2. الأدوات المهمة */}
+      {toolCategories.length > 0 && (
+        <section className="mt-10">
+          <h3 className="section-title-cinematic font-display text-xl font-bold">
+            <Wrench className="h-5 w-5 text-gold-300" aria-hidden="true" />
+            {t('customerHub.toolsTitle')}
+          </h3>
+          <CategoryGrid categories={toolCategories} locale={locale} />
+        </section>
+      )}
+
+      {/* 3. مجتمع المحادثات الهادفة */}
+      <section className="mt-10">
+        <h3 className="section-title-cinematic font-display text-xl font-bold">
+          <MessagesSquare className="h-5 w-5 text-gold-300" aria-hidden="true" />
+          {t('customerHub.communityTitle')}
+        </h3>
+        {chatRooms.length === 0 ? (
+          <p className="mt-4 text-sm text-white/60">{t('customerHub.communityEmpty')}</p>
+        ) : (
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {chatRooms.map((room) => (
+              <MotionLink
+                key={room.id}
+                href={`/chat/${room.slug}`}
+                {...cardLift}
+                className="glass-panel-dark group flex items-center gap-3 rounded-2xl p-6 font-semibold text-white shadow-soft transition-colors duration-300 hover:border-gold-400/30 hover:shadow-elevate"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold-400/10 text-gold-300 ring-1 ring-inset ring-gold-400/25 transition-transform duration-300 group-hover:scale-110">
+                  <MessageCircle className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1 truncate">{locale === 'ar' ? room.name_ar : room.name_ckb}</span>
+              </MotionLink>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 4. العروض والمتاجر */}
       <section className="mt-10">
         <h3 className="section-title-cinematic font-display text-xl font-bold">
           <ShoppingBag className="h-5 w-5 text-gold-300" aria-hidden="true" />
-          {t('customerHub.dealsTitle')}
+          {t('customerHub.offersTitle')}
         </h3>
         {orderMessage && <p className="mt-2 animate-slide-down text-sm text-red-400">{orderMessage}</p>}
         {products.length === 0 ? (
