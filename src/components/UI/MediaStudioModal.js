@@ -4,6 +4,7 @@ import { Film, Loader as Loader2, UploadCloud, X } from 'lucide-react';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { translate } from '../../utils/i18n';
 import { safeSlug } from '../../utils/safeStorageName';
+import { compressVideo } from '../../utils/compressVideo';
 import CanvaDesignLink from './CanvaDesignLink';
 
 const DEFAULT_MAX_VIDEO_SECONDS = 5;
@@ -49,6 +50,7 @@ export default function MediaStudioModal({ open, onClose, onSelect, locale, maxV
   const acceptAttr = filterType === 'image' ? 'image/png,image/jpeg,image/webp,image/svg+xml' : filterType === 'video' ? 'video/mp4,video/webm' : 'image/png,image/jpeg,image/webp,image/svg+xml,video/mp4,video/webm';
   const [items, setItems] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [compressProgress, setCompressProgress] = useState(null);
   const [error, setError] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
@@ -87,6 +89,7 @@ export default function MediaStudioModal({ open, onClose, onSelect, locale, maxV
       return;
     }
 
+    let uploadFile = file;
     if (kind === 'video') {
       try {
         const duration = await readVideoDuration(file);
@@ -98,11 +101,19 @@ export default function MediaStudioModal({ open, onClose, onSelect, locale, maxV
         setError(t('mediaStudio.unsupportedType'));
         return;
       }
+
+      // Re-encode to a small, universally-playable H.264 MP4 before
+      // upload — these clips render inside small UI icons, so the
+      // original camera-quality file is wasted bandwidth. Falls back to
+      // the original file untouched if compression fails for any reason.
+      setCompressProgress(0);
+      uploadFile = await compressVideo(file, { onProgress: setCompressProgress });
+      setCompressProgress(null);
     }
 
     setUploading(true);
-    const path = `media-library/${crypto.randomUUID()}-${safeSlug(file.name)}`;
-    const { error: uploadError } = await supabaseClient.storage.from('site-assets').upload(path, file);
+    const path = `media-library/${crypto.randomUUID()}-${safeSlug(uploadFile.name)}`;
+    const { error: uploadError } = await supabaseClient.storage.from('site-assets').upload(path, uploadFile);
     if (uploadError) {
       setUploading(false);
       setError(uploadError.message || t('common.errorGeneric'));
@@ -111,7 +122,7 @@ export default function MediaStudioModal({ open, onClose, onSelect, locale, maxV
     const { data } = supabaseClient.storage.from('site-assets').getPublicUrl(path);
     const { error: insertError } = await supabaseClient
       .from('media_library')
-      .insert({ url: data.publicUrl, type: kind, name: file.name });
+      .insert({ url: data.publicUrl, type: kind, name: uploadFile.name });
     setUploading(false);
     if (insertError) {
       setError(insertError.message || t('common.errorGeneric'));
@@ -120,7 +131,7 @@ export default function MediaStudioModal({ open, onClose, onSelect, locale, maxV
     // A fresh upload should behave exactly like clicking an existing
     // library thumbnail — select it immediately instead of leaving the
     // founder to notice the new tile and click it themselves.
-    onSelect({ url: data.publicUrl, type: kind, name: file.name });
+    onSelect({ url: data.publicUrl, type: kind, name: uploadFile.name });
   }
 
   function handleDrop(event) {
@@ -166,12 +177,16 @@ export default function MediaStudioModal({ open, onClose, onSelect, locale, maxV
               dragActive ? 'border-gold-400 bg-gold-400/10' : 'border-white/15 hover:border-white/30'
             }`}
           >
-            {uploading ? (
+            {uploading || compressProgress !== null ? (
               <Loader2 className="h-6 w-6 animate-spin text-gold-300" aria-hidden="true" />
             ) : (
               <UploadCloud className="h-6 w-6 text-white/50" aria-hidden="true" />
             )}
-            <p className="text-sm text-white/70">{t('mediaStudio.uploadZoneLabel')}</p>
+            <p className="text-sm text-white/70">
+              {compressProgress !== null
+                ? `${t('mediaStudio.compressingLabel')} ${Math.round(compressProgress * 100)}%`
+                : t('mediaStudio.uploadZoneLabel')}
+            </p>
             <input
               ref={fileInputRef}
               type="file"
