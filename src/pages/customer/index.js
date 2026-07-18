@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Lock, Phone, ShieldCheck, User } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Lock, Phone, ShieldCheck, User } from 'lucide-react';
 import FacebookGlyph from '../../components/UI/FacebookGlyph';
 import GoogleGlyph from '../../components/UI/GoogleGlyph';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { dashboardPathForRole, useSession } from '../../utils/useSession';
 import { defaultLocale, getDirection, getStoredLocale, translate } from '../../utils/i18n';
 import { isValidIraqiPhone, toE164 } from '../../utils/phoneHelper';
+import { logLoginEvent } from '../../utils/logLoginEvent';
 import { MotionLink, buttonTap } from '../../components/UI/Motion';
 
 const MIN_PASSWORD_LENGTH = 8;
+const USERNAME_PATTERN = /^[a-z][a-z0-9_]{2,}$/;
 
 export default function CustomerAuth() {
   const router = useRouter();
@@ -19,8 +21,11 @@ export default function CustomerAuth() {
   const [phone, setPhone] = useState('');
   const [fullName, setFullName] = useState('');
   const [surname, setSurname] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [recoveryQuestionId, setRecoveryQuestionId] = useState('');
+  const [recoveryAnswer, setRecoveryAnswer] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -65,6 +70,10 @@ export default function CustomerAuth() {
       setError(t('authCustomer.errorPasswordMismatch'));
       return;
     }
+    if (username.trim() && !USERNAME_PATTERN.test(username.trim().toLowerCase())) {
+      setError(t('authCustomer.errorUsernameFormat'));
+      return;
+    }
 
     setSubmitting(true);
 
@@ -73,7 +82,15 @@ export default function CustomerAuth() {
       response = await fetch('/api/customer/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, password, fullName: fullName.trim(), surname: surname.trim() }),
+        body: JSON.stringify({
+          phone,
+          password,
+          fullName: fullName.trim(),
+          surname: surname.trim(),
+          username: username.trim() || undefined,
+          recoveryQuestionId: recoveryQuestionId || undefined,
+          recoveryAnswer: recoveryAnswer.trim() || undefined,
+        }),
       });
     } catch (fetchError) {
       setSubmitting(false);
@@ -96,7 +113,7 @@ export default function CustomerAuth() {
     // (phone as Supabase's native identity, no OTP) — sign in client-side
     // right after to establish the actual session, same as any other
     // password login.
-    const { error: signInError } = await supabaseClient.auth.signInWithPassword({
+    const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
       phone: toE164(phone),
       password,
     });
@@ -106,6 +123,7 @@ export default function CustomerAuth() {
       router.replace('/login');
       return;
     }
+    logLoginEvent(signInData.session?.access_token);
     router.replace('/customer/onboarding');
   }
 
@@ -180,6 +198,20 @@ export default function CustomerAuth() {
             </div>
           </div>
           <div>
+            <label htmlFor="username" className="mb-1.5 block text-sm text-white/80">
+              {t('authCustomer.usernameLabel')}
+            </label>
+            <input
+              id="username"
+              type="text"
+              dir="ltr"
+              value={username}
+              onChange={(event) => setUsername(event.target.value.toLowerCase())}
+              placeholder={t('authCustomer.usernamePlaceholder')}
+              className="input-cinematic"
+            />
+          </div>
+          <div>
             <label htmlFor="password" className="mb-1.5 flex items-center gap-1.5 text-sm text-white/80">
               <Lock className="h-3.5 w-3.5" aria-hidden="true" />
               {t('authCustomer.passwordLabel')}
@@ -209,6 +241,44 @@ export default function CustomerAuth() {
               className="input-cinematic"
             />
           </div>
+          <details className="group rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">
+            <summary className="flex cursor-pointer list-none items-center justify-between font-semibold">
+              {t('authCustomer.recoverySectionTitle')}
+              <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+            </summary>
+            <div className="mt-3 space-y-3">
+              <div>
+                <label htmlFor="recoveryQuestionId" className="mb-1.5 block text-xs text-white/70">
+                  {t('authCustomer.recoveryQuestionLabel')}
+                </label>
+                <select
+                  id="recoveryQuestionId"
+                  value={recoveryQuestionId}
+                  onChange={(event) => setRecoveryQuestionId(event.target.value)}
+                  className="input-cinematic"
+                >
+                  <option value="">{t('authCustomer.recoveryQuestionPlaceholder')}</option>
+                  <option value="1">{t('authCustomer.recoveryQuestion1')}</option>
+                  <option value="2">{t('authCustomer.recoveryQuestion2')}</option>
+                </select>
+              </div>
+              {recoveryQuestionId && (
+                <div>
+                  <label htmlFor="recoveryAnswer" className="mb-1.5 block text-xs text-white/70">
+                    {t('authCustomer.recoveryAnswerLabel')}
+                  </label>
+                  <input
+                    id="recoveryAnswer"
+                    type="text"
+                    value={recoveryAnswer}
+                    onChange={(event) => setRecoveryAnswer(event.target.value)}
+                    placeholder={t('authCustomer.recoveryAnswerPlaceholder')}
+                    className="input-cinematic"
+                  />
+                </div>
+              )}
+            </div>
+          </details>
           {error && <p className="animate-slide-down text-sm text-red-300">{error}</p>}
           <motion.button
             type="submit"

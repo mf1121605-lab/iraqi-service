@@ -1,7 +1,10 @@
+import bcrypt from 'bcryptjs';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { isValidIraqiPhone, toE164, toLocalFormat } from '../../../utils/phoneHelper';
 
 const MIN_PASSWORD_LENGTH = 8;
+const USERNAME_PATTERN = /^[a-z][a-z0-9_]{2,}$/;
+const RECOVERY_QUESTION_IDS = [1, 2];
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -9,7 +12,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method not allowed' });
   }
 
-  const { phone, password, fullName, surname } = req.body ?? {};
+  const { phone, password, fullName, surname, username, recoveryQuestionId, recoveryAnswer } = req.body ?? {};
 
   if (!phone || !isValidIraqiPhone(phone)) {
     return res.status(400).json({ error: 'invalid Iraqi phone number' });
@@ -19,6 +22,14 @@ export default async function handler(req, res) {
   }
   if (!fullName?.trim() || !surname?.trim()) {
     return res.status(400).json({ error: 'name is required' });
+  }
+  const normalizedUsername = username ? String(username).trim().toLowerCase() : null;
+  if (normalizedUsername && !USERNAME_PATTERN.test(normalizedUsername)) {
+    return res.status(400).json({ error: 'invalid username format' });
+  }
+  const hasRecovery = recoveryQuestionId != null && recoveryAnswer;
+  if (hasRecovery && !RECOVERY_QUESTION_IDS.includes(Number(recoveryQuestionId))) {
+    return res.status(400).json({ error: 'invalid recovery question' });
   }
 
   const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -39,13 +50,23 @@ export default async function handler(req, res) {
     });
   }
 
-  const { error: profileError } = await supabaseAdmin
-    .from('profiles')
-    .update({ given_name: fullName.trim(), family_name: surname.trim() })
-    .eq('id', created.user.id);
+  const profileUpdate = { given_name: fullName.trim(), family_name: surname.trim() };
+  if (normalizedUsername) {
+    profileUpdate.username = normalizedUsername;
+  }
+  if (hasRecovery) {
+    const normalizedAnswer = String(recoveryAnswer).trim().toLowerCase();
+    profileUpdate.recovery_question_id = Number(recoveryQuestionId);
+    profileUpdate.recovery_answer_hash = await bcrypt.hash(normalizedAnswer, 10);
+  }
+
+  const { error: profileError } = await supabaseAdmin.from('profiles').update(profileUpdate).eq('id', created.user.id);
 
   if (profileError) {
-    return res.status(400).json({ error: profileError.message });
+    const usernameTaken = normalizedUsername && /unique|duplicate/i.test(profileError.message ?? '');
+    return res.status(400).json({
+      error: usernameTaken ? 'اسم المستخدم هذا مُستخدم من قبل' : profileError.message,
+    });
   }
 
   return res.status(200).json({ id: created.user.id });
