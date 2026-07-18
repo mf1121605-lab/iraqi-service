@@ -32,42 +32,49 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'invalid recovery question' });
   }
 
-  const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
-    phone: toE164(phone),
-    password,
-    phone_confirm: true,
-    // profiles.phone requires the local 07XXXXXXXXX format
-    // (profiles_phone_format check constraint) — the signup trigger reads
-    // phone straight from this metadata with no reformatting, unlike the
-    // admin.createUser phone field above which does need E.164.
-    user_metadata: { role: 'customer', phone: toLocalFormat(phone) },
-  });
-
-  if (createError) {
-    const alreadyRegistered = /already.*registered|duplicate|unique/i.test(createError.message ?? '');
-    return res.status(400).json({
-      error: alreadyRegistered ? 'هذا الرقم مسجل مسبقاً، جرّب تسجيل الدخول' : createError.message,
+  try {
+    const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      phone: toE164(phone),
+      password,
+      phone_confirm: true,
+      // profiles.phone requires the local 07XXXXXXXXX format
+      // (profiles_phone_format check constraint) — the signup trigger reads
+      // phone straight from this metadata with no reformatting, unlike the
+      // admin.createUser phone field above which does need E.164.
+      user_metadata: { role: 'customer', phone: toLocalFormat(phone) },
     });
-  }
 
-  const profileUpdate = { given_name: fullName.trim(), family_name: surname.trim() };
-  if (normalizedUsername) {
-    profileUpdate.username = normalizedUsername;
-  }
-  if (hasRecovery) {
-    const normalizedAnswer = String(recoveryAnswer).trim().toLowerCase();
-    profileUpdate.recovery_question_id = Number(recoveryQuestionId);
-    profileUpdate.recovery_answer_hash = await bcrypt.hash(normalizedAnswer, 10);
-  }
+    if (createError) {
+      console.error('register: createUser failed', createError);
+      const alreadyRegistered = /already.*registered|duplicate|unique/i.test(createError.message ?? '');
+      return res.status(400).json({
+        error: alreadyRegistered ? 'هذا الرقم مسجل مسبقاً، جرّب تسجيل الدخول' : createError.message,
+      });
+    }
 
-  const { error: profileError } = await supabaseAdmin.from('profiles').update(profileUpdate).eq('id', created.user.id);
+    const profileUpdate = { given_name: fullName.trim(), family_name: surname.trim() };
+    if (normalizedUsername) {
+      profileUpdate.username = normalizedUsername;
+    }
+    if (hasRecovery) {
+      const normalizedAnswer = String(recoveryAnswer).trim().toLowerCase();
+      profileUpdate.recovery_question_id = Number(recoveryQuestionId);
+      profileUpdate.recovery_answer_hash = await bcrypt.hash(normalizedAnswer, 10);
+    }
 
-  if (profileError) {
-    const usernameTaken = normalizedUsername && /unique|duplicate/i.test(profileError.message ?? '');
-    return res.status(400).json({
-      error: usernameTaken ? 'اسم المستخدم هذا مُستخدم من قبل' : profileError.message,
-    });
+    const { error: profileError } = await supabaseAdmin.from('profiles').update(profileUpdate).eq('id', created.user.id);
+
+    if (profileError) {
+      console.error('register: profile update failed', profileError);
+      const usernameTaken = normalizedUsername && /unique|duplicate/i.test(profileError.message ?? '');
+      return res.status(400).json({
+        error: usernameTaken ? 'اسم المستخدم هذا مُستخدم من قبل' : profileError.message,
+      });
+    }
+
+    return res.status(200).json({ id: created.user.id });
+  } catch (err) {
+    console.error('register: unhandled exception', err);
+    return res.status(500).json({ error: err?.message ?? 'unexpected server error' });
   }
-
-  return res.status(200).json({ id: created.user.id });
 }
