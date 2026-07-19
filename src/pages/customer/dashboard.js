@@ -100,7 +100,7 @@ function CategoryGrid({ categories, locale }) {
 }
 
 export default function CustomerDashboard() {
-  const { profile, loading, signOut } = useRequireRole(['customer']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['customer']);
   const router = useRouter();
   const locale = useLocale();
   const t = (path) => translate(locale, path);
@@ -188,7 +188,7 @@ export default function CustomerDashboard() {
   }
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
       {banners.length > 0 ? (
         <AnnouncementSlider banners={banners} locale={locale} />
       ) : (

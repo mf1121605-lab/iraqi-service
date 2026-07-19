@@ -8,7 +8,7 @@ import { useRequireRole } from '../../../utils/useSession';
 import { translate } from '../../../utils/i18n';
 
 export default function CustomerRequests() {
-  const { profile, loading, signOut } = useRequireRole(['customer']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['customer']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const [requests, setRequests] = useState(null);
@@ -37,7 +37,7 @@ export default function CustomerRequests() {
   ];
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
       <h2 className="flex items-center gap-2 font-display text-xl font-bold">
         <ClipboardList className="h-5 w-5" aria-hidden="true" />
         {t('customerHub.myRequestsCta')}

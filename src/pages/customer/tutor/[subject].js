@@ -11,7 +11,7 @@ import { translate } from '../../../utils/i18n';
 import { TUTOR_SUBJECTS, tutorSubjectLabel } from '../../../lib/tutorSubjects';
 
 export default function TutorSubjectSessions() {
-  const { profile, loading, signOut } = useRequireRole(['customer']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['customer']);
   const router = useRouter();
   const { subject } = router.query;
   const locale = useLocale();
@@ -64,7 +64,7 @@ export default function TutorSubjectSessions() {
   }
 
   return (
-    <AppShell onSignOut={signOut} userId={profile.id}>
+    <AppShell onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
       <Link
         href="/customer/tutor"
         className="flex items-center gap-1.5 text-sm text-ink-muted underline underline-offset-4 transition-colors hover:text-ink-light dark:text-ink-dark-muted dark:hover:text-ink-dark"

@@ -12,6 +12,8 @@ import { supabaseClient } from '../../lib/supabaseClient';
 import { toggleAmbientAudio, useAmbientAudioPlaying } from '../../utils/ambientAudio';
 import { useSiteSettings } from '../../utils/useSiteSettings';
 import NotificationBell from '../UI/NotificationBell';
+import Avatar from '../Chat/Avatar';
+import ProfileDrawer from '../UI/ProfileDrawer';
 
 const THEME_KEY = 'iraqi-services:theme';
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
@@ -21,10 +23,11 @@ function getStoredTheme() {
   return window.localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
 }
 
-export default function AppShell({ title, navItems, onSignOut, userId, children }) {
+export default function AppShell({ title, navItems, onSignOut, userId, profile, onProfileUpdated, children }) {
   const locale = useSyncedLocale();
   const [theme, setTheme] = useState('light');
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const siteSettings = useSiteSettings();
   const ambientPlaying = useAmbientAudioPlaying();
 
@@ -126,6 +129,16 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
           )}
 
           <div className="flex items-center gap-1.5 text-sm">
+            {profile && (
+              <button
+                type="button"
+                onClick={() => setProfileOpen(true)}
+                aria-label={t('profileDrawer.title')}
+                className="flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
+              >
+                <Avatar avatarKey={profile.avatar_key} name={profile.given_name} seed={profile.id} className="h-8 w-8" />
+              </button>
+            )}
             {userId && <NotificationBell userId={userId} locale={locale} />}
             {siteSettings?.site_ambient_audio_url && (
               <button
@@ -213,6 +226,15 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
         )}
       </header>
       <main id="main-content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
+      {profile && (
+        <ProfileDrawer
+          open={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          profile={profile}
+          locale={locale}
+          onProfileUpdated={onProfileUpdated}
+        />
+      )}
     </div>
   );
 }

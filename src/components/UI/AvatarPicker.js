@@ -12,7 +12,13 @@ export const AVATAR_KEYS = [
 ];
 
 export function avatarSrc(avatarKey) {
-  return avatarKey ? `/assets/avatars/${avatarKey}.svg` : null;
+  if (!avatarKey) return null;
+  // Profile Drawer uploads a real photo and stores its public storage URL
+  // directly in avatar_key, alongside the older preset-picker keys below —
+  // pass a full URL through unchanged instead of mangling it into
+  // "/assets/avatars/https://...svg".
+  if (/^https?:\/\//i.test(avatarKey)) return avatarKey;
+  return `/assets/avatars/${avatarKey}.svg`;
 }
 
 export default function AvatarPicker({ value, onSelect }) {
