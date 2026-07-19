@@ -34,7 +34,15 @@ export default function FounderEmployees() {
   const [toast, setToast] = useState(false);
 
   function loadEmployees() {
-    supabaseClient.from('profiles').select(EMPLOYEE_SELECT).eq('role', 'employee').order('created_at', { ascending: false }).then(({ data }) => setEmployees(data ?? []));
+    supabaseClient
+      .from('profiles')
+      .select(EMPLOYEE_SELECT)
+      .eq('role', 'employee')
+      .order('created_at', { ascending: false })
+      .then(({ data, error: loadError }) => {
+        if (loadError) console.error('loadEmployees failed', loadError);
+        setEmployees(data ?? []);
+      });
   }
 
   useEffect(() => {
