@@ -10,14 +10,19 @@ const SESSION_KEY = 'iraqi-services:hasSeenIntro';
 const SAFETY_DISMISS_MS = 8000;
 const FADE_MS = 500;
 
-// A one-per-session opening splash: plays a short logo video (the sound
-// effect is baked into the video file itself, not a separate track) on
-// the very first page the user lands on, then fades out and never shows
-// again until the tab/session ends.
+// A one-per-session opening splash: a silent logo video plus a separate
+// sound-effect track, kept as two independent media elements (not muxed
+// into one file) so the audio's own autoplay attempt/fallback never
+// affects whether the video itself plays. The video is always muted —
+// muted autoplay is reliably allowed by every browser — while the audio
+// element is the one that actually carries sound and is started the
+// instant the video begins rendering real frames (onPlaying), not at
+// component mount, so the effect stays tied to "the video has started"
+// rather than racing ahead of a still-buffering video.
 export default function SplashScreen() {
   const [visible, setVisible] = useState(false);
   const [fading, setFading] = useState(false);
-  const videoRef = useRef(null);
+  const audioRef = useRef(null);
   const dismissedRef = useRef(false);
 
   useEffect(() => {
@@ -29,26 +34,23 @@ export default function SplashScreen() {
 
   useEffect(() => {
     if (!visible) return undefined;
-
-    const video = videoRef.current;
-    // Browsers routinely block autoplay-with-sound on a page the user
-    // hasn't interacted with yet. Try unmuted first (so the sound effect
-    // plays whenever it's allowed); if that promise rejects, fall back to
-    // muted playback so the video itself never just sits there frozen.
-    video?.play().catch(() => {
-      if (!video) return;
-      video.muted = true;
-      video.play().catch(() => {});
-    });
-
     const timer = setTimeout(dismiss, SAFETY_DISMISS_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
+  function handleVideoPlaying() {
+    // Browsers can still block autoplay-with-sound outright (no user
+    // interaction yet) — the .catch() only prevents a console error in
+    // that case, it can't force the sound to play; that part is a
+    // browser security policy, not something any code can override.
+    audioRef.current?.play().catch(() => {});
+  }
+
   function dismiss() {
     if (dismissedRef.current) return;
     dismissedRef.current = true;
+    audioRef.current?.pause();
     setFading(true);
     setTimeout(() => setVisible(false), FADE_MS);
   }
@@ -63,15 +65,18 @@ export default function SplashScreen() {
     >
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <video
-        ref={videoRef}
         src="/assets/logo-intro.mp4"
         autoPlay
+        muted
         playsInline
         preload="auto"
+        onPlaying={handleVideoPlaying}
         onEnded={dismiss}
         onError={dismiss}
         className="h-full w-full object-cover"
       />
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <audio ref={audioRef} src="/assets/robot-eagle.m4a" preload="auto" />
     </div>
   );
 }
