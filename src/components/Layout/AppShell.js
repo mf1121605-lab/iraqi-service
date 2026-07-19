@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Globe, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
+import { Globe, LogOut, Menu, Moon, Sun, Volume2, VolumeX, X } from 'lucide-react';
 import {
   LOCALE_META,
   defaultLocale,
@@ -9,6 +9,8 @@ import {
   useSyncedLocale,
 } from '../../utils/i18n';
 import { supabaseClient } from '../../lib/supabaseClient';
+import { toggleAmbientAudio, useAmbientAudioPlaying } from '../../utils/ambientAudio';
+import { useSiteSettings } from '../../utils/useSiteSettings';
 import NotificationBell from '../UI/NotificationBell';
 
 const THEME_KEY = 'iraqi-services:theme';
@@ -23,6 +25,8 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
   const locale = useSyncedLocale();
   const [theme, setTheme] = useState('light');
   const [mobileOpen, setMobileOpen] = useState(false);
+  const siteSettings = useSiteSettings();
+  const ambientPlaying = useAmbientAudioPlaying();
 
   useEffect(() => {
     setTheme(getStoredTheme());
@@ -123,6 +127,21 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
 
           <div className="flex items-center gap-1.5 text-sm">
             {userId && <NotificationBell userId={userId} locale={locale} />}
+            {siteSettings?.site_ambient_audio_url && (
+              <button
+                type="button"
+                onClick={toggleAmbientAudio}
+                className="flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
+                aria-label={ambientPlaying ? t('common.muteSiteAudio') : t('common.unmuteSiteAudio')}
+                aria-pressed={ambientPlaying}
+              >
+                {ambientPlaying ? (
+                  <Volume2 className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                ) : (
+                  <VolumeX className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                )}
+              </button>
+            )}
             <button
               type="button"
               onClick={toggleLocale}

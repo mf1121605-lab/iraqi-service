@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Megaphone, Settings } from 'lucide-react';
+import { Megaphone, Music, Settings } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ImageUploader from '../../components/UI/ImageUploader';
+import AudioUploader from '../../components/UI/AudioUploader';
 import CanvaDesignLink from '../../components/UI/CanvaDesignLink';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
@@ -25,6 +26,7 @@ const FIELD_KEYS = [
   'announcement_enabled',
   'announcement_text_ar',
   'announcement_text_ckb',
+  'site_ambient_audio_url',
 ];
 
 function emptyFields() {
@@ -149,6 +151,24 @@ export default function FounderSettings() {
                 </button>
               )}
             </div>
+          </div>
+        </section>
+
+        <section className="metal-panel space-y-4 p-6 text-white">
+          <h3 className="flex items-center gap-2 font-display font-semibold text-gold-300">
+            <Music className="h-4 w-4" aria-hidden="true" />
+            {t('founderSettings.audioSectionTitle')}
+          </h3>
+          <div>
+            <label className="mb-1 block text-sm text-white/70">{t('founderSettings.audioLabel')}</label>
+            <AudioUploader
+              pathPrefix="site-audio"
+              value={fields.site_ambient_audio_url}
+              onUploaded={(url) => setField('site_ambient_audio_url', url)}
+              onClear={() => setField('site_ambient_audio_url', '')}
+              locale={locale}
+            />
+            <p className="mt-1 text-xs text-white/40">{t('founderSettings.audioHint')}</p>
           </div>
         </section>
 

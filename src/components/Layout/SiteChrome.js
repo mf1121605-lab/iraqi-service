@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { useSyncedLocale } from '../../utils/i18n';
 import { siteText, useSiteSettings } from '../../utils/useSiteSettings';
+import { registerAmbientAudioElement } from '../../utils/ambientAudio';
 
 // A founder-uploaded image sits as a dim layer above the site's default
 // cinematic black gradient (still visible underneath) rather than
@@ -60,6 +61,14 @@ export default function SiteChrome({ onSettings }) {
     <>
       <SiteBackground imagePath={settings?.background_image_path} color={settings?.background_color} />
       <AnnouncementBar settings={settings} locale={locale} />
+      {settings?.site_ambient_audio_url && (
+        // Rendered here (mounted once for the whole app, not per-page like
+        // AppShell) so it keeps playing across client-side navigation —
+        // never autoplayed, only ever started by a real click on
+        // AppShell's speaker button via toggleAmbientAudio().
+        // eslint-disable-next-line jsx-a11y/media-has-caption
+        <audio ref={registerAmbientAudioElement} src={settings.site_ambient_audio_url} loop preload="auto" />
+      )}
     </>
   );
 }
