@@ -8,32 +8,62 @@ import { supabaseClient } from '../lib/supabaseClient';
 // instead of just leaving icon_path undefined.
 const SELECT_COLUMNS = '*';
 
+// Ref-counted singleton, mirroring useSiteSettings.js's fix for the same
+// class of bug: Supabase caches realtime channels by name on a given
+// client instance, so two independent callers of useCategories on the
+// same page (e.g. a page's own useCategories() call plus AppShell's
+// RequestAlertBell, which is mounted on every authenticated page and
+// calls useCategories({ activeOnly: false }) itself) would otherwise both
+// try to `.channel('categories-changes').on(...)`, and the second `.on()`
+// throws because the channel is already subscribed. One shared channel
+// serves both the "all categories" and "active only" variants; each keeps
+// its own cache/listener set so subscribers only re-render for the
+// variant they actually asked for.
+let channel = null;
+let subscriberCount = 0;
+const caches = { all: null, active: null };
+const listeners = { all: new Set(), active: new Set() };
+
+function notify(key, data) {
+  caches[key] = data;
+  listeners[key].forEach((listener) => listener(data));
+}
+
+function loadKey(key) {
+  let query = supabaseClient.from('categories').select(SELECT_COLUMNS).order('sort_order');
+  if (key === 'active') query = query.eq('is_active', true);
+  query.then(({ data }) => notify(key, data ?? []));
+}
+
+function loadAll() {
+  loadKey('all');
+  loadKey('active');
+}
+
 export function useCategories({ activeOnly = true } = {}) {
-  const [categories, setCategories] = useState(null);
+  const key = activeOnly ? 'active' : 'all';
+  const [categories, setCategories] = useState(caches[key]);
 
   useEffect(() => {
-    let active = true;
-
-    function load() {
-      let query = supabaseClient.from('categories').select(SELECT_COLUMNS).order('sort_order');
-      if (activeOnly) query = query.eq('is_active', true);
-      query.then(({ data }) => {
-        if (active) setCategories(data ?? []);
-      });
+    listeners[key].add(setCategories);
+    subscriberCount += 1;
+    if (!caches[key]) loadKey(key);
+    if (subscriberCount === 1) {
+      channel = supabaseClient
+        .channel('categories-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, loadAll)
+        .subscribe();
     }
-
-    load();
-
-    const channel = supabaseClient
-      .channel('categories-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, load)
-      .subscribe();
-
     return () => {
-      active = false;
-      supabaseClient.removeChannel(channel);
+      listeners[key].delete(setCategories);
+      subscriberCount -= 1;
+      if (subscriberCount === 0 && channel) {
+        supabaseClient.removeChannel(channel);
+        channel = null;
+      }
     };
-  }, [activeOnly]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
   return categories;
 }
