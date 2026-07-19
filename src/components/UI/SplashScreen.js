@@ -4,19 +4,14 @@ const SESSION_KEY = 'iraqi-services:hasSeenIntro';
 const AUTO_DISMISS_MS = 3000;
 const FADE_MS = 500;
 
-// A one-per-session opening splash: plays a short logo video (with a
-// sound-effect track alongside it, since a single video file can't carry
-// two independently-timed audio sources) on the very first page the user
-// lands on, then fades out and never shows again until the tab/session
-// ends. Placeholder assets — /assets/logo-intro.mp4 and
-// /assets/robot-eagle.mp3 — are swapped in by the founder later; missing
-// files just fail silently (onError/catch), never blocking the real app
-// underneath.
+// A one-per-session opening splash: plays a short logo video (the sound
+// effect is baked into the video file itself, not a separate track) on
+// the very first page the user lands on, then fades out and never shows
+// again until the tab/session ends.
 export default function SplashScreen() {
   const [visible, setVisible] = useState(false);
   const [fading, setFading] = useState(false);
   const videoRef = useRef(null);
-  const audioRef = useRef(null);
   const dismissedRef = useRef(false);
 
   useEffect(() => {
@@ -29,13 +24,16 @@ export default function SplashScreen() {
   useEffect(() => {
     if (!visible) return undefined;
 
-    // Autoplay (even muted/inline video, and especially audio with sound)
-    // can be blocked by the browser depending on the user's engagement
-    // history — the .catch(() => {}) is required so a rejected play()
-    // promise never surfaces as an unhandled-rejection console error; the
-    // 3s timer below still fires and dismisses the splash regardless.
-    videoRef.current?.play().catch(() => {});
-    audioRef.current?.play().catch(() => {});
+    const video = videoRef.current;
+    // Browsers routinely block autoplay-with-sound on a page the user
+    // hasn't interacted with yet. Try unmuted first (so the sound effect
+    // plays whenever it's allowed); if that promise rejects, fall back to
+    // muted playback so the video itself never just sits there frozen.
+    video?.play().catch(() => {
+      if (!video) return;
+      video.muted = true;
+      video.play().catch(() => {});
+    });
 
     const timer = setTimeout(dismiss, AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
@@ -45,7 +43,6 @@ export default function SplashScreen() {
   function dismiss() {
     if (dismissedRef.current) return;
     dismissedRef.current = true;
-    audioRef.current?.pause();
     setFading(true);
     setTimeout(() => setVisible(false), FADE_MS);
   }
@@ -63,15 +60,12 @@ export default function SplashScreen() {
         ref={videoRef}
         src="/assets/logo-intro.mp4"
         autoPlay
-        muted
         playsInline
         preload="auto"
         onEnded={dismiss}
         onError={dismiss}
         className="max-h-[70vh] w-auto max-w-[90vw] object-contain"
       />
-      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-      <audio ref={audioRef} src="/assets/robot-eagle.mp3" preload="auto" />
     </div>
   );
 }
