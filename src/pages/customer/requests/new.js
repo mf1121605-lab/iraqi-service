@@ -51,7 +51,7 @@ export default function NewRequest() {
   }
 
   return (
-    <AppShell onSignOut={signOut} userId={profile.id} appFrame>
+    <AppShell onSignOut={signOut} userId={profile.id}>
       <div className="mx-auto max-w-xl animate-slide-up rounded-3xl border border-black/5 bg-white/60 p-8 shadow-elevate dark:border-white/10 dark:bg-surface-dark-alt/60">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600/10 text-brand-700 dark:text-brand-300">

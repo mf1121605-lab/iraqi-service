@@ -35,7 +35,7 @@ export default function TutorSubjects() {
   ];
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} appFrame>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
       <h2 className="flex items-center gap-2 font-display text-xl font-bold">
         <Sparkles className="h-5 w-5 text-brand-600 dark:text-brand-300" aria-hidden="true" />
         {t('aiTutor.pageTitle')}

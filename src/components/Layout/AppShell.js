@@ -19,7 +19,7 @@ function getStoredTheme() {
   return window.localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
 }
 
-export default function AppShell({ title, navItems, onSignOut, userId, children, appFrame = false }) {
+export default function AppShell({ title, navItems, onSignOut, userId, children }) {
   const locale = useSyncedLocale();
   const [theme, setTheme] = useState('light');
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -99,19 +99,8 @@ export default function AppShell({ title, navItems, onSignOut, userId, children,
     </>
   );
 
-  // appFrame is opt-in (customer-facing pages only) — founder/employee
-  // admin pages stay full-width since their tables and multi-column
-  // stat grids genuinely need the room. On mobile the frame is
-  // invisible (the inner shell is already 100% width); on md+ screens
-  // it centers the same full-bleed mobile layout inside a bounded
-  // "phone" card instead of letting it stretch across a wide monitor.
   return (
-    <div className={appFrame ? 'min-h-dvh bg-[#0d1117] md:flex md:justify-center md:py-6' : 'contents'}>
-    <div
-      className={`min-h-dvh bg-surface-patterned text-ink-light dark:dark-surface-patterned dark:text-ink-dark ${
-        appFrame ? 'w-full md:max-w-[450px] md:min-h-0 md:overflow-y-auto md:rounded-[2rem] md:border md:border-black/10 md:shadow-2xl md:dark:border-white/10' : ''
-      }`}
-    >
+    <div className="min-h-dvh bg-surface-patterned text-ink-light dark:dark-surface-patterned dark:text-ink-dark">
       <a href="#main-content" className="skip-link">
         {t('common.skipToContent')}
       </a>
@@ -205,7 +194,6 @@ export default function AppShell({ title, navItems, onSignOut, userId, children,
         )}
       </header>
       <main id="main-content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
-    </div>
     </div>
   );
 }

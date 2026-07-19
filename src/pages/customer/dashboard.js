@@ -188,7 +188,7 @@ export default function CustomerDashboard() {
   }
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} appFrame>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
       {banners.length > 0 ? (
         <AnnouncementSlider banners={banners} locale={locale} />
       ) : (

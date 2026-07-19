@@ -64,7 +64,7 @@ export default function TutorSubjectSessions() {
   }
 
   return (
-    <AppShell onSignOut={signOut} userId={profile.id} appFrame>
+    <AppShell onSignOut={signOut} userId={profile.id}>
       <Link
         href="/customer/tutor"
         className="flex items-center gap-1.5 text-sm text-ink-muted underline underline-offset-4 transition-colors hover:text-ink-light dark:text-ink-dark-muted dark:hover:text-ink-dark"

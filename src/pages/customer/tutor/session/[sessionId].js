@@ -135,11 +135,7 @@ export default function TutorChatSession() {
   }
 
   return (
-    // Same opt-in "phone frame on desktop, full-bleed on mobile" treatment
-    // as AppShell's appFrame prop — this page doesn't use AppShell (it's a
-    // full-bleed custom chat layout), so the wrapper is applied by hand.
-    <div className="min-h-dvh bg-[#0d1117] md:flex md:justify-center md:py-6">
-    <div className="relative flex min-h-dvh w-full flex-col overflow-hidden bg-gradient-to-b from-brand-950 via-brand-900 to-gold-900/40 text-white md:max-w-[450px] md:min-h-0 md:overflow-y-auto md:rounded-[2rem] md:border md:border-white/10 md:shadow-2xl">
+    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-gradient-to-b from-brand-950 via-brand-900 to-gold-900/40 text-white">
       <div className="pointer-events-none absolute -left-20 top-20 h-64 w-64 animate-float rounded-full bg-gold-300/10 blur-3xl" />
       <div className="pointer-events-none absolute -right-16 bottom-32 h-72 w-72 animate-float rounded-full bg-brand-300/10 blur-3xl [animation-delay:2s]" />
 
@@ -230,7 +226,6 @@ export default function TutorChatSession() {
           {t('aiTutor.disclaimer')}
         </p>
       </main>
-    </div>
     </div>
   );
 }
