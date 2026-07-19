@@ -4,9 +4,9 @@ import {
   LOCALE_META,
   defaultLocale,
   getDirection,
-  getStoredLocale,
   setStoredLocale,
   translate,
+  useSyncedLocale,
 } from '../../utils/i18n';
 import { supabaseClient } from '../../lib/supabaseClient';
 import NotificationBell from '../UI/NotificationBell';
@@ -20,13 +20,11 @@ function getStoredTheme() {
 }
 
 export default function AppShell({ title, navItems, onSignOut, userId, children }) {
-  const [locale, setLocale] = useState(defaultLocale);
+  const locale = useSyncedLocale();
   const [theme, setTheme] = useState('light');
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    const storedLocale = getStoredLocale();
-    if (storedLocale) setLocale(storedLocale);
     setTheme(getStoredTheme());
   }, []);
 
@@ -67,7 +65,6 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
 
   function toggleLocale() {
     const next = LOCALE_META.find((meta) => meta.code !== locale)?.code ?? defaultLocale;
-    setLocale(next);
     setStoredLocale(next);
   }
 
@@ -201,11 +198,4 @@ export default function AppShell({ title, navItems, onSignOut, userId, children 
   );
 }
 
-export function useLocale() {
-  const [locale, setLocale] = useState(defaultLocale);
-  useEffect(() => {
-    const stored = getStoredLocale();
-    if (stored) setLocale(stored);
-  }, []);
-  return locale;
-}
+export const useLocale = useSyncedLocale;

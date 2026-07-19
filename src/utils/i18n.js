@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 export const LOCALE_META = [
   { code: 'ar', nativeName: 'العربية', dir: 'rtl' },
   { code: 'ckb', nativeName: 'کوردی', dir: 'rtl' },
@@ -940,7 +942,36 @@ export function getStoredLocale() {
   return locales.includes(stored) ? stored : null;
 }
 
+const LOCALE_CHANGE_EVENT = 'iraqi-services:locale-change';
+
 export function setStoredLocale(locale) {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(STORAGE_KEY, locale);
+  // The 'storage' event only fires in *other* tabs, never the tab that
+  // made the change — every page reads its locale via useSyncedLocale
+  // below, so without this, switching language only updated whichever
+  // component called setStoredLocale (the header) and everything else
+  // kept rendering the old locale until a manual reload.
+  window.dispatchEvent(new CustomEvent(LOCALE_CHANGE_EVENT, { detail: locale }));
+}
+
+// Single source of truth for "what locale is this page in right now" —
+// AppShell's useLocale and SiteChrome both delegate to this instead of
+// each keeping their own mount-only copy that never learns about a
+// language change triggered elsewhere on the page.
+export function useSyncedLocale() {
+  const [locale, setLocale] = useState(defaultLocale);
+
+  useEffect(() => {
+    const stored = getStoredLocale();
+    if (stored) setLocale(stored);
+
+    function handleChange(event) {
+      setLocale(event.detail);
+    }
+    window.addEventListener(LOCALE_CHANGE_EVENT, handleChange);
+    return () => window.removeEventListener(LOCALE_CHANGE_EVENT, handleChange);
+  }, []);
+
+  return locale;
 }

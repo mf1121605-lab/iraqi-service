@@ -1,16 +1,7 @@
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { defaultLocale, getStoredLocale } from '../../utils/i18n';
+import { useSyncedLocale } from '../../utils/i18n';
 import { siteText, useSiteSettings } from '../../utils/useSiteSettings';
-
-function useAppLocale() {
-  const [locale, setLocale] = useState(defaultLocale);
-  useEffect(() => {
-    const stored = getStoredLocale();
-    if (stored) setLocale(stored);
-  }, []);
-  return locale;
-}
 
 // A founder-uploaded image sits as a dim layer above the site's default
 // cinematic black gradient (still visible underneath) rather than
@@ -58,7 +49,7 @@ function AnnouncementBar({ settings, locale }) {
 // component only affects decorative chrome, so a brief post-hydration
 // pop-in is an acceptable trade for not taxing every route's first load.
 export default function SiteChrome({ onSettings }) {
-  const locale = useAppLocale();
+  const locale = useSyncedLocale();
   const settings = useSiteSettings();
 
   useEffect(() => {
