@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Cairo, Noto_Sans_Arabic } from 'next/font/google';
+import SplashScreen from '../components/UI/SplashScreen';
 import '../styles/globals.css';
 
 // Dynamically loaded (ssr:false) so the Supabase client it needs doesn't
@@ -27,6 +28,7 @@ export default function App({ Component, pageProps }) {
 
   return (
     <div className={`${notoSansArabic.variable} ${cairo.variable} contents`}>
+      <SplashScreen />
       <SiteChrome onSettings={handleSettings} />
       <Component {...pageProps} siteSettings={siteSettings} />
       <div className="grain-overlay" aria-hidden="true" />
