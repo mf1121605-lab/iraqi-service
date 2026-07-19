@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 
 const SESSION_KEY = 'iraqi-services:hasSeenIntro';
-const AUTO_DISMISS_MS = 3000;
+// The video itself (~3s) is what actually decides when to dismiss, via
+// onEnded — this is only a safety net in case it fails to load/play at
+// all, so it's set well past the real duration on purpose. A tight timer
+// here previously cut the video off before it could finish, since the
+// clock started at mount rather than at actual playback start (network/
+// buffering delay ate into the budget).
+const SAFETY_DISMISS_MS = 8000;
 const FADE_MS = 500;
 
 // A one-per-session opening splash: plays a short logo video (the sound
@@ -35,7 +41,7 @@ export default function SplashScreen() {
       video.play().catch(() => {});
     });
 
-    const timer = setTimeout(dismiss, AUTO_DISMISS_MS);
+    const timer = setTimeout(dismiss, SAFETY_DISMISS_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
@@ -64,7 +70,7 @@ export default function SplashScreen() {
         preload="auto"
         onEnded={dismiss}
         onError={dismiss}
-        className="max-h-[70vh] w-auto max-w-[90vw] object-contain"
+        className="h-full w-full object-cover"
       />
     </div>
   );
