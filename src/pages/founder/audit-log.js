@@ -8,7 +8,7 @@ import { useFounderNav } from '../../utils/founderNav';
 import { translate } from '../../utils/i18n';
 
 export default function FounderAuditLog() {
-  const { profile, loading, signOut } = useRequireRole(['founder']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'audit-log');
@@ -28,7 +28,7 @@ export default function FounderAuditLog() {
   }
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
       <h2 className="flex items-center gap-2 font-display text-lg font-bold">
         <ScrollText className="h-5 w-5" aria-hidden="true" />
         {t('founderAuditLog.title')}

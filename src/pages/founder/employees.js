@@ -10,7 +10,7 @@ import { translate } from '../../utils/i18n';
 const emptyForm = { phone: '', email: '', password: '', givenName: '', fatherName: '', grandfatherName: '', familyName: '', specialization: '' };
 
 export default function FounderEmployees() {
-  const { profile, loading, signOut } = useRequireRole(['founder']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'employees');
@@ -60,7 +60,7 @@ export default function FounderEmployees() {
   }
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
       <h2 className="flex items-center gap-2 font-display text-xl font-bold">
         <Users className="h-5 w-5" aria-hidden="true" />
         {t('founderEmployees.title')}

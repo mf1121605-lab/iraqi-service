@@ -17,7 +17,7 @@ import { hoverLift } from '../../components/UI/Motion';
 const Icon3D = dynamic(() => import('../../components/UI/Icon3D'), { ssr: false });
 
 export default function FounderDashboard() {
-  const { profile, loading, signOut } = useRequireRole(['founder']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'dashboard');
@@ -110,7 +110,7 @@ export default function FounderDashboard() {
   }
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
       <h2 className="section-title-cinematic font-display text-xl font-bold">
         <LayoutDashboard className="h-5 w-5 text-gold-300" aria-hidden="true" />
         {t('founderDashboard.title')}

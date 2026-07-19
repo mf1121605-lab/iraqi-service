@@ -12,6 +12,7 @@ import { supabaseClient } from '../../lib/supabaseClient';
 import { toggleAmbientAudio, useAmbientAudioPlaying } from '../../utils/ambientAudio';
 import { useSiteSettings } from '../../utils/useSiteSettings';
 import NotificationBell from '../UI/NotificationBell';
+import RequestAlertBell from '../UI/RequestAlertBell';
 import Avatar from '../Chat/Avatar';
 import ProfileDrawer from '../UI/ProfileDrawer';
 
@@ -139,6 +140,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
                 <Avatar avatarKey={profile.avatar_key} name={profile.given_name} seed={profile.id} className="h-8 w-8" />
               </button>
             )}
+            <RequestAlertBell profile={profile} locale={locale} />
             {userId && <NotificationBell userId={userId} locale={locale} />}
             {siteSettings?.site_ambient_audio_url && (
               <button

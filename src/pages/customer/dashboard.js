@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
-import { ArrowLeft, ClipboardList, GraduationCap, LayoutGrid, MessageCircle, MessagesSquare, ShoppingBag, Tag, Wrench } from 'lucide-react';
+import { ArrowLeft, ClipboardList, ExternalLink, GraduationCap, LayoutGrid, MessageCircle, MessagesSquare, Newspaper, ShoppingBag, Tag, Wrench } from 'lucide-react';
 import AppShell from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import SafeImage from '../../components/UI/SafeImage';
@@ -107,6 +107,7 @@ export default function CustomerDashboard() {
 
   const [banners, setBanners] = useState([]);
   const [products, setProducts] = useState([]);
+  const [newsLinks, setNewsLinks] = useState([]);
   const [orderMessage, setOrderMessage] = useState('');
   const categories = useCategories();
 
@@ -135,13 +136,24 @@ export default function CustomerDashboard() {
         .then(({ data }) => setProducts(data ?? []));
     }
 
+    function loadNewsLinks() {
+      supabaseClient
+        .from('news_links')
+        .select('id, title_ar, title_ckb, url, source')
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .then(({ data }) => setNewsLinks(data ?? []));
+    }
+
     loadBanners();
     loadProducts();
+    loadNewsLinks();
 
     const channel = supabaseClient
       .channel('customer-hub-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, loadBanners)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, loadProducts)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'news_links' }, loadNewsLinks)
       .subscribe();
 
     return () => supabaseClient.removeChannel(channel);
@@ -199,6 +211,31 @@ export default function CustomerDashboard() {
             <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl md:text-2xl">{t('customerHub.heroFallbackTitle')}</h2>
             <p className="mt-2 text-sm text-white/70 sm:text-base">{t('customerHub.heroFallbackSubtitle')}</p>
           </div>
+        </section>
+      )}
+
+      {newsLinks.length > 0 && (
+        <section className="metal-panel mt-6 p-4 text-white sm:mt-10 sm:p-6">
+          <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">
+            <Newspaper className="h-4 w-4 text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
+            {t('customerHub.newsLinksTitle')}
+          </h3>
+          <ul className="mt-3 space-y-2">
+            {newsLinks.map((item) => (
+              <li key={item.id}>
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 text-sm font-semibold text-gold-300 hover:underline"
+                >
+                  {bilingualText(item, 'title', locale)}
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                </a>
+                {item.source && <p className="text-xs text-white/50">{item.source}</p>}
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

@@ -12,7 +12,7 @@ import { translate } from '../../utils/i18n';
 const emptyForm = { key: '', labelAr: '', labelCkb: '', sectionType: 'services' };
 
 export default function FounderCategories() {
-  const { profile, loading, signOut } = useRequireRole(['founder']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'categories');
@@ -109,7 +109,7 @@ export default function FounderCategories() {
   }
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
       <h2 className="section-title-cinematic font-display text-lg font-bold">
         <Tags className="h-5 w-5 text-gold-300" aria-hidden="true" />
         {t('founderCategories.title')}

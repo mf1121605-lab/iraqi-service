@@ -55,7 +55,7 @@ async function callFounderApi(path, body) {
 }
 
 export default function FounderUsersData() {
-  const { profile, loading, signOut } = useRequireRole(['founder']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'users-data');
@@ -111,7 +111,7 @@ export default function FounderUsersData() {
   }
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
       <h2 className="flex items-center gap-2 font-display text-lg font-bold">
         <Database className="h-5 w-5" aria-hidden="true" />
         {t('founderUsersData.title')}

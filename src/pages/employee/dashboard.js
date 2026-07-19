@@ -6,6 +6,8 @@ import {
   ListChecks,
   MessageCircle,
   MessageSquare,
+  Newspaper,
+  Radio,
   Send,
   UserRoundCog,
 } from 'lucide-react';
@@ -18,7 +20,6 @@ import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { translate } from '../../utils/i18n';
 import { categoryLabel, useCategories } from '../../utils/useCategories';
-import { playNewTicketPing } from '../../utils/notificationSound';
 
 const STATUS_OPTIONS = ['in_review', 'needs_changes', 'approved', 'rejected'];
 
@@ -51,11 +52,13 @@ export default function EmployeeDashboard() {
   }, [profile]);
 
   // Diffs against the previous snapshot (not just "reload and render") so
-  // a genuinely new unclaimed ticket can trigger the audio ping, and a
-  // ticket another employee just claimed can flash "المهمة مأخوذة" before
-  // it disappears from this employee's queue — RLS already stops
+  // a ticket another employee just claimed can flash "المهمة مأخوذة"
+  // before it disappears from this employee's queue — RLS already stops
   // returning it once it's no longer unclaimed/theirs, which would
-  // otherwise look like it silently vanished with no explanation.
+  // otherwise look like it silently vanished with no explanation. The
+  // audio ping for genuinely new tickets now lives in the shared
+  // RequestAlertBell (mounted in AppShell) instead of here, so it fires
+  // consistently on every page, not just this one.
   async function loadQueue() {
     const { data } = await supabaseClient
       .from('requests')
@@ -66,11 +69,6 @@ export default function EmployeeDashboard() {
 
     if (previousQueue && !initialLoadRef.current) {
       const nextIds = new Set(nextQueue.map((request) => request.id));
-      const newUnclaimed = nextQueue.find(
-        (request) => !request.assigned_employee_id && !previousQueue.some((old) => old.id === request.id)
-      );
-      if (newUnclaimed) playNewTicketPing();
-
       const justClaimed = previousQueue.find(
         (old) => !old.assigned_employee_id && (!nextIds.has(old.id) || nextQueue.find((r) => r.id === old.id)?.assigned_employee_id)
       );
@@ -186,8 +184,12 @@ export default function EmployeeDashboard() {
     <AppShell
       onSignOut={signOut}
       userId={profile.id}
+      profile={profile}
+      onProfileUpdated={refreshProfile}
       navItems={[
         { href: '/employee/dashboard', label: t('employeeDesk.queueTitle'), active: true, icon: ClipboardCheck },
+        { href: '/chat/hq', label: t('hq.chatNavCta'), icon: Radio },
+        { href: '/hq/news-links', label: t('hq.newsLinksNavCta'), icon: Newspaper },
         { href: '/chat', label: t('chat.roomsTitle'), icon: MessageCircle },
       ]}
     >
