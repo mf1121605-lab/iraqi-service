@@ -1,4 +1,4 @@
-import { BarChart3, Database, Image as ImageIcon, LayoutDashboard, MessageCircle, ScrollText, Settings, Tags, Users } from 'lucide-react';
+import { BarChart3, Database, Image as ImageIcon, LayoutDashboard, ListTree, MessageCircle, ScrollText, Settings, Tags, Users } from 'lucide-react';
 import { translate } from './i18n';
 
 export function useFounderNav(locale, active) {
@@ -6,6 +6,7 @@ export function useFounderNav(locale, active) {
   return [
     { href: '/founder/dashboard', label: t('founderPanel.navDashboard'), active: active === 'dashboard', icon: LayoutDashboard },
     { href: '/founder/categories', label: t('founderCategories.title'), active: active === 'categories', icon: Tags },
+    { href: '/founder/category-services', label: t('founderCategoryServices.title'), active: active === 'category-services', icon: ListTree },
     { href: '/founder/banners', label: t('founderBanners.title'), active: active === 'banners', icon: ImageIcon },
     { href: '/founder/users', label: t('founderPanel.navUsers'), active: active === 'users', icon: Users },
     { href: '/founder/users-data', label: t('founderPanel.navUsersData'), active: active === 'users-data', icon: Database },

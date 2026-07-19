@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { CircleCheck as CheckCircle2, File as FileEdit } from 'lucide-react';
 import AppShell, { useLocale } from '../../../components/Layout/AppShell';
@@ -7,6 +7,8 @@ import { supabaseClient } from '../../../lib/supabaseClient';
 import { useRequireRole } from '../../../utils/useSession';
 import { translate } from '../../../utils/i18n';
 import { categoryLabel, useCategories } from '../../../utils/useCategories';
+
+const TITLE_FROM_DETAILS_MAX_LENGTH = 80;
 
 export default function NewRequest() {
   const { profile, loading, signOut, refreshProfile } = useRequireRole(['customer']);
@@ -17,15 +19,43 @@ export default function NewRequest() {
 
   const selectedCategory = categories?.find((category) => category.key === router.query.category);
   const category = selectedCategory?.key ?? router.query.category ?? 'general';
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+
+  const [services, setServices] = useState(null);
+  const [selectedServiceId, setSelectedServiceId] = useState(null);
+  const [details, setDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  useEffect(() => {
+    if (!category) return;
+    supabaseClient
+      .from('category_services')
+      .select('id, label_ar, label_ckb')
+      .eq('category_key', category)
+      .eq('is_active', true)
+      .order('sort_order')
+      .then(({ data }) => setServices(data ?? []));
+  }, [category]);
+
+  const selectedService = services?.find((service) => service.id === selectedServiceId);
+
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
+
+    const trimmedDetails = details.trim();
+    if (!selectedService && !trimmedDetails) {
+      setError(t('requestForm.errorPickOrType'));
+      return;
+    }
+
+    const title = selectedService
+      ? locale === 'ckb'
+        ? selectedService.label_ckb
+        : selectedService.label_ar
+      : trimmedDetails.slice(0, TITLE_FROM_DETAILS_MAX_LENGTH);
+
     setSubmitting(true);
     const { data, error: insertError } = await supabaseClient
       .from('requests')
@@ -33,7 +63,7 @@ export default function NewRequest() {
         customer_id: profile.id,
         category,
         title,
-        description,
+        description: trimmedDetails || null,
       })
       .select('id')
       .single();
@@ -76,29 +106,47 @@ export default function NewRequest() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            {services === null ? (
+              <LoadingSpinner inline locale={locale} />
+            ) : services.length > 0 ? (
+              <div>
+                <p className="mb-2 block text-sm">{t('requestForm.servicesListLabel')}</p>
+                <div className="flex flex-wrap gap-2">
+                  {services.map((service) => {
+                    const label = locale === 'ckb' ? service.label_ckb : service.label_ar;
+                    const active = selectedServiceId === service.id;
+                    return (
+                      <button
+                        key={service.id}
+                        type="button"
+                        onClick={() => setSelectedServiceId(active ? null : service.id)}
+                        className={`rounded-xl2 border px-3.5 py-2 text-sm font-semibold transition-all duration-200 ${
+                          active
+                            ? 'border-brand-500 bg-brand-600 text-white shadow-glass-sm'
+                            : 'border-black/10 bg-white text-ink-light hover:border-brand-400/50 dark:border-white/10 dark:bg-surface-dark dark:text-ink-dark'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs text-ink-muted dark:text-ink-dark-muted">{t('requestForm.servicesListHint')}</p>
+              </div>
+            ) : null}
+
             <div>
-              <label htmlFor="title" className="mb-1 block text-sm">
-                {t('requestForm.titleLabel')}
-              </label>
-              <input
-                id="title"
-                required
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder={t('requestForm.titlePlaceholder')}
-                className="w-full rounded-xl2 border border-black/10 bg-white px-4 py-3 transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
-              />
-            </div>
-            <div>
-              <label htmlFor="description" className="mb-1 block text-sm">
+              <label htmlFor="details" className="mb-1 block text-sm">
                 {t('requestForm.descriptionLabel')}
               </label>
               <textarea
-                id="description"
+                id="details"
                 rows={5}
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                placeholder={t('requestForm.descriptionPlaceholder')}
+                value={details}
+                onChange={(event) => setDetails(event.target.value)}
+                placeholder={
+                  selectedService ? t('requestForm.descriptionPlaceholder') : t('requestForm.descriptionPlaceholderNoService')
+                }
                 className="w-full rounded-xl2 border border-black/10 bg-white px-4 py-3 transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
               />
             </div>

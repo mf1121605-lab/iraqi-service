@@ -10,9 +10,87 @@ import { useRequireRole } from '../../../../utils/useSession';
 import { translate } from '../../../../utils/i18n';
 
 const CLAIM_WINDOW_SECONDS = 60;
+const DECK_ROTATE_INTERVAL_MS = 900;
+const DECK_EXIT_DURATION_MS = 400;
+const DECK_VISIBLE_DEPTH = 3;
 
-function candidateName(candidate, locale, t) {
+function candidateName(candidate, t) {
   return [candidate.given_name, candidate.family_name].filter(Boolean).join(' ') || t('requestMatching.anonymousEmployee');
+}
+
+function CandidateCard({ candidate, t }) {
+  return (
+    <div className="glass-panel-dark flex w-56 flex-col items-center gap-2 rounded-2xl p-5 text-center shadow-[0_20px_45px_-15px_rgba(0,0,0,0.6)]">
+      <Avatar avatarKey={candidate.avatar_key} name={candidate.given_name} seed={candidate.id} className="h-16 w-16 ring-2 ring-gold-400/30" />
+      <p className="truncate text-sm font-bold text-white">{candidateName(candidate, t)}</p>
+      {candidate.specialization && <p className="truncate text-xs text-white/50">{candidate.specialization}</p>}
+    </div>
+  );
+}
+
+// The "3D Stacked Card Shuffle": every DECK_ROTATE_INTERVAL_MS, the front
+// card is marked exiting (flies out + fades), then DECK_EXIT_DURATION_MS
+// later it actually moves to the back of the deck array and the next card
+// is promoted. Re-scheduled via a plain effect keyed on `deck` (not a
+// setInterval) so each cycle's timers are always cleaned up on unmount —
+// no leaked timers, no stale-closure risk on which card is "front."
+function ShuffleDeck({ candidates, t }) {
+  const [deck, setDeck] = useState(candidates);
+  const [exitingId, setExitingId] = useState(null);
+
+  useEffect(() => {
+    setDeck(candidates);
+    setExitingId(null);
+  }, [candidates]);
+
+  useEffect(() => {
+    if (deck.length < 2) return undefined;
+    let exitTimer;
+    const startTimer = setTimeout(() => {
+      setExitingId(deck[0].id);
+      exitTimer = setTimeout(() => {
+        setDeck((current) => {
+          if (current.length < 2) return current;
+          const [first, ...rest] = current;
+          return [...rest, first];
+        });
+        setExitingId(null);
+      }, DECK_EXIT_DURATION_MS);
+    }, DECK_ROTATE_INTERVAL_MS);
+    return () => {
+      clearTimeout(startTimer);
+      clearTimeout(exitTimer);
+    };
+  }, [deck]);
+
+  if (deck.length === 0) return null;
+
+  return (
+    <div className="relative h-48 w-56">
+      {deck.slice(0, DECK_VISIBLE_DEPTH).map((candidate, position) => {
+        const isExiting = position === 0 && candidate.id === exitingId;
+        const target = isExiting
+          ? { x: -150, y: 0, opacity: 0, rotate: -10, scale: 1 }
+          : position === 0
+          ? { x: 0, y: 0, opacity: 1, rotate: 0, scale: 1 }
+          : position === 1
+          ? { x: 0, y: -12, opacity: 0.6, rotate: 0, scale: 0.95 }
+          : { x: 0, y: -24, opacity: 0.3, rotate: 0, scale: 0.9 };
+        return (
+          <motion.div
+            key={candidate.id}
+            className="absolute inset-x-0 top-0"
+            style={{ zIndex: 30 - position * 10 }}
+            initial={{ x: 0, y: 24, opacity: 0, scale: 0.85 }}
+            animate={target}
+            transition={{ duration: isExiting ? 0.4 : 0.5, ease: 'easeInOut' }}
+          >
+            <CandidateCard candidate={candidate} t={t} />
+          </motion.div>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function RequestMatching() {
@@ -83,6 +161,8 @@ export default function RequestMatching() {
             .eq('id', updatedRow.assigned_employee_id)
             .maybeSingle();
           if (!active) return;
+          // Kill the shuffle instantly — driven by `phase` below, since
+          // ShuffleDeck's own timers get torn down the moment it unmounts.
           setWinner(employeeRow);
           setPhase('matched');
         }
@@ -121,14 +201,17 @@ export default function RequestMatching() {
     );
   }
 
-  const marqueeCandidates = candidates.length > 0 ? [...candidates, ...candidates] : [];
-
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-gradient-hero px-4 py-10 text-center text-white">
       <div className="pointer-events-none absolute left-1/2 top-0 h-[36rem] w-[36rem] -translate-x-1/2 animate-spotlight-sweep rounded-full bg-gold-400/10 blur-[110px]" />
 
       {phase === 'matched' && winner && (
-        <div className="relative z-10 flex animate-scale-in flex-col items-center gap-4">
+        <motion.div
+          className="relative z-10 flex flex-col items-center gap-4"
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: [0.9, 1.05, 1], opacity: 1 }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+        >
           <CheckCircle2 className="h-10 w-10 text-emerald-400" aria-hidden="true" />
           <p className="font-display text-lg font-bold">{t('requestMatching.matchedTitle')}</p>
           <Avatar avatarKey={winner.avatar_key} name={winner.given_name} seed={winner.id} className="h-24 w-24 ring-4 ring-gold-400/40" />
@@ -137,7 +220,7 @@ export default function RequestMatching() {
             {winner.specialization && <p className="mt-1 text-sm text-white/60">{winner.specialization}</p>}
           </div>
           <LoadingSpinner inline showLabel={false} size={20} />
-        </div>
+        </motion.div>
       )}
 
       {phase === 'searching' && (
@@ -151,24 +234,11 @@ export default function RequestMatching() {
             </p>
           </div>
 
-          <div className="relative w-full overflow-hidden py-2" style={{ maskImage: 'linear-gradient(90deg, transparent, black 15%, black 85%, transparent)' }}>
-            {marqueeCandidates.length > 0 ? (
-              <motion.div
-                className="flex items-center gap-4"
-                animate={{ x: ['0%', '-50%'] }}
-                transition={{ duration: Math.max(marqueeCandidates.length * 1.4, 6), repeat: Infinity, ease: 'linear' }}
-              >
-                {marqueeCandidates.map((candidate, index) => (
-                  <div key={`${candidate.id}-${index}`} className="flex shrink-0 flex-col items-center gap-1.5">
-                    <Avatar avatarKey={candidate.avatar_key} name={candidate.given_name} seed={candidate.id} className="h-14 w-14 ring-2 ring-white/10" />
-                    <span className="max-w-[4.5rem] truncate text-[11px] text-white/50">{candidateName(candidate, locale, t)}</span>
-                  </div>
-                ))}
-              </motion.div>
-            ) : (
-              <p className="text-sm text-white/50">{t('requestMatching.noCandidates')}</p>
-            )}
-          </div>
+          {candidates.length > 0 ? (
+            <ShuffleDeck candidates={candidates} t={t} />
+          ) : (
+            <p className="text-sm text-white/50">{t('requestMatching.noCandidates')}</p>
+          )}
 
           <p className="text-xs text-white/40" dir="ltr">
             {secondsLeft}s
