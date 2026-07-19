@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Cairo, Noto_Sans_Arabic } from 'next/font/google';
 import SplashScreen from '../components/UI/SplashScreen';
+import ErrorBoundary from '../components/UI/ErrorBoundary';
 import '../styles/globals.css';
 
 // Dynamically loaded (ssr:false) so the Supabase client it needs doesn't
@@ -28,15 +29,17 @@ export default function App({ Component, pageProps }) {
 
   return (
     <div className={`${notoSansArabic.variable} ${cairo.variable} contents`}>
-      <SplashScreen />
-      <SiteChrome onSettings={handleSettings} />
-      <Component {...pageProps} siteSettings={siteSettings} />
-      <div className="grain-overlay" aria-hidden="true" />
-      <div className="cinematic-frame" aria-hidden="true" />
-      <div className="cinematic-frame-corner top-left" aria-hidden="true" />
-      <div className="cinematic-frame-corner top-right" aria-hidden="true" />
-      <div className="cinematic-frame-corner bottom-left" aria-hidden="true" />
-      <div className="cinematic-frame-corner bottom-right" aria-hidden="true" />
+      <ErrorBoundary>
+        <SplashScreen />
+        <SiteChrome onSettings={handleSettings} />
+        <Component {...pageProps} siteSettings={siteSettings} />
+        <div className="grain-overlay" aria-hidden="true" />
+        <div className="cinematic-frame" aria-hidden="true" />
+        <div className="cinematic-frame-corner top-left" aria-hidden="true" />
+        <div className="cinematic-frame-corner top-right" aria-hidden="true" />
+        <div className="cinematic-frame-corner bottom-left" aria-hidden="true" />
+        <div className="cinematic-frame-corner bottom-right" aria-hidden="true" />
+      </ErrorBoundary>
     </div>
   );
 }
