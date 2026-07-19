@@ -22,7 +22,7 @@ export default function TutorSubjects() {
 
   if (loading || !profile) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
+      <main className="flex min-h-dvh items-center justify-center bg-gradient-hero text-white">
         <LoadingSpinner locale={locale} />
       </main>
     );
@@ -35,7 +35,7 @@ export default function TutorSubjects() {
   ];
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} appFrame>
       <h2 className="flex items-center gap-2 font-display text-xl font-bold">
         <Sparkles className="h-5 w-5 text-brand-600 dark:text-brand-300" aria-hidden="true" />
         {t('aiTutor.pageTitle')}

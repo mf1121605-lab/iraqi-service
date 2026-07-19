@@ -44,14 +44,14 @@ export default function NewRequest() {
 
   if (loading || !profile) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
+      <main className="flex min-h-dvh items-center justify-center bg-gradient-hero text-white">
         <LoadingSpinner locale={locale} />
       </main>
     );
   }
 
   return (
-    <AppShell onSignOut={signOut} userId={profile.id}>
+    <AppShell onSignOut={signOut} userId={profile.id} appFrame>
       <div className="mx-auto max-w-xl animate-slide-up rounded-3xl border border-black/5 bg-white/60 p-8 shadow-elevate dark:border-white/10 dark:bg-surface-dark-alt/60">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600/10 text-brand-700 dark:text-brand-300">

@@ -52,7 +52,7 @@ export default function TutorSubjectSessions() {
 
   if (loading || !profile || !subject) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
+      <main className="flex min-h-dvh items-center justify-center bg-gradient-hero text-white">
         <LoadingSpinner locale={locale} />
       </main>
     );
@@ -64,7 +64,7 @@ export default function TutorSubjectSessions() {
   }
 
   return (
-    <AppShell onSignOut={signOut} userId={profile.id}>
+    <AppShell onSignOut={signOut} userId={profile.id} appFrame>
       <Link
         href="/customer/tutor"
         className="flex items-center gap-1.5 text-sm text-ink-muted underline underline-offset-4 transition-colors hover:text-ink-light dark:text-ink-dark-muted dark:hover:text-ink-dark"

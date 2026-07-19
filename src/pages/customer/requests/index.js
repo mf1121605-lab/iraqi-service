@@ -24,7 +24,7 @@ export default function CustomerRequests() {
 
   if (loading || !profile) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
+      <main className="flex min-h-dvh items-center justify-center bg-gradient-hero text-white">
         <LoadingSpinner locale={locale} />
       </main>
     );
@@ -37,7 +37,7 @@ export default function CustomerRequests() {
   ];
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} appFrame>
       <h2 className="flex items-center gap-2 font-display text-xl font-bold">
         <ClipboardList className="h-5 w-5" aria-hidden="true" />
         {t('customerHub.myRequestsCta')}

@@ -37,7 +37,7 @@ function bilingualText(row, base, locale) {
 // never duplicated or re-implemented, only reused.
 function CategoryGrid({ categories, locale }) {
   return (
-    <div className="mt-4 grid gap-3 sm:mt-5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+    <div className="mt-4 grid grid-cols-2 gap-3 sm:mt-5 sm:gap-4 lg:grid-cols-4">
       {categories.map((category) => {
         const visual = CATEGORY_3D[category.key] ?? CATEGORY_3D.general;
         // Every video uploaded through the Media Studio is now
@@ -181,14 +181,14 @@ export default function CustomerDashboard() {
 
   if (loading || !profile) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-mesh-hero text-white">
+      <main className="flex min-h-dvh items-center justify-center bg-mesh-hero text-white">
         <LoadingSpinner locale={locale} />
       </main>
     );
   }
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id}>
+    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} appFrame>
       {banners.length > 0 ? (
         <AnnouncementSlider banners={banners} locale={locale} />
       ) : (
