@@ -27,19 +27,23 @@ export default function NewRequest() {
     event.preventDefault();
     setError('');
     setSubmitting(true);
-    const { error: insertError } = await supabaseClient.from('requests').insert({
-      customer_id: profile.id,
-      category,
-      title,
-      description,
-    });
+    const { data, error: insertError } = await supabaseClient
+      .from('requests')
+      .insert({
+        customer_id: profile.id,
+        category,
+        title,
+        description,
+      })
+      .select('id')
+      .single();
     setSubmitting(false);
     if (insertError) {
       setError(t('common.errorGeneric'));
       return;
     }
     setSuccess(true);
-    setTimeout(() => router.push('/customer/requests'), 1500);
+    setTimeout(() => router.push(`/customer/requests/${data.id}/matching`), 1200);
   }
 
   if (loading || !profile) {

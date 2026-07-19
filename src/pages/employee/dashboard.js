@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ClipboardCheck,
   History,
@@ -18,6 +18,7 @@ import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { translate } from '../../utils/i18n';
 import { categoryLabel, useCategories } from '../../utils/useCategories';
+import { playNewTicketPing } from '../../utils/notificationSound';
 
 const STATUS_OPTIONS = ['in_review', 'needs_changes', 'approved', 'rejected'];
 
@@ -39,6 +40,9 @@ export default function EmployeeDashboard() {
   const [pendingAttachment, setPendingAttachment] = useState(null);
   const [statusNote, setStatusNote] = useState('');
   const [nextStatus, setNextStatus] = useState('in_review');
+  const [claimedNotice, setClaimedNotice] = useState('');
+  const queueRef = useRef(null);
+  const initialLoadRef = useRef(true);
 
   useEffect(() => {
     if (!profile) return;
@@ -46,13 +50,50 @@ export default function EmployeeDashboard() {
     setActiveServices(profile.active_services ?? []);
   }, [profile]);
 
+  // Diffs against the previous snapshot (not just "reload and render") so
+  // a genuinely new unclaimed ticket can trigger the audio ping, and a
+  // ticket another employee just claimed can flash "المهمة مأخوذة" before
+  // it disappears from this employee's queue — RLS already stops
+  // returning it once it's no longer unclaimed/theirs, which would
+  // otherwise look like it silently vanished with no explanation.
   async function loadQueue() {
     const { data } = await supabaseClient
       .from('requests')
       .select('id, title, category, status, assigned_employee_id, customer_id, created_at')
       .order('created_at', { ascending: false });
-    setQueue(data ?? []);
+    const nextQueue = data ?? [];
+    const previousQueue = queueRef.current;
+
+    if (previousQueue && !initialLoadRef.current) {
+      const nextIds = new Set(nextQueue.map((request) => request.id));
+      const newUnclaimed = nextQueue.find(
+        (request) => !request.assigned_employee_id && !previousQueue.some((old) => old.id === request.id)
+      );
+      if (newUnclaimed) playNewTicketPing();
+
+      const justClaimed = previousQueue.find(
+        (old) => !old.assigned_employee_id && (!nextIds.has(old.id) || nextQueue.find((r) => r.id === old.id)?.assigned_employee_id)
+      );
+      if (justClaimed) {
+        setClaimedNotice(justClaimed.title);
+        setTimeout(() => setClaimedNotice(''), 3000);
+      }
+    }
+
+    queueRef.current = nextQueue;
+    initialLoadRef.current = false;
+    setQueue(nextQueue);
   }
+
+  useEffect(() => {
+    if (!profile) return undefined;
+    const channel = supabaseClient
+      .channel('employee-requests-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, loadQueue)
+      .subscribe();
+    return () => supabaseClient.removeChannel(channel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
 
   useEffect(() => {
     if (profile) loadQueue();
@@ -150,6 +191,11 @@ export default function EmployeeDashboard() {
         { href: '/chat', label: t('chat.roomsTitle'), icon: MessageCircle },
       ]}
     >
+      {claimedNotice && (
+        <div className="mb-4 animate-slide-down rounded-xl2 border border-red-400/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200">
+          {t('employeeDesk.ticketClaimedByOther').replace('{title}', claimedNotice)}
+        </div>
+      )}
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <aside className="space-y-6">
           <section className="metal-panel p-6 text-white">
