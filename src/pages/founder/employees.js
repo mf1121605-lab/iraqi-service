@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CircleCheck as CheckCircle2, UserPlus, Users } from 'lucide-react';
+import { BadgeCheck, CircleCheck as CheckCircle2, UserPlus, Users } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -20,7 +20,7 @@ const emptyForm = {
   specialization: '',
 };
 
-const EMPLOYEE_SELECT = 'id, given_name, father_name, grandfather_name, family_name, specialization, account_status, admin_level, created_at';
+const EMPLOYEE_SELECT = 'id, given_name, father_name, grandfather_name, family_name, specialization, account_status, admin_level, is_verified, created_at';
 
 export default function FounderEmployees() {
   const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder']);
@@ -185,14 +185,34 @@ export default function FounderEmployees() {
           {employees.map((emp) => (
             <li key={emp.id} className="metal-panel flex flex-wrap items-center justify-between gap-3 p-4 text-white">
               <div className="min-w-0">
-                <p className="truncate font-semibold">
+                <p className="flex items-center gap-1 truncate font-semibold">
                   {[emp.given_name, emp.father_name, emp.grandfather_name, emp.family_name].filter(Boolean).join(' ') || '—'}
+                  {emp.is_verified && (
+                    <BadgeCheck className="h-4 w-4 shrink-0 text-blue-400" aria-label={t('founderEmployees.verifiedBadgeLabel')} />
+                  )}
                 </p>
                 <p className="truncate text-xs text-white/50">
                   {emp.specialization || ''} {emp.admin_level === 'co_admin' ? '· co-admin' : ''}
                 </p>
               </div>
               <div className="flex flex-wrap gap-1.5">
+                {emp.is_verified ? (
+                  <button
+                    type="button"
+                    onClick={() => handleAction(emp.id, 'unverify')}
+                    className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white/60 transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    {t('founderEmployees.unverifyCta')}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleAction(emp.id, 'verify')}
+                    className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-blue-400 transition-colors hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    {t('founderEmployees.verifyCta')}
+                  </button>
+                )}
                 {emp.account_status === 'suspended' ? (
                   <button
                     type="button"

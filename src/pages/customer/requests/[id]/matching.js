@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
-import { CircleCheck as CheckCircle2, Radar, Users } from 'lucide-react';
+import { BadgeCheck, CircleCheck as CheckCircle2, Radar, Users } from 'lucide-react';
 import { useLocale } from '../../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 import Avatar from '../../../../components/Chat/Avatar';
@@ -22,7 +22,12 @@ function CandidateCard({ candidate, t }) {
   return (
     <div className="glass-panel-dark flex w-56 flex-col items-center gap-2 rounded-2xl p-5 text-center shadow-[0_20px_45px_-15px_rgba(0,0,0,0.6)]">
       <Avatar avatarKey={candidate.avatar_key} name={candidate.given_name} seed={candidate.id} className="h-16 w-16 ring-2 ring-gold-400/30" />
-      <p className="truncate text-sm font-bold text-white">{candidateName(candidate, t)}</p>
+      <p className="flex items-center gap-1 truncate text-sm font-bold text-white">
+        {candidateName(candidate, t)}
+        {candidate.is_verified && (
+          <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-blue-400" aria-label={t('requestMatching.verifiedBadgeLabel')} />
+        )}
+      </p>
       {candidate.specialization && <p className="truncate text-xs text-white/50">{candidate.specialization}</p>}
     </div>
   );
@@ -157,7 +162,7 @@ export default function RequestMatching() {
 
           const { data: employeeRow } = await supabaseClient
             .from('profiles')
-            .select('id, given_name, family_name, avatar_key, specialization')
+            .select('id, given_name, family_name, avatar_key, specialization, is_verified')
             .eq('id', updatedRow.assigned_employee_id)
             .maybeSingle();
           if (!active) return;
@@ -216,7 +221,12 @@ export default function RequestMatching() {
           <p className="font-display text-lg font-bold">{t('requestMatching.matchedTitle')}</p>
           <Avatar avatarKey={winner.avatar_key} name={winner.given_name} seed={winner.id} className="h-24 w-24 ring-4 ring-gold-400/40" />
           <div>
-            <p className="font-display text-xl font-bold">{[winner.given_name, winner.family_name].filter(Boolean).join(' ')}</p>
+            <p className="flex items-center justify-center gap-1 font-display text-xl font-bold">
+              {[winner.given_name, winner.family_name].filter(Boolean).join(' ')}
+              {winner.is_verified && (
+                <BadgeCheck className="h-4 w-4 shrink-0 text-blue-400" aria-label={t('requestMatching.verifiedBadgeLabel')} />
+              )}
+            </p>
             {winner.specialization && <p className="mt-1 text-sm text-white/60">{winner.specialization}</p>}
           </div>
           <LoadingSpinner inline showLabel={false} size={20} />
