@@ -37,7 +37,7 @@ function bilingualText(row, base, locale) {
 // never duplicated or re-implemented, only reused.
 function CategoryGrid({ categories, locale }) {
   return (
-    <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="mt-4 grid gap-3 sm:mt-5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
       {categories.map((category) => {
         const visual = CATEGORY_3D[category.key] ?? CATEGORY_3D.general;
         // Every video uploaded through the Media Studio is now
@@ -55,8 +55,8 @@ function CategoryGrid({ categories, locale }) {
             {...cardLift}
             className={
               hasMedia
-                ? 'group relative flex h-40 flex-col items-center justify-end overflow-hidden rounded-[1.5rem] border border-gold-400/20 text-center font-semibold text-white shadow-[0_0_30px_-12px_rgba(230,171,44,0.35)] sm:h-48'
-                : 'metal-panel group flex flex-col items-center gap-3 p-6 text-center font-semibold text-white'
+                ? 'group relative flex h-32 flex-col items-center justify-end overflow-hidden rounded-2xl border border-gold-400/20 text-center font-semibold text-white shadow-[0_0_30px_-12px_rgba(230,171,44,0.35)] sm:h-40 sm:rounded-[1.5rem] md:h-48'
+                : 'metal-panel group flex flex-col items-center gap-2 p-4 text-center font-semibold text-white sm:gap-3 sm:p-6'
             }
           >
             {hasMedia ? (
@@ -80,16 +80,16 @@ function CategoryGrid({ categories, locale }) {
                   </>
                 )}
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
-                <span className="relative z-10 p-4 text-base drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">
+                <span className="relative z-10 p-2.5 text-sm drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] sm:p-4 sm:text-base">
                   {categoryLabel(category, locale)}
                 </span>
               </>
             ) : (
               <>
-                <div className="icon-medallion h-24 w-24" style={{ '--medallion-glow': visual.glow }}>
-                  <Icon3D variant={category.key} color={visual.color} className="h-20 w-20" />
+                <div className="icon-medallion h-16 w-16 sm:h-24 sm:w-24" style={{ '--medallion-glow': visual.glow }}>
+                  <Icon3D variant={category.key} color={visual.color} className="h-14 w-14 sm:h-20 sm:w-20" />
                 </div>
-                <span>{categoryLabel(category, locale)}</span>
+                <span className="text-sm sm:text-base">{categoryLabel(category, locale)}</span>
               </>
             )}
           </MotionLink>
@@ -192,32 +192,32 @@ export default function CustomerDashboard() {
       {banners.length > 0 ? (
         <AnnouncementSlider banners={banners} locale={locale} />
       ) : (
-        <section className="cinematic-card relative overflow-hidden p-10 text-white">
+        <section className="cinematic-card relative overflow-hidden p-5 text-white sm:p-8 md:p-10">
           <div className="iraq-flag-watermark pointer-events-none absolute inset-y-0 start-0 w-1/2 opacity-[0.05]" />
           <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-3xl" />
           <div className="relative">
-            <h2 className="font-display text-2xl font-bold tracking-tight">{t('customerHub.heroFallbackTitle')}</h2>
-            <p className="mt-2 text-white/70">{t('customerHub.heroFallbackSubtitle')}</p>
+            <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl md:text-2xl">{t('customerHub.heroFallbackTitle')}</h2>
+            <p className="mt-2 text-sm text-white/70 sm:text-base">{t('customerHub.heroFallbackSubtitle')}</p>
           </div>
         </section>
       )}
 
       {/* 1. الخدمات */}
-      <section className="mt-10">
-        <h3 className="section-title-cinematic font-display text-xl font-bold">{t('customerHub.categoriesTitle')}</h3>
+      <section className="mt-6 sm:mt-10">
+        <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">{t('customerHub.categoriesTitle')}</h3>
         <CategoryGrid categories={serviceCategories} locale={locale} />
       </section>
 
       {/* 2. الأدوات المهمة — header and container always render, even
           with zero tool-tagged categories yet, so the section exists as
           soon as the founder adds one instead of appearing/disappearing. */}
-      <section className="mt-10">
-        <h3 className="section-title-cinematic font-display text-xl font-bold">
-          <Wrench className="h-5 w-5 text-gold-300" aria-hidden="true" />
+      <section className="mt-6 sm:mt-10">
+        <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">
+          <Wrench className="h-4 w-4 text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
           {t('customerHub.toolsTitle')}
         </h3>
         {toolCategories.length === 0 ? (
-          <p className="mt-4 text-sm text-white/60">{t('customerHub.toolsEmpty')}</p>
+          <p className="mt-3 text-xs text-white/60 sm:mt-4 sm:text-sm">{t('customerHub.toolsEmpty')}</p>
         ) : (
           <CategoryGrid categories={toolCategories} locale={locale} />
         )}
@@ -226,42 +226,42 @@ export default function CustomerDashboard() {
       {/* 3. مجتمع المحادثات الهادفة — a single standalone promo card, not
           individual chat_rooms rows scattered across the grid; it links
           out to the dedicated /chat rooms list. */}
-      <section className="mt-10">
-        <h3 className="section-title-cinematic font-display text-xl font-bold">
-          <MessagesSquare className="h-5 w-5 text-gold-300" aria-hidden="true" />
+      <section className="mt-6 sm:mt-10">
+        <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">
+          <MessagesSquare className="h-4 w-4 text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
           {t('customerHub.communityTitle')}
         </h3>
         <MotionLink
           href="/chat"
           {...cardLift}
-          className="cinematic-card group relative mt-5 flex items-center gap-4 overflow-hidden p-6 text-white sm:p-8"
+          className="cinematic-card group relative mt-4 flex items-center gap-3 overflow-hidden p-4 text-white sm:mt-5 sm:gap-4 sm:p-6 md:p-8"
         >
           <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 animate-float rounded-full bg-gold-300/10 blur-3xl" />
-          <span className="icon-medallion relative h-16 w-16 shrink-0 sm:h-20 sm:w-20" style={{ '--medallion-glow': 'rgba(230,171,44,0.5)' }}>
-            <MessagesSquare className="h-8 w-8 sm:h-9 sm:w-9" strokeWidth={2} aria-hidden="true" />
+          <span className="icon-medallion relative h-12 w-12 shrink-0 sm:h-16 sm:w-16 md:h-20 md:w-20" style={{ '--medallion-glow': 'rgba(230,171,44,0.5)' }}>
+            <MessagesSquare className="h-6 w-6 sm:h-8 sm:w-8 md:h-9 md:w-9" strokeWidth={2} aria-hidden="true" />
           </span>
           <div className="relative min-w-0 flex-1">
-            <h4 className="font-display text-lg font-bold sm:text-xl">{t('customerHub.communityTitle')}</h4>
-            <p className="mt-1 text-sm text-white/70">{t('customerHub.communityCardSubtitle')}</p>
+            <h4 className="font-display text-sm font-bold sm:text-lg md:text-xl">{t('customerHub.communityTitle')}</h4>
+            <p className="mt-0.5 text-xs text-white/70 sm:mt-1 sm:text-sm">{t('customerHub.communityCardSubtitle')}</p>
           </div>
           <ArrowLeft
-            className="relative h-5 w-5 shrink-0 text-gold-300 transition-transform duration-300 rtl:rotate-180 group-hover:-translate-x-1 rtl:group-hover:translate-x-1"
+            className="relative h-4 w-4 shrink-0 text-gold-300 transition-transform duration-300 rtl:rotate-180 sm:h-5 sm:w-5 group-hover:-translate-x-1 rtl:group-hover:translate-x-1"
             aria-hidden="true"
           />
         </MotionLink>
       </section>
 
       {/* 4. العروض والمتاجر */}
-      <section className="mt-10">
-        <h3 className="section-title-cinematic font-display text-xl font-bold">
-          <ShoppingBag className="h-5 w-5 text-gold-300" aria-hidden="true" />
+      <section className="mt-6 sm:mt-10">
+        <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">
+          <ShoppingBag className="h-4 w-4 text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
           {t('customerHub.offersTitle')}
         </h3>
         {orderMessage && <p className="mt-2 animate-slide-down text-sm text-red-400">{orderMessage}</p>}
         {products.length === 0 ? (
-          <p className="mt-4 text-sm text-white/60">{t('customerHub.dealsEmpty')}</p>
+          <p className="mt-3 text-xs text-white/60 sm:mt-4 sm:text-sm">{t('customerHub.dealsEmpty')}</p>
         ) : (
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid gap-3 sm:mt-5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
             {products.map((product) => (
               <motion.div
                 key={product.id}
@@ -271,29 +271,29 @@ export default function CustomerDashboard() {
                 <SafeImage
                   src={product.image_path}
                   alt={bilingualText(product, 'title', locale)}
-                  className="h-36 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  className="h-28 w-full object-cover transition-transform duration-300 group-hover:scale-105 sm:h-36"
                 />
-                <div className="p-5">
-                  <h4 className="font-semibold text-white">{bilingualText(product, 'title', locale)}</h4>
-                  <p className="mt-1 text-sm text-white/60">{bilingualText(product, 'description', locale)}</p>
-                  <div className="mt-3 flex items-center gap-2">
+                <div className="p-3 sm:p-5">
+                  <h4 className="text-sm font-semibold text-white sm:text-base">{bilingualText(product, 'title', locale)}</h4>
+                  <p className="mt-1 text-xs text-white/60 sm:text-sm">{bilingualText(product, 'description', locale)}</p>
+                  <div className="mt-2 flex items-center gap-2 sm:mt-3">
                     {product.discount_price ? (
                       <>
-                        <span className="text-sm text-white/40 line-through">{product.price} IQD</span>
-                        <span className="flex items-center gap-1 font-bold text-gold-300">
+                        <span className="text-xs text-white/40 line-through sm:text-sm">{product.price} IQD</span>
+                        <span className="flex items-center gap-1 text-sm font-bold text-gold-300">
                           <Tag className="h-3.5 w-3.5" aria-hidden="true" />
                           {product.discount_price} IQD
                         </span>
                       </>
                     ) : (
-                      <span className="font-bold text-white">{product.price} IQD</span>
+                      <span className="text-sm font-bold text-white">{product.price} IQD</span>
                     )}
                   </div>
                   <motion.button
                     type="button"
                     onClick={() => handleOrder(product)}
                     {...buttonTap}
-                    className="btn-cinematic-gold mt-4 w-full px-4 py-2.5 text-sm"
+                    className="btn-cinematic-gold mt-3 w-full px-4 py-2 text-xs sm:mt-4 sm:py-2.5 sm:text-sm"
                   >
                     {t('customerHub.orderCta')}
                   </motion.button>

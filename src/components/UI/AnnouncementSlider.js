@@ -81,7 +81,7 @@ export default function AnnouncementSlider({ banners, locale, canEdit, onEdit })
             else if (power > SWIPE_CONFIDENCE_THRESHOLD) paginate(-1);
             setPaused(false);
           }}
-          className="relative h-64 text-white sm:h-72"
+          className="relative h-44 text-white md:h-60 lg:h-72"
           style={{ backgroundColor: banner.background_color, color: banner.text_color, touchAction: count > 1 ? 'pan-y' : undefined }}
         >
           {/* Video wins over image when both are set — the founder picks one
@@ -134,10 +134,10 @@ export default function AnnouncementSlider({ banners, locale, canEdit, onEdit })
             </button>
           )}
 
-          <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
+          <div className="absolute inset-x-0 bottom-0 p-3 sm:p-5 md:p-7">
             {/* Glassmorphism panel: frosted backdrop-blur over the media so
                 text stays legible regardless of what's playing behind it. */}
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-4 backdrop-blur-md sm:p-5">
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-3 backdrop-blur-md sm:p-4 md:p-5">
               {bilingualText(banner, 'badge', locale) && (
                 <motion.span
                   initial={{ opacity: 0, y: 4 }}
@@ -148,14 +148,14 @@ export default function AnnouncementSlider({ banners, locale, canEdit, onEdit })
                   {bilingualText(banner, 'badge', locale)}
                 </motion.span>
               )}
-              <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl">{bilingualText(banner, 'title', locale)}</h2>
+              <h2 className="font-display text-base font-bold tracking-tight sm:text-xl md:text-2xl">{bilingualText(banner, 'title', locale)}</h2>
               {bilingualText(banner, 'description', locale) && (
-                <p className="mt-1 text-sm opacity-80 sm:text-base">{bilingualText(banner, 'description', locale)}</p>
+                <p className="mt-1 text-xs opacity-80 sm:text-sm md:text-base">{bilingualText(banner, 'description', locale)}</p>
               )}
               {banner.button_link && bilingualText(banner, 'button_text', locale) && (
                 <a
                   href={banner.button_link}
-                  className="mt-3 inline-flex items-center rounded-xl2 bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25"
+                  className="mt-2 inline-flex items-center rounded-xl2 bg-white/15 px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-white/25 sm:mt-3 sm:px-4 sm:py-2 sm:text-sm"
                 >
                   {bilingualText(banner, 'button_text', locale)}
                 </a>
