@@ -7,8 +7,8 @@ const MAX_TEXT_LENGTH = 8000;
 // the alias always points at their current recommended flash model.
 const GEMINI_MODEL = 'gemini-flash-latest';
 const GEMINI_TIMEOUT_MS = 30_000;
-const MAX_RETRIES = 2;
-const RETRY_DELAY_MS = 1500;
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1200;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
