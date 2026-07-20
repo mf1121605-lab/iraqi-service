@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ClipboardCheck, ExternalLink, MessageCircle, Newspaper, Radio, Send, Trash2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { CircleCheck as CheckCircle2, ClipboardCheck, ExternalLink, Loader as Loader2, MessageCircle, Newspaper, Radio, Send, Sparkles, Trash2 } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -7,7 +8,7 @@ import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
 import { translate } from '../../utils/i18n';
 
-const emptyForm = { titleAr: '', titleCkb: '', url: '', source: '' };
+const emptyForm = { titleAr: '', titleCkb: '', url: '', source: '', deadline: '', requirements: '' };
 
 export default function HqNewsLinks() {
   const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder', 'employee']);
@@ -25,6 +26,10 @@ export default function HqNewsLinks() {
   const [items, setItems] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
+  const [rawText, setRawText] = useState('');
+  const [parsing, setParsing] = useState(false);
+  const [parseError, setParseError] = useState('');
+  const [toast, setToast] = useState(false);
 
   useEffect(() => {
     if (!profile) return undefined;
@@ -45,6 +50,12 @@ export default function HqNewsLinks() {
     return () => supabaseClient.removeChannel(channel);
   }, [profile]);
 
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = setTimeout(() => setToast(false), 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
   async function handleAdd(event) {
     event.preventDefault();
     setError('');
@@ -54,6 +65,8 @@ export default function HqNewsLinks() {
       title_ckb: form.titleCkb.trim() || null,
       url: form.url.trim(),
       source: form.source.trim() || null,
+      deadline: form.deadline.trim() || null,
+      requirements: form.requirements.trim() || null,
       created_by: profile.id,
     });
     if (insertError) {
@@ -61,6 +74,41 @@ export default function HqNewsLinks() {
       return;
     }
     setForm(emptyForm);
+    setRawText('');
+    setToast(true);
+  }
+
+  async function handleParse() {
+    if (!rawText.trim() || parsing) return;
+    setParseError('');
+    setParsing(true);
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
+    try {
+      const response = await fetch('/api/hq/parse-announcement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ text: rawText }),
+      });
+      const result = await response.json();
+      if (!response.ok || result.error) {
+        setParseError(result.error || t('common.errorGeneric'));
+        return;
+      }
+      setForm({
+        titleAr: result.title,
+        titleCkb: '',
+        url: result.link,
+        source: result.provider,
+        deadline: result.deadline,
+        requirements: result.requirements,
+      });
+    } catch {
+      setParseError(t('common.errorGeneric'));
+    } finally {
+      setParsing(false);
+    }
   }
 
   async function togglePublish(item) {
@@ -89,6 +137,31 @@ export default function HqNewsLinks() {
 
       {error && <p className="mt-3 animate-slide-down text-sm text-red-400">{error}</p>}
 
+      <div className="metal-panel mt-6 p-6 text-white">
+        <h3 className="flex items-center gap-1.5 text-sm font-bold">
+          <Sparkles className="h-4 w-4 text-gold-300" aria-hidden="true" />
+          {t('hq.aiParseTitle')}
+        </h3>
+        <p className="mt-1 text-xs text-white/50">{t('hq.aiParseHint')}</p>
+        <textarea
+          value={rawText}
+          onChange={(event) => setRawText(event.target.value)}
+          rows={6}
+          placeholder={t('hq.aiParsePlaceholder')}
+          className="input-cinematic mt-3 w-full text-sm"
+        />
+        {parseError && <p className="mt-2 text-sm text-red-400">{parseError}</p>}
+        <button
+          type="button"
+          onClick={handleParse}
+          disabled={parsing || !rawText.trim()}
+          className="btn-cinematic-gold mt-3 flex items-center justify-center gap-1.5 px-4 py-2 text-sm disabled:opacity-50"
+        >
+          {parsing ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
+          {parsing ? t('hq.aiParseLoadingCta') : t('hq.aiParseCta')}
+        </button>
+      </div>
+
       <form onSubmit={handleAdd} className="metal-panel mt-6 grid gap-3 p-6 text-white sm:grid-cols-2">
         <input
           value={form.titleAr}
@@ -115,6 +188,19 @@ export default function HqNewsLinks() {
           placeholder={t('hq.sourceLabel')}
           className="input-cinematic text-sm"
         />
+        <input
+          value={form.deadline}
+          onChange={(event) => setForm({ ...form, deadline: event.target.value })}
+          placeholder={t('hq.deadlineLabel')}
+          className="input-cinematic text-sm"
+        />
+        <textarea
+          value={form.requirements}
+          onChange={(event) => setForm({ ...form, requirements: event.target.value })}
+          rows={4}
+          placeholder={t('hq.requirementsLabel')}
+          className="input-cinematic text-sm sm:col-span-2"
+        />
         <button type="submit" className="btn-cinematic-gold flex items-center justify-center gap-1.5 px-4 py-2 text-sm sm:col-span-2">
           <Send className="h-4 w-4" aria-hidden="true" />
           {t('hq.addCta')}
@@ -140,6 +226,7 @@ export default function HqNewsLinks() {
                   <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 </a>
                 {item.source && <p className="text-xs text-white/50">{item.source}</p>}
+                {item.deadline && <p className="text-xs text-white/50">{t('hq.deadlineLabel')}: {item.deadline}</p>}
               </div>
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-1 text-xs text-white/80">
@@ -164,6 +251,20 @@ export default function HqNewsLinks() {
           ))}
         </ul>
       )}
+
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            className="fixed inset-x-0 top-4 z-[200] mx-auto flex w-fit items-center gap-2 rounded-2xl border border-gold-400/30 bg-surface-dark px-5 py-3 text-sm font-semibold text-white shadow-[0_0_40px_-10px_rgba(230,171,44,0.5)]"
+          >
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden="true" />
+            {t('hq.savedToast')}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AppShell>
   );
 }

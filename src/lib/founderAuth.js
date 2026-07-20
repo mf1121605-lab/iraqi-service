@@ -29,3 +29,31 @@ export async function requireFounderOrCoAdmin(req) {
 
   return { caller: callerProfile };
 }
+
+// Same shape as requireFounderOrCoAdmin, but for routes any staff member
+// (founder or employee) may use — mirrors the is_staff() RLS helper, since
+// /hq/news-links itself is already open to both roles.
+export async function requireStaff(req) {
+  const authHeader = req.headers.authorization ?? '';
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  if (!token) {
+    return { error: 'missing bearer token', status: 401 };
+  }
+
+  const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+  if (userError || !userData?.user) {
+    return { error: 'invalid session', status: 401 };
+  }
+
+  const { data: callerProfile } = await supabaseAdmin
+    .from('profiles')
+    .select('id, role, admin_level')
+    .eq('id', userData.user.id)
+    .single();
+
+  if (!callerProfile || !['founder', 'employee'].includes(callerProfile.role)) {
+    return { error: 'staff only', status: 403 };
+  }
+
+  return { caller: callerProfile };
+}
