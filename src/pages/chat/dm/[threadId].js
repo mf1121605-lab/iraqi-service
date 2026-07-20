@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
-import { ArrowRight, Send } from 'lucide-react';
+import { ArrowRight, ChevronDown, Send } from 'lucide-react';
 import AppShell, { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import Avatar from '../../../components/Chat/Avatar';
@@ -36,7 +36,9 @@ export default function DirectMessageThread() {
   const [pendingAttachment, setPendingAttachment] = useState(null);
   const [sending, setSending] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [showScrollDown, setShowScrollDown] = useState(false);
   const listEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
 
   useEffect(() => {
     if (!profile || !threadId) return undefined;
@@ -89,8 +91,22 @@ export default function DirectMessageThread() {
   }, [profile, threadId]);
 
   useEffect(() => {
-    listEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+    if (isNearBottom) listEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
+
+  function handleScroll() {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    setShowScrollDown(container.scrollHeight - container.scrollTop - container.clientHeight > 80);
+  }
+
+  function scrollToBottom() {
+    listEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setShowScrollDown(false);
+  }
 
   async function handleSend(event) {
     event.preventDefault();
@@ -160,7 +176,9 @@ export default function DirectMessageThread() {
         </div>
 
         <div
-          className="mt-3 max-h-[calc(100dvh-22rem)] flex-1 overflow-y-auto rounded-2xl bg-[#0d1117] p-3"
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="relative mt-3 max-h-[calc(100dvh-22rem)] flex-1 overflow-y-auto rounded-2xl bg-[#0d1117] p-3"
           style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '18px 18px' }}
         >
           {messages.length === 0 && <p className="text-center text-sm text-white/50">{t('common.noResults')}</p>}
@@ -179,6 +197,7 @@ export default function DirectMessageThread() {
                   isLast={isLast}
                   bundled={bundled}
                   isSticker={isSticker}
+                  timestamp={message.created_at}
                   bubbleClassName={
                     isSticker
                       ? 'text-7xl leading-none'
@@ -202,6 +221,16 @@ export default function DirectMessageThread() {
             })}
           </AnimatePresence>
           <div ref={listEndRef} />
+          {showScrollDown && (
+            <button
+              type="button"
+              onClick={scrollToBottom}
+              className="sticky bottom-2 flex h-8 w-8 items-center justify-center rounded-full bg-amber-500 text-white shadow-lg transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-amber-400 ltr:ml-auto rtl:mr-auto"
+              aria-label={t('chat.scrollToBottom')}
+            >
+              <ChevronDown className="h-5 w-5" aria-hidden="true" />
+            </button>
+          )}
         </div>
 
         <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-white/10 pt-3">

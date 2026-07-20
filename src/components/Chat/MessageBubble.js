@@ -4,12 +4,16 @@ import { bubbleCorners } from '../../utils/chatBundling';
 import { useLongPress } from '../../utils/useLongPress';
 import MessageUnsendMenu from './MessageUnsendMenu';
 
+function formatMsgTime(isoString) {
+  if (!isoString) return '';
+  return new Date(isoString).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit', hour12: true });
+}
+
 // Shared row + bubble wrapper for every chat surface: handles the
 // Messenger-style compound corner radii, spring entry/exit animation
-// (AnimatePresence lives at the call site around the .map), and the
-// long-press/right-click unsend menu. `avatar`, when supplied, renders the
-// per-message avatar beside the bubble (only the group chat room uses this);
-// everything else stays a simple aligned row.
+// (AnimatePresence lives at the call site around the .map), the
+// long-press/right-click unsend menu, and the WhatsApp-style timestamp shown
+// on hover (desktop) / always (mobile touch).
 export default function MessageBubble({
   isMine,
   isFirst,
@@ -19,6 +23,7 @@ export default function MessageBubble({
   bubbleClassName,
   avatar,
   onDelete,
+  timestamp,
   locale,
   children,
 }) {
@@ -39,8 +44,20 @@ export default function MessageBubble({
       className={`flex ${avatar ? 'items-end gap-2' : ''} ${rowAlignment} ${bundled ? 'mt-0.5' : 'mt-3'}`}
     >
       {avatar}
-      <motion.div whileHover={{ scale: 1.01 }} className={`relative ${corners} ${bubbleClassName}`} {...longPress}>
+      <motion.div
+        whileHover={{ scale: 1.01 }}
+        className={`group relative ${corners} ${bubbleClassName}`}
+        {...longPress}
+      >
         {children}
+        {timestamp && !isSticker && (
+          <time
+            className="mt-0.5 block text-end text-[10px] leading-none opacity-40 transition-opacity group-hover:opacity-80"
+            dateTime={timestamp}
+          >
+            {formatMsgTime(timestamp)}
+          </time>
+        )}
         {isMine && <MessageUnsendMenu open={menuOpen} onClose={() => setMenuOpen(false)} onDelete={onDelete} locale={locale} />}
       </motion.div>
     </motion.div>

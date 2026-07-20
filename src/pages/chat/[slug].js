@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
-import { ArrowRight, Eye, EyeOff, Info, Pencil, Pin, Send, Volume2, VolumeX } from 'lucide-react';
+import { ArrowRight, ChevronDown, Eye, EyeOff, Info, Pencil, Pin, Send, Volume2, VolumeX } from 'lucide-react';
 import { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import AttachmentUploader from '../../components/Chat/AttachmentUploader';
@@ -60,8 +60,10 @@ export default function ChatRoom() {
   const [roomEditError, setRoomEditError] = useState('');
   const [pendingInviteIds, setPendingInviteIds] = useState([]);
   const [selectedMember, setSelectedMember] = useState(null);
+  const [showScrollDown, setShowScrollDown] = useState(false);
   const ambientAudioRef = useRef(null);
   const listEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
   const channelRef = useRef(null);
   const lastTypingSentRef = useRef(0);
   const messagesRef = useRef([]);
@@ -193,8 +195,23 @@ export default function ChatRoom() {
   }, [profile, slug]);
 
   useEffect(() => {
-    listEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+    if (isNearBottom) listEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
+
+  function handleScroll() {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const atBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+    setShowScrollDown(!atBottom);
+  }
+
+  function scrollToBottom() {
+    listEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setShowScrollDown(false);
+  }
 
   useEffect(() => {
     if (profile) loadPendingInvites();
@@ -435,8 +452,8 @@ export default function ChatRoom() {
         </div>
       </header>
 
-      <main className="relative z-0 mx-auto flex h-[calc(100vh-136px)] max-w-3xl flex-col p-4">
-        <div className="flex-1 overflow-y-auto">
+      <main className="relative z-0 mx-auto flex h-[calc(100dvh-136px)] max-w-3xl flex-col p-4 sm:h-[calc(100dvh-130px)]">
+        <div ref={scrollContainerRef} onScroll={handleScroll} className="relative flex-1 overflow-y-auto">
           <AnimatePresence initial={false}>
             {messages.map((message, index) => {
               const messageReactions = reactions.filter((r) => r.message_id === message.id);
@@ -473,6 +490,7 @@ export default function ChatRoom() {
                   bundled={bundled}
                   isSticker={isSticker}
                   avatar={avatarNode}
+                  timestamp={message.created_at}
                   bubbleClassName={
                     isSticker ? 'text-7xl leading-none' : `max-w-[75%] px-4 py-2 shadow-glass-sm ${isMine ? 'bg-brand-600' : 'bg-white/10'}`
                   }
@@ -525,6 +543,16 @@ export default function ChatRoom() {
             })}
           </AnimatePresence>
           <div ref={listEndRef} />
+          {showScrollDown && (
+            <button
+              type="button"
+              onClick={scrollToBottom}
+              className="sticky bottom-2 flex h-8 w-8 items-center justify-center rounded-full bg-gold-500 text-brand-950 shadow-glow transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-gold-400 ltr:ml-auto rtl:mr-auto"
+              aria-label={t('chat.scrollToBottom')}
+            >
+              <ChevronDown className="h-5 w-5" aria-hidden="true" />
+            </button>
+          )}
         </div>
 
         <TypingIndicator names={typingNames} locale={locale} />

@@ -271,6 +271,7 @@ export default function CustomerRequestDetail() {
                     isLast={isLast}
                     bundled={bundled}
                     isSticker={isSticker}
+                    timestamp={message.created_at}
                     bubbleClassName={
                       isSticker
                         ? 'text-7xl leading-none'
