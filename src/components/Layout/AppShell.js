@@ -108,10 +108,10 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
             key={item.href}
             href={item.href}
             onClick={onNavigate}
-            className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-brand-400 ${
+            className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 hover:-translate-y-px focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${
               item.active
-                ? 'bg-gradient-to-r from-brand-600 to-brand-500 font-semibold text-white shadow-glow'
-                : 'bg-black/5 text-ink-light/80 hover:bg-black/10 dark:bg-white/5 dark:text-ink-dark/80 dark:hover:bg-white/10'
+                ? 'bg-gradient-to-r from-amber-500/20 to-amber-600/10 text-amber-400 border border-amber-500/35 shadow-[0_0_14px_-4px_rgba(245,158,11,0.30)] dark:from-amber-500/20 dark:to-amber-600/10'
+                : 'bg-black/5 text-ink-light/80 hover:bg-black/8 dark:bg-white/5 dark:text-ink-dark/70 dark:hover:bg-white/8 dark:hover:text-white'
             }`}
           >
             {Icon && <Icon className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden="true" />}
@@ -127,10 +127,11 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
       <a href="#main-content" className="skip-link">
         {t('common.skipToContent')}
       </a>
-      <header className="sticky top-0 z-30 glass-nav relative overflow-hidden border-b border-black/5 shadow-soft transition-colors dark:glass-nav-dark dark:border-gold-400/10">
-        {/* Night-sky backdrop — dark mode only; light mode stays clean. */}
+      {/* HEADER — glassmorphism navbar with amber border in dark mode */}
+      <header className="sticky top-0 z-30 relative overflow-hidden glass-nav dark:glass-nav-dark transition-all duration-300 shadow-soft dark:shadow-[0_4px_24px_-8px_rgba(0,0,0,0.7),0_0_0_1px_rgba(245,158,11,0.08)]">
+        {/* Night-sky twinkling backdrop — dark mode only */}
         <div className="pointer-events-none absolute inset-0 hidden dark:block" aria-hidden="true">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0a1622]/90 via-[#0d1b26]/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#090c12]/95 via-[#0d1117]/60 to-transparent" />
           {HEADER_STARS.map((star, index) => (
             <span
               key={index}
@@ -138,41 +139,47 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
               style={{ top: star.top, left: star.left, width: star.size, height: star.size, animationDelay: star.delay }}
             />
           ))}
-          <div className="absolute -right-8 top-1/2 h-28 w-28 -translate-y-1/2 animate-pulse-soft rounded-full bg-gold-400/10 blur-3xl" style={{ animationDelay: '0.4s' }} />
+          {/* Ambient amber glow orb */}
+          <div className="absolute -right-8 top-1/2 h-32 w-32 -translate-y-1/2 animate-pulse-soft rounded-full bg-amber-500/8 blur-3xl" style={{ animationDelay: '0.4s' }} />
+          <div className="absolute -left-4 top-1/2 h-24 w-24 -translate-y-1/2 rounded-full bg-amber-600/5 blur-2xl" />
         </div>
+        {/* Shimmer bottom border line */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px overflow-hidden">
-          <div className="h-full w-full animate-shimmer bg-[length:200%_100%] bg-gradient-to-r from-transparent via-gold-500/70 to-transparent dark:via-gold-300/80" />
+          <div className="h-full w-full animate-shimmer bg-[length:200%_100%] bg-gradient-to-r from-transparent via-amber-500/60 to-transparent dark:via-amber-400/70" />
         </div>
         <div className="relative mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
-          <div className="flex items-center gap-2">
+          {/* LOGO + TITLE */}
+          <div className="flex items-center gap-2.5">
             <span className="relative flex h-9 w-9 items-center justify-center">
-              <span className="absolute inset-0 -z-10 animate-pulse-soft rounded-xl bg-gold-400/25 blur-md dark:bg-gold-300/25" aria-hidden="true" />
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-hero text-white shadow-glow dark:bg-none dark:bg-gold-400/15 dark:text-gold-300 dark:shadow-[0_0_0_1px_rgba(230,171,44,0.35),0_4px_16px_-4px_rgba(230,171,44,0.4)]">
+              <span className="absolute inset-0 -z-10 animate-pulse-soft rounded-xl bg-amber-500/20 blur-md dark:bg-amber-400/15" aria-hidden="true" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-hero text-white shadow-glow dark:bg-none dark:bg-amber-500/12 dark:ring-1 dark:ring-amber-500/30 dark:shadow-[0_0_14px_-4px_rgba(245,158,11,0.45)]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/brand/logo-icon-512.png" alt="" className="h-full w-full rounded-xl object-contain p-1" />
               </span>
             </span>
-            <h1 className="font-display text-lg font-bold tracking-tight">{title ?? t('common.platformName')}</h1>
+            <h1 className="font-display text-lg font-bold tracking-tight text-ink-light dark:text-white">{title ?? t('common.platformName')}</h1>
           </div>
 
+          {/* DESKTOP NAV PILLS */}
           {navItems && navItems.length > 0 && (
             <nav className="hidden flex-wrap items-center gap-1.5 sm:flex">
               <NavLinks />
             </nav>
           )}
 
-          <div className="flex items-center gap-1.5 text-sm">
+          {/* RIGHT SIDE: actions */}
+          <div className="flex items-center gap-1 text-sm">
             {profile && (
               <button
                 type="button"
                 onClick={() => setProfileOpen(true)}
                 aria-label={t('profileDrawer.title')}
-                className="relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 hover:bg-black/6 focus:outline-none focus:ring-2 focus:ring-amber-500/50 dark:hover:bg-white/8"
               >
-                <Avatar avatarKey={profile.avatar_key} name={profile.given_name} seed={profile.id} className="h-8 w-8" />
+                <Avatar avatarKey={profile.avatar_key} name={profile.given_name} seed={profile.id} className="h-8 w-8 ring-2 ring-transparent dark:ring-amber-500/20" />
                 <span className="absolute bottom-0.5 h-2.5 w-2.5 rtl:left-0.5 ltr:right-0.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" aria-hidden="true" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-surface-dark" aria-hidden="true" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#0d1117]" aria-hidden="true" />
                 </span>
               </button>
             )}
@@ -183,7 +190,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
               <button
                 type="button"
                 onClick={toggleAmbientAudio}
-                className="flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
+                className="flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 hover:bg-black/6 focus:outline-none focus:ring-2 focus:ring-amber-500/50 dark:hover:bg-white/8"
                 aria-label={ambientPlaying ? t('common.muteSiteAudio') : t('common.unmuteSiteAudio')}
                 aria-pressed={ambientPlaying}
               >
@@ -197,7 +204,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
             <button
               type="button"
               onClick={toggleLocale}
-              className="flex items-center gap-1.5 rounded-xl px-3 py-2 font-medium transition-colors duration-200 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
+              className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors duration-200 hover:bg-black/6 focus:outline-none focus:ring-2 focus:ring-amber-500/50 dark:hover:bg-white/8"
               aria-label={t('gateway.switchLanguage')}
             >
               <Globe className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
@@ -208,7 +215,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
             <button
               type="button"
               onClick={toggleTheme}
-              className="flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
+              className="flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 hover:bg-black/6 focus:outline-none focus:ring-2 focus:ring-amber-500/50 dark:hover:bg-white/8"
               aria-label={theme === 'dark' ? t('common.lightMode') : t('common.darkMode')}
             >
               <span className="relative block h-4 w-4">
@@ -232,7 +239,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
               <button
                 type="button"
                 onClick={onSignOut}
-                className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-brand-600 to-brand-500 px-3.5 py-2 font-semibold text-white shadow-glass-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-elevate focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2"
+                className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 px-3.5 py-2 text-sm font-semibold text-[#1c0a00] shadow-[0_4px_14px_-4px_rgba(245,158,11,0.55)] transition-all duration-200 hover:-translate-y-px hover:shadow-[0_6px_20px_-4px_rgba(245,158,11,0.7)] focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:ring-offset-2 dark:focus:ring-offset-[#0d1117]"
               >
                 <LogOut className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                 <span className="hidden sm:inline">{t('common.signOut')}</span>
@@ -242,7 +249,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
               <button
                 type="button"
                 onClick={() => setMobileOpen((current) => !current)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors duration-200 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10 sm:hidden"
+                className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors duration-200 hover:bg-black/6 focus:outline-none focus:ring-2 focus:ring-amber-500/50 dark:hover:bg-white/8 sm:hidden"
                 aria-label={t('common.menu')}
                 aria-expanded={mobileOpen}
               >
@@ -256,9 +263,10 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
           </div>
         </div>
 
+        {/* MOBILE NAV DRAWER */}
         {navItems && navItems.length > 0 && mobileOpen && (
-          <nav className="glass-nav animate-slide-down border-t border-black/5 px-4 py-3 dark:glass-nav-dark dark:border-white/5 sm:hidden">
-            <div className="flex flex-col gap-1">
+          <nav className="animate-slide-down glass-nav border-t border-black/5 px-4 py-4 dark:glass-nav-dark dark:border-amber-500/10 sm:hidden">
+            <div className="flex flex-col gap-1.5">
               <NavLinks onNavigate={() => setMobileOpen(false)} />
             </div>
           </nav>

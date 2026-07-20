@@ -24,8 +24,8 @@ html {
   z-index: 100;
   padding: 0.75rem 1.25rem;
   border-radius: 0.75rem;
-  background: #e6ab2c;
-  color: #030303;
+  background: #f59e0b;
+  color: #1c0a00;
   font-weight: 600;
   transition: top 150ms ease-out;
 }
@@ -34,32 +34,36 @@ html {
   top: 1rem;
 }
 
+/* =============================================
+   LIGHT MODE — warm ivory gold, clean and bright
+   ============================================= */
 body {
   @apply text-ink-light dark:text-ink-dark font-sans antialiased;
   font-feature-settings: 'ss01' 1;
-  /* Light mode (default): bright, warm ivory/gold — genuinely distinct
-     from dark mode, not just a thin dark: text-color veneer. */
   background-color: #fdfaf3;
   background-image:
-    radial-gradient(ellipse 90% 70% at 50% -10%, rgba(230, 171, 44, 0.14) 0%, transparent 60%),
-    radial-gradient(ellipse 120% 90% at 50% 110%, rgba(47, 148, 128, 0.08) 0%, transparent 55%),
+    radial-gradient(ellipse 90% 70% at 50% -10%, rgba(245,158,11,0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 120% 90% at 50% 110%, rgba(47,148,128,0.08) 0%, transparent 55%),
     radial-gradient(circle at 50% 50%, #fffdf7 0%, #fbf5e6 55%, #f6ecd2 100%);
   background-attachment: fixed;
   min-height: 100vh;
 }
 
+/* =============================================
+   DARK MODE — deep luxury charcoal #0d1117
+   ============================================= */
 .dark body {
-  /* The original cinematic dark-gold look — now exclusively a night-mode
-     identity, per explicit request. */
-  background-color: #030303;
+  background-color: #0d1117;
   background-image:
-    radial-gradient(ellipse 90% 70% at 50% -10%, rgba(230, 171, 44, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 120% 90% at 50% 110%, rgba(230, 171, 44, 0.05) 0%, transparent 55%),
-    radial-gradient(circle at 50% 50%, #17130a 0%, #050505 55%, #000000 100%);
+    radial-gradient(ellipse 80% 60% at 50% -5%, rgba(245,158,11,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 80% at 85% 60%, rgba(245,158,11,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 70% 50% at 15% 80%, rgba(217,119,6,0.03) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, #161b22 0%, #0d1117 60%, #090c12 100%);
 }
 
-/* Cinematic gold frame — dark/night mode only; light mode stays clean and
-   uncluttered rather than reusing the cinematic identity. */
+/* =============================================
+   CINEMATIC FRAME — dark mode only golden border
+   ============================================= */
 .cinematic-frame {
   display: none;
 }
@@ -71,13 +75,13 @@ body {
   z-index: 60;
   pointer-events: none;
   border-radius: 6px;
-  border: 1px solid rgba(230, 171, 44, 0.75);
+  border: 1px solid rgba(245, 158, 11, 0.65);
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.9),
-    inset 0 0 0 5px #030303,
-    inset 0 0 0 6px rgba(230, 171, 44, 0.35),
-    inset 0 0 60px rgba(230, 171, 44, 0.08),
-    0 0 24px rgba(230, 171, 44, 0.12);
+    inset 0 0 0 5px #0d1117,
+    inset 0 0 0 6px rgba(245, 158, 11, 0.25),
+    inset 0 0 60px rgba(245, 158, 11, 0.04),
+    0 0 24px rgba(245, 158, 11, 0.08);
 }
 
 .cinematic-frame-corner {
@@ -97,7 +101,7 @@ body {
 .cinematic-frame-corner::after {
   content: '';
   position: absolute;
-  background: linear-gradient(90deg, #f4d98d, #e6ab2c 55%, #b46f17);
+  background: linear-gradient(90deg, #fcd34d, #f59e0b 55%, #d97706);
 }
 
 .cinematic-frame-corner::before {
@@ -137,46 +141,90 @@ body {
   transform: scale(-1, -1);
 }
 
-/* Premium UI Utilities */
+/* =============================================
+   PREMIUM GLASSMORPHISM UTILITIES
+   ============================================= */
 .glass-premium {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(230, 171, 44, 0.15);
-  box-shadow: 
-    0 8px 32px 0 rgba(0, 0, 0, 0.37),
-    inset 0 0 12px rgba(230, 171, 44, 0.05);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(245, 158, 11, 0.14);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(245, 158, 11, 0.06);
 }
 
 .dark .glass-premium {
-  background: rgba(10, 10, 10, 0.6);
-  border: 1px solid rgba(230, 171, 44, 0.18);
-  box-shadow: 
-    0 12px 40px 0 rgba(0, 0, 0, 0.7),
-    inset 0 0 15px rgba(230, 171, 44, 0.08);
+  background: rgba(13, 17, 23, 0.72);
+  border: 1px solid rgba(245, 158, 11, 0.18);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(245, 158, 11, 0.08),
+    0 0 0 1px rgba(245, 158, 11, 0.05);
 }
 
+/* =============================================
+   GOLD TEXT GRADIENT
+   ============================================= */
 .text-gradient-gold {
-  background: linear-gradient(135deg, #fff3d1 0%, #e6ab2c 50%, #b46f17 100%);
+  background: linear-gradient(135deg, #fde68a 0%, #f59e0b 45%, #d97706 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   color: transparent;
 }
 
+/* =============================================
+   BENTO GRID CARD WITH MOUSE SPOTLIGHT
+   ============================================= */
 .bento-card {
-  @apply relative overflow-hidden rounded-2xl transition-all duration-500;
+  @apply relative overflow-hidden rounded-2xl transition-all duration-300;
 }
 
 .bento-card-glow {
   @apply absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none;
-  background: radial-gradient(800px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(230, 171, 44, 0.1), transparent 40%);
+  background: radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(245, 158, 11, 0.08), transparent 40%);
 }
 
 .bento-card:hover .bento-card-glow {
   @apply opacity-100;
 }
 
+/* =============================================
+   LAYOUT CONTAINMENT — prevent overflow on mobile
+   ============================================= */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+img, video, svg {
+  max-width: 100%;
+}
+
+/* =============================================
+   AMBER FOCUS RING FOR NATIVE ELEMENTS
+   ============================================= */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: rgba(245, 158, 11, 0.80) !important;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.20) !important;
+}
+
+/* =============================================
+   NAV PILL — amber active state (dark mode)
+   ============================================= */
+.dark .nav-pill-active {
+  background: linear-gradient(135deg, rgba(245,158,11,0.25) 0%, rgba(217,119,6,0.15) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fcd34d;
+  box-shadow: 0 0 16px -4px rgba(245, 158, 11, 0.30);
+}
+
+/* =============================================
+   MICRO ANIMATIONS
+   ============================================= */
 .animate-float-slow {
   animation: floatSlow 6s ease-in-out infinite;
 }
@@ -185,23 +233,21 @@ body {
   animation: pulseSlow 4s ease-in-out infinite;
 }
 
+.animate-glow-pulse {
+  animation: glowPulse 3s ease-in-out infinite;
+}
+
 @keyframes floatSlow {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-10px) rotate(2deg);
-  }
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
 }
 
 @keyframes pulseSlow {
-  0%, 100% {
-    opacity: 0.8;
-    box-shadow: 0 0 15px rgba(230, 171, 44, 0.1);
-  }
-  50% {
-    opacity: 1;
-    box-shadow: 0 0 25px rgba(230, 171, 44, 0.25);
-  }
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
 }
 
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(245, 158, 11, 0.15); }
+  50% { box-shadow: 0 0 24px rgba(245, 158, 11, 0.35); }
+}
