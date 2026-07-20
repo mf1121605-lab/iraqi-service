@@ -56,7 +56,7 @@ function CategoryGrid({ categories, locale }) {
             className={
               hasMedia
                 ? 'group relative flex h-32 flex-col items-center justify-end overflow-hidden rounded-2xl border border-gold-400/20 text-center font-semibold text-white shadow-[0_0_30px_-12px_rgba(230,171,44,0.35)] sm:h-40 sm:rounded-[1.5rem] md:h-48'
-                : 'metal-panel group flex flex-col items-center gap-2 p-4 text-center font-semibold text-white sm:gap-3 sm:p-6'
+                : 'metal-panel group flex flex-col items-center gap-2 p-4 text-center font-semibold text-ink-light dark:text-white sm:gap-3 sm:p-6'
             }
           >
             {hasMedia ? (
@@ -217,7 +217,7 @@ export default function CustomerDashboard() {
 
   if (loading || !profile) {
     return (
-      <main className="flex min-h-dvh items-center justify-center bg-mesh-hero text-white">
+      <main className="flex min-h-dvh items-center justify-center text-ink-light dark:text-ink-dark">
         <LoadingSpinner locale={locale} />
       </main>
     );
@@ -228,30 +228,32 @@ export default function CustomerDashboard() {
       {banners.length > 0 ? (
         <AnnouncementSlider banners={banners} locale={locale} />
       ) : (
-        <section className="cinematic-card relative overflow-hidden p-5 text-white sm:p-8 md:p-10">
+        <section className="cinematic-card relative overflow-hidden p-5 text-ink-light dark:text-white sm:p-8 md:p-10">
           <div className="iraq-flag-watermark pointer-events-none absolute inset-y-0 start-0 w-1/2 opacity-[0.05]" />
           <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-3xl" />
           <div className="relative">
             <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl md:text-2xl">{t('customerHub.heroFallbackTitle')}</h2>
-            <p className="mt-2 text-sm text-white/70 sm:text-base">{t('customerHub.heroFallbackSubtitle')}</p>
+            <p className="mt-2 text-sm text-ink-muted dark:text-white/70 sm:text-base">{t('customerHub.heroFallbackSubtitle')}</p>
           </div>
         </section>
       )}
 
       {newsLinkGroups.length > 0 && (
-        <section className="metal-panel mt-6 p-4 text-white sm:mt-10 sm:p-6">
+        <section className="metal-panel mt-6 p-4 text-ink-light dark:text-white sm:mt-10 sm:p-6">
           <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">
-            <Newspaper className="h-4 w-4 text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
+            <Newspaper className="h-4 w-4 text-gold-600 dark:text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
             {t('customerHub.newsLinksTitle')}
           </h3>
           {newsLinkGroups.map((group) => (
             <div key={group.key} className="mt-4 first:mt-3">
-              {newsLinkGroups.length > 1 && <p className="text-xs font-bold uppercase tracking-wide text-gold-300/80">{group.label}</p>}
+              {newsLinkGroups.length > 1 && (
+                <p className="text-xs font-bold uppercase tracking-wide text-gold-700 dark:text-gold-300/80">{group.label}</p>
+              )}
               <ul className="mt-2 space-y-3">
                 {group.items.map((item) => (
-                  <li key={item.id} className="flex gap-3 border-b border-white/5 pb-3 last:border-0 last:pb-0">
+                  <li key={item.id} className="flex gap-3 border-b border-black/5 pb-3 last:border-0 last:pb-0 dark:border-white/5">
                     {(item.image_url || item.video_url) && (
-                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-black/30">
+                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-black/5 dark:bg-black/30">
                         {item.image_url ? (
                           <SafeImage src={item.image_url} alt="" className="h-full w-full object-cover" />
                         ) : (
@@ -261,20 +263,20 @@ export default function CustomerDashboard() {
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gold-300">{bilingualText(item, 'title', locale)}</p>
-                      {item.source && <p className="mt-0.5 text-xs text-white/50">{item.source}</p>}
+                      <p className="text-sm font-semibold text-gold-700 dark:text-gold-300">{bilingualText(item, 'title', locale)}</p>
+                      {item.source && <p className="mt-0.5 text-xs text-ink-muted dark:text-white/50">{item.source}</p>}
                       {item.deadline && (
-                        <p className="mt-0.5 text-xs text-white/50">
+                        <p className="mt-0.5 text-xs text-ink-muted dark:text-white/50">
                           {t('customerHub.newsDeadlineLabel')}: {item.deadline}
                         </p>
                       )}
                       {bilingualText(item, 'requirements', locale) && (
-                        <p className="mt-1 whitespace-pre-wrap text-xs text-white/70">
+                        <p className="mt-1 whitespace-pre-wrap text-xs text-ink-muted dark:text-white/70">
                           {t('customerHub.newsRequirementsLabel')}: {bilingualText(item, 'requirements', locale)}
                         </p>
                       )}
                       {item.required_documents && (
-                        <p className="mt-1 whitespace-pre-wrap text-xs text-white/70">
+                        <p className="mt-1 whitespace-pre-wrap text-xs text-ink-muted dark:text-white/70">
                           {t('customerHub.newsRequiredDocumentsLabel')}: {item.required_documents}
                         </p>
                       )}
@@ -298,11 +300,11 @@ export default function CustomerDashboard() {
           soon as the founder adds one instead of appearing/disappearing. */}
       <section className="mt-6 sm:mt-10">
         <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">
-          <Wrench className="h-4 w-4 text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
+          <Wrench className="h-4 w-4 text-gold-600 dark:text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
           {t('customerHub.toolsTitle')}
         </h3>
         {toolCategories.length === 0 ? (
-          <p className="mt-3 text-xs text-white/60 sm:mt-4 sm:text-sm">{t('customerHub.toolsEmpty')}</p>
+          <p className="mt-3 text-xs text-ink-muted dark:text-white/60 sm:mt-4 sm:text-sm">{t('customerHub.toolsEmpty')}</p>
         ) : (
           <CategoryGrid categories={toolCategories} locale={locale} />
         )}
@@ -313,13 +315,13 @@ export default function CustomerDashboard() {
           out to the dedicated /chat rooms list. */}
       <section className="mt-6 sm:mt-10">
         <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">
-          <MessagesSquare className="h-4 w-4 text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
+          <MessagesSquare className="h-4 w-4 text-gold-600 dark:text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
           {t('customerHub.communityTitle')}
         </h3>
         <MotionLink
           href="/chat"
           {...cardLift}
-          className="cinematic-card group relative mt-4 flex items-center gap-3 overflow-hidden p-4 text-white sm:mt-5 sm:gap-4 sm:p-6 md:p-8"
+          className="cinematic-card group relative mt-4 flex items-center gap-3 overflow-hidden p-4 text-ink-light dark:text-white sm:mt-5 sm:gap-4 sm:p-6 md:p-8"
         >
           <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 animate-float rounded-full bg-gold-300/10 blur-3xl" />
           <span className="icon-medallion relative h-12 w-12 shrink-0 sm:h-16 sm:w-16 md:h-20 md:w-20" style={{ '--medallion-glow': 'rgba(230,171,44,0.5)' }}>
@@ -327,10 +329,10 @@ export default function CustomerDashboard() {
           </span>
           <div className="relative min-w-0 flex-1">
             <h4 className="font-display text-sm font-bold sm:text-lg md:text-xl">{t('customerHub.communityTitle')}</h4>
-            <p className="mt-0.5 text-xs text-white/70 sm:mt-1 sm:text-sm">{t('customerHub.communityCardSubtitle')}</p>
+            <p className="mt-0.5 text-xs text-ink-muted dark:text-white/70 sm:mt-1 sm:text-sm">{t('customerHub.communityCardSubtitle')}</p>
           </div>
           <ArrowLeft
-            className="relative h-4 w-4 shrink-0 text-gold-300 transition-transform duration-300 rtl:rotate-180 sm:h-5 sm:w-5 group-hover:-translate-x-1 rtl:group-hover:translate-x-1"
+            className="relative h-4 w-4 shrink-0 text-gold-600 dark:text-gold-300 transition-transform duration-300 rtl:rotate-180 sm:h-5 sm:w-5 group-hover:-translate-x-1 rtl:group-hover:translate-x-1"
             aria-hidden="true"
           />
         </MotionLink>
@@ -339,19 +341,19 @@ export default function CustomerDashboard() {
       {/* 4. العروض والمتاجر */}
       <section className="mt-6 sm:mt-10">
         <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">
-          <ShoppingBag className="h-4 w-4 text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
+          <ShoppingBag className="h-4 w-4 text-gold-600 dark:text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
           {t('customerHub.offersTitle')}
         </h3>
-        {orderMessage && <p className="mt-2 animate-slide-down text-sm text-red-400">{orderMessage}</p>}
+        {orderMessage && <p className="mt-2 animate-slide-down text-sm text-red-600 dark:text-red-400">{orderMessage}</p>}
         {products.length === 0 ? (
-          <p className="mt-3 text-xs text-white/60 sm:mt-4 sm:text-sm">{t('customerHub.dealsEmpty')}</p>
+          <p className="mt-3 text-xs text-ink-muted dark:text-white/60 sm:mt-4 sm:text-sm">{t('customerHub.dealsEmpty')}</p>
         ) : (
           <div className="mt-4 grid gap-3 sm:mt-5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
             {products.map((product) => (
               <motion.div
                 key={product.id}
                 {...cardLift}
-                className="glass-panel-dark group overflow-hidden rounded-2xl transition-colors duration-300 hover:border-gold-400/30 hover:shadow-elevate"
+                className="cinematic-card group overflow-hidden !rounded-2xl transition-colors duration-300 hover:border-gold-400/30 hover:shadow-elevate"
               >
                 <SafeImage
                   src={product.image_path}
@@ -359,19 +361,19 @@ export default function CustomerDashboard() {
                   className="h-28 w-full object-cover transition-transform duration-300 group-hover:scale-105 sm:h-36"
                 />
                 <div className="p-3 sm:p-5">
-                  <h4 className="text-sm font-semibold text-white sm:text-base">{bilingualText(product, 'title', locale)}</h4>
-                  <p className="mt-1 text-xs text-white/60 sm:text-sm">{bilingualText(product, 'description', locale)}</p>
+                  <h4 className="text-sm font-semibold text-ink-light dark:text-white sm:text-base">{bilingualText(product, 'title', locale)}</h4>
+                  <p className="mt-1 text-xs text-ink-muted dark:text-white/60 sm:text-sm">{bilingualText(product, 'description', locale)}</p>
                   <div className="mt-2 flex items-center gap-2 sm:mt-3">
                     {product.discount_price ? (
                       <>
-                        <span className="text-xs text-white/40 line-through sm:text-sm">{product.price} IQD</span>
-                        <span className="flex items-center gap-1 text-sm font-bold text-gold-300">
+                        <span className="text-xs text-ink-muted dark:text-white/40 line-through sm:text-sm">{product.price} IQD</span>
+                        <span className="flex items-center gap-1 text-sm font-bold text-gold-700 dark:text-gold-300">
                           <Tag className="h-3.5 w-3.5" aria-hidden="true" />
                           {product.discount_price} IQD
                         </span>
                       </>
                     ) : (
-                      <span className="text-sm font-bold text-white">{product.price} IQD</span>
+                      <span className="text-sm font-bold text-ink-light dark:text-white">{product.price} IQD</span>
                     )}
                   </div>
                   <motion.button

@@ -191,6 +191,13 @@ module.exports = {
           overflow: 'hidden',
           borderRadius: '2rem',
           border: '1px solid rgba(230, 171, 44, 0.18)',
+          backgroundColor: '#ffffff',
+          backgroundImage:
+            'linear-gradient(165deg, rgba(255,255,255,0.9) 0%, #fffdf7 55%, #fbf5e6 100%)',
+          boxShadow: '0 24px 60px -20px rgba(180,111,23,0.18), 0 1px 3px rgba(0,0,0,0.04)',
+        },
+        '.dark .cinematic-card': {
+          backgroundColor: 'transparent',
           backgroundImage:
             'linear-gradient(165deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 55%, rgba(0,0,0,0.1) 100%)',
           backdropFilter: 'blur(20px)',
@@ -204,6 +211,10 @@ module.exports = {
           insetInlineEnd: 0,
           top: 0,
           height: '1px',
+          backgroundImage:
+            'linear-gradient(90deg, transparent 0%, rgba(211,143,29,0.7) 50%, transparent 100%)',
+        },
+        '.dark .cinematic-card::before': {
           backgroundImage:
             'linear-gradient(90deg, transparent 0%, rgba(244,217,141,0.9) 50%, transparent 100%)',
         },
@@ -272,22 +283,34 @@ module.exports = {
         '.input-cinematic': {
           width: '100%',
           borderRadius: '1.25rem',
-          border: '1px solid rgba(255,255,255,0.14)',
-          backgroundColor: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(28,25,23,0.12)',
+          backgroundColor: '#ffffff',
           padding: '0.9rem 1.1rem',
-          color: '#fff',
+          color: '#1c1917',
           fontWeight: '700',
           transition: 'all 250ms ease',
+        },
+        '.dark .input-cinematic': {
+          border: '1px solid rgba(255,255,255,0.14)',
+          backgroundColor: 'rgba(255,255,255,0.05)',
+          color: '#fff',
         },
         '.input-cinematic:focus': {
           outline: 'none',
           borderColor: 'rgba(230,171,44,0.6)',
+          backgroundColor: '#fffdf7',
+          boxShadow: '0 0 0 4px rgba(230,171,44,0.12)',
+        },
+        '.dark .input-cinematic:focus': {
           backgroundColor: 'rgba(255,255,255,0.08)',
           boxShadow: '0 0 0 4px rgba(230,171,44,0.15)',
         },
         '.input-cinematic::placeholder': {
-          color: 'rgba(255,255,255,0.4)',
+          color: 'rgba(28,25,23,0.4)',
           fontWeight: '700',
+        },
+        '.dark .input-cinematic::placeholder': {
+          color: 'rgba(255,255,255,0.4)',
         },
         '.section-title-cinematic': {
           position: 'relative',
@@ -305,13 +328,20 @@ module.exports = {
         '.metal-panel': {
           position: 'relative',
           borderRadius: '1.5rem',
+          backgroundColor: '#ffffff',
+          backgroundImage: 'linear-gradient(145deg, #ffffff 0%, #fffdf7 55%, #fbf5e6 100%)',
+          border: '1px solid rgba(28,25,23,0.08)',
+          boxShadow: '0 20px 40px -18px rgba(180,111,23,0.18), 0 1px 3px rgba(0,0,0,0.04)',
+          transition: 'box-shadow 300ms ease, transform 300ms ease',
+        },
+        '.dark .metal-panel': {
+          backgroundColor: 'transparent',
           backgroundImage: 'linear-gradient(145deg, #2c2f36 0%, #1a1c20 45%, #101113 100%)',
           border: '1px solid rgba(255,255,255,0.08)',
           boxShadow:
             'inset 0 1px 0 0 rgba(255,255,255,0.12), inset 0 -2px 6px 0 rgba(0,0,0,0.6), 0 20px 40px -12px rgba(0,0,0,0.7)',
-          transition: 'box-shadow 300ms ease, transform 300ms ease',
         },
-        '.metal-panel::before': {
+        '.dark .metal-panel::before': {
           content: '""',
           position: 'absolute',
           inset: '3px',
@@ -321,7 +351,7 @@ module.exports = {
             'repeating-linear-gradient(115deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 5px)',
           pointerEvents: 'none',
         },
-        '.metal-panel::after': {
+        '.dark .metal-panel::after': {
           content: '""',
           position: 'absolute',
           inset: 0,
@@ -336,6 +366,9 @@ module.exports = {
         },
         '.metal-panel:hover': {
           transform: 'translateY(-2px)',
+          boxShadow: '0 24px 50px -16px rgba(180,111,23,0.28), 0 0 0 1px rgba(230,171,44,0.25)',
+        },
+        '.dark .metal-panel:hover': {
           boxShadow:
             'inset 0 1px 0 0 rgba(255,255,255,0.16), inset 0 -2px 6px 0 rgba(0,0,0,0.6), 0 0 0 1px rgba(230,171,44,0.35), 0 24px 50px -12px rgba(0,0,0,0.85), 0 0 28px -4px rgba(230,171,44,0.3)',
         },
