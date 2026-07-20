@@ -9,6 +9,7 @@ import AttachmentUploader from '../../../components/Chat/AttachmentUploader';
 import VoiceCallWidget from '../../../components/Chat/VoiceCallWidget';
 import VoiceRecorder from '../../../components/Chat/VoiceRecorder';
 import MessageAttachment from '../../../components/Chat/MessageAttachment';
+import StickerPicker from '../../../components/Chat/StickerPicker';
 import { supabaseClient } from '../../../lib/supabaseClient';
 import { useRequireRole } from '../../../utils/useSession';
 import { translate } from '../../../utils/i18n';
@@ -123,7 +124,7 @@ export default function CustomerRequestDetail() {
 
     supabaseClient
       .from('request_messages')
-      .select('id, sender_id, body, attachment_url, created_at, read_at')
+      .select('id, sender_id, body, attachment_url, created_at, read_at, message_type')
       .eq('request_id', id)
       .order('created_at')
       .then(({ data }) => {
@@ -177,6 +178,16 @@ export default function CustomerRequestDetail() {
     loadAll();
   }
 
+  async function handleSendSticker(sticker) {
+    await supabaseClient.from('request_messages').insert({
+      request_id: id,
+      sender_id: profile.id,
+      body: sticker,
+      message_type: 'sticker',
+    });
+    loadAll();
+  }
+
   if (loading || !profile || !request) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-gradient-hero text-white">
@@ -223,59 +234,71 @@ export default function CustomerRequestDetail() {
           </div>
         )}
 
-        <div className="mt-6 rounded-2xl border border-black/5 bg-white/60 p-4 shadow-soft dark:border-white/10 dark:bg-surface-dark-alt/60">
+        <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-[#0d1117] p-4 text-white shadow-soft">
           <h3 className="mb-3 text-sm font-bold">{t('employeeDesk.messagesTitle')}</h3>
           {employee && <VoiceCallWidget locale={locale} />}
-          <div className="max-h-96 overflow-y-auto">
-            {messages.length === 0 && <p className="text-sm text-ink-muted dark:text-ink-dark-muted">{t('common.noResults')}</p>}
+          <div
+            className="max-h-96 overflow-y-auto rounded-xl p-2"
+            style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '18px 18px' }}
+          >
+            {messages.length === 0 && <p className="text-sm text-white/50">{t('common.noResults')}</p>}
             {messages.map((message, index) => {
               const isMine = message.sender_id === profile.id;
               const bundled = isBundled(message, messages[index - 1]);
+              const isSticker = message.message_type === 'sticker';
               return (
                 <div key={message.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} ${bundled ? 'mt-0.5' : 'mt-3'}`}>
-                  <div
-                    className={`max-w-[80%] rounded-xl2 px-3 py-2 text-sm ${
-                      isMine ? 'bg-brand-600 text-white' : 'bg-black/5 dark:bg-white/10'
-                    }`}
-                  >
-                    {message.body && <p className="whitespace-pre-wrap">{message.body}</p>}
-                    {message.attachment_url && <MessageAttachment path={message.attachment_url} />}
-                    {isMine && (
-                      <span className="mt-0.5 flex justify-end" aria-label={message.read_at ? t('employeeDesk.readReceiptRead') : t('employeeDesk.readReceiptSent')}>
-                        {message.read_at ? (
-                          <CheckCheck className="h-3.5 w-3.5 text-gold-200" aria-hidden="true" />
-                        ) : (
-                          <Check className="h-3.5 w-3.5 text-white/50" aria-hidden="true" />
-                        )}
-                      </span>
-                    )}
-                  </div>
+                  {isSticker ? (
+                    <span className="text-6xl leading-none">{message.body}</span>
+                  ) : (
+                    <div
+                      className={`max-w-[70%] px-3 py-2 text-sm ${
+                        isMine
+                          ? 'rounded-2xl rounded-ee-none bg-amber-600 text-white shadow-lg'
+                          : 'rounded-2xl rounded-es-none border border-gray-800 bg-[#161b22] text-gray-200'
+                      }`}
+                    >
+                      {message.body && <p className="whitespace-pre-wrap">{message.body}</p>}
+                      {message.attachment_url && <MessageAttachment path={message.attachment_url} />}
+                      {isMine && (
+                        <span
+                          className="mt-0.5 flex justify-end"
+                          aria-label={message.read_at ? t('employeeDesk.readReceiptRead') : t('employeeDesk.readReceiptSent')}
+                        >
+                          {message.read_at ? (
+                            <CheckCheck className="h-3.5 w-3.5 text-gold-200" aria-hidden="true" />
+                          ) : (
+                            <Check className="h-3.5 w-3.5 text-white/50" aria-hidden="true" />
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
 
-          <form onSubmit={handleSendMessage} className="mt-3 flex items-center gap-2 border-t border-black/5 pt-3 dark:border-white/10">
+          <form onSubmit={handleSendMessage} className="mt-3 flex items-center gap-2 border-t border-white/10 pt-3">
             <AttachmentUploader pathPrefix={`requests/${id}`} onUploaded={setPendingAttachment} locale={locale} />
             <VoiceRecorder pathPrefix={`requests/${id}`} onUploaded={setPendingAttachment} locale={locale} />
+            <StickerPicker onPick={handleSendSticker} locale={locale} />
             <input
               value={messageBody}
               onChange={(e) => setMessageBody(e.target.value)}
               placeholder={t('employeeDesk.messagePlaceholder')}
-              className="flex-1 rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
+              className="flex-1 rounded-xl2 border border-white/10 bg-[#161b22] px-3 py-2 text-sm text-white placeholder-white/40 transition-all focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
             <button
               type="submit"
               disabled={sending}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl2 bg-brand-600 text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl2 bg-amber-600 text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
               aria-label={t('employeeDesk.sendCta')}
             >
               <Send className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
             </button>
           </form>
-          {pendingAttachment && (
-            <p className="mt-1 text-xs text-ink-muted dark:text-ink-dark-muted">{pendingAttachment.name}</p>
-          )}
+          {pendingAttachment && <p className="mt-1 text-xs text-white/50">{pendingAttachment.name}</p>}
         </div>
 
         {isFinished && employee && (

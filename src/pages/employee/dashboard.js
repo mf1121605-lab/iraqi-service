@@ -19,6 +19,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import StatusBadge from '../../components/UI/StatusBadge';
 import AttachmentUploader from '../../components/Chat/AttachmentUploader';
 import VoiceCallWidget from '../../components/Chat/VoiceCallWidget';
+import StickerPicker from '../../components/Chat/StickerPicker';
 import VoiceRecorder from '../../components/Chat/VoiceRecorder';
 import MessageAttachment from '../../components/Chat/MessageAttachment';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -118,7 +119,7 @@ export default function EmployeeDashboard() {
         .order('created_at'),
       supabaseClient
         .from('request_messages')
-        .select('id, sender_id, body, attachment_url, created_at, read_at')
+        .select('id, sender_id, body, attachment_url, created_at, read_at, message_type')
         .eq('request_id', requestId)
         .order('created_at'),
     ]);
@@ -193,6 +194,16 @@ export default function EmployeeDashboard() {
     });
     setMessageBody('');
     setPendingAttachment(null);
+    loadDetail(selectedId);
+  }
+
+  async function handleSendSticker(sticker) {
+    await supabaseClient.from('request_messages').insert({
+      request_id: selectedId,
+      sender_id: profile.id,
+      body: sticker,
+      message_type: 'sticker',
+    });
     loadDetail(selectedId);
   }
 
@@ -386,30 +397,44 @@ export default function EmployeeDashboard() {
                     {t('employeeDesk.messagesTitle')}
                   </h4>
                   <VoiceCallWidget locale={locale} />
-                  <ul className="mt-2 max-h-56 overflow-y-auto">
+                  <ul
+                    className="mt-2 max-h-56 overflow-y-auto rounded-xl bg-[#0d1117] p-2"
+                    style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '18px 18px' }}
+                  >
                     {messages.map((message, index) => {
                       const isMine = message.sender_id === profile.id;
                       const bundled = isBundled(message, messages[index - 1]);
+                      const isSticker = message.message_type === 'sticker';
                       return (
                         <li
                           key={message.id}
-                          className={`max-w-[80%] rounded-xl2 px-3 py-2 text-sm shadow-sm ${bundled ? 'mt-0.5' : 'mt-2'} ${
-                            isMine ? 'ms-auto bg-gold-500/90 text-black' : 'bg-white/10 text-white'
-                          }`}
+                          className={`flex ${isMine ? 'justify-end' : 'justify-start'} ${bundled ? 'mt-0.5' : 'mt-2'}`}
                         >
-                          {message.body}
-                          {message.attachment_url && <MessageAttachment path={message.attachment_url} />}
-                          {isMine && (
-                            <span
-                              className="mt-0.5 flex justify-end"
-                              aria-label={message.read_at ? t('employeeDesk.readReceiptRead') : t('employeeDesk.readReceiptSent')}
+                          {isSticker ? (
+                            <span className="text-6xl leading-none">{message.body}</span>
+                          ) : (
+                            <div
+                              className={`max-w-[70%] px-3 py-2 text-sm ${
+                                isMine
+                                  ? 'rounded-2xl rounded-ee-none bg-amber-600 text-white shadow-lg'
+                                  : 'rounded-2xl rounded-es-none border border-gray-800 bg-[#161b22] text-gray-200'
+                              }`}
                             >
-                              {message.read_at ? (
-                                <CheckCheck className="h-3.5 w-3.5 text-brand-800" aria-hidden="true" />
-                              ) : (
-                                <Check className="h-3.5 w-3.5 text-black/40" aria-hidden="true" />
+                              {message.body}
+                              {message.attachment_url && <MessageAttachment path={message.attachment_url} />}
+                              {isMine && (
+                                <span
+                                  className="mt-0.5 flex justify-end"
+                                  aria-label={message.read_at ? t('employeeDesk.readReceiptRead') : t('employeeDesk.readReceiptSent')}
+                                >
+                                  {message.read_at ? (
+                                    <CheckCheck className="h-3.5 w-3.5 text-gold-200" aria-hidden="true" />
+                                  ) : (
+                                    <Check className="h-3.5 w-3.5 text-white/50" aria-hidden="true" />
+                                  )}
+                                </span>
                               )}
-                            </span>
+                            </div>
                           )}
                         </li>
                       );
@@ -429,6 +454,7 @@ export default function EmployeeDashboard() {
                       onUploaded={setPendingAttachment}
                     />
                     <VoiceRecorder pathPrefix={`requests/${selectedId}`} locale={locale} onUploaded={setPendingAttachment} />
+                    <StickerPicker onPick={handleSendSticker} locale={locale} />
                     <button type="submit" className="btn-cinematic-gold flex items-center gap-1.5 px-4 py-2 text-sm">
                       <Send className="h-3.5 w-3.5 rtl:-scale-x-100" aria-hidden="true" />
                       {t('employeeDesk.sendCta')}

@@ -11,6 +11,7 @@ import Avatar from '../../components/Chat/Avatar';
 import ReactionBar from '../../components/Chat/ReactionBar';
 import TypingIndicator from '../../components/Chat/TypingIndicator';
 import ChatSettingsSidebar from '../../components/Chat/ChatSettingsSidebar';
+import StickerPicker from '../../components/Chat/StickerPicker';
 import EditCardModal from '../../components/UI/EditCardModal';
 import { ChatBackgroundLayer, ChatBackgroundPicker, useChatBackgroundPreference } from '../../components/Chat/ChatBackground';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -90,7 +91,7 @@ export default function ChatRoom() {
       const { data: messageRows } = await supabaseClient
         .from('chat_messages')
         .select(
-          'id, sender_id, sender_display_name, sender_avatar_key, body, attachment_url, attachment_name, attachment_size, attachment_mime, is_hidden, created_at'
+          'id, sender_id, sender_display_name, sender_avatar_key, body, attachment_url, attachment_name, attachment_size, attachment_mime, is_hidden, message_type, created_at'
         )
         .eq('room_id', roomRow.id)
         .order('created_at');
@@ -221,6 +222,18 @@ export default function ChatRoom() {
     }
     setBody('');
     setPendingAttachment(null);
+  }
+
+  async function handleSendSticker(sticker) {
+    const { error } = await supabaseClient.from('chat_messages').insert({
+      room_id: room.id,
+      sender_id: profile.id,
+      sender_display_name: displayNameFor(profile),
+      sender_avatar_key: profile.avatar_key ?? null,
+      body: sticker,
+      message_type: 'sticker',
+    });
+    if (error) setSendError(error.message || t('common.errorGeneric'));
   }
 
   async function toggleHidden(message) {
@@ -411,6 +424,7 @@ export default function ChatRoom() {
             const messageReactions = reactions.filter((r) => r.message_id === message.id);
             const isMine = message.sender_id === profile.id;
             const bundled = isBundled(message, messages[index - 1]);
+            const isSticker = message.message_type === 'sticker' && !message.is_hidden;
             return (
               <div
                 key={message.id}
@@ -421,9 +435,12 @@ export default function ChatRoom() {
                 ) : (
                   <Avatar avatarKey={message.sender_avatar_key} name={message.sender_display_name} seed={message.sender_id} className="h-8 w-8" />
                 )}
+                {isSticker ? (
+                  <span className="text-6xl leading-none">{message.body}</span>
+                ) : (
                 <div
                   className={`max-w-[75%] animate-slide-up rounded-xl2 px-4 py-2 shadow-glass-sm transition-all duration-300 ${
-                    isMine ? 'bg-brand-600' : 'bg-white/10'
+                    isMine ? 'rounded-ee-none bg-brand-600' : 'rounded-es-none bg-white/10'
                   }`}
                 >
                   {!bundled && <p className="text-xs font-semibold text-white/70">{message.sender_display_name}</p>}
@@ -460,6 +477,7 @@ export default function ChatRoom() {
                     </button>
                   )}
                 </div>
+                )}
               </div>
             );
           })}
@@ -482,6 +500,7 @@ export default function ChatRoom() {
           />
           <AttachmentUploader pathPrefix={`chat/${room.id}`} locale={locale} onUploaded={setPendingAttachment} />
           <VoiceRecorder pathPrefix={`chat/${room.id}`} locale={locale} onUploaded={setPendingAttachment} />
+          <StickerPicker onPick={handleSendSticker} locale={locale} />
           <button
             type="submit"
             className="flex items-center gap-1.5 rounded-xl2 bg-gold-500 px-4 py-2 text-sm font-semibold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.03] hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-900"

@@ -9,6 +9,7 @@ import AttachmentUploader from '../../../components/Chat/AttachmentUploader';
 import VoiceRecorder from '../../../components/Chat/VoiceRecorder';
 import MessageAttachment from '../../../components/Chat/MessageAttachment';
 import VoiceCallWidget from '../../../components/Chat/VoiceCallWidget';
+import StickerPicker from '../../../components/Chat/StickerPicker';
 import { supabaseClient } from '../../../lib/supabaseClient';
 import { useRequireRole } from '../../../utils/useSession';
 import { translate } from '../../../utils/i18n';
@@ -43,7 +44,7 @@ export default function DirectMessageThread() {
     function loadMessages() {
       supabaseClient
         .from('direct_messages')
-        .select('id, sender_id, body, attachment_url, created_at')
+        .select('id, sender_id, body, attachment_url, created_at, message_type')
         .eq('thread_id', threadId)
         .order('created_at')
         .then(({ data }) => {
@@ -104,6 +105,15 @@ export default function DirectMessageThread() {
     setPendingAttachment(null);
   }
 
+  async function handleSendSticker(sticker) {
+    await supabaseClient.from('direct_messages').insert({
+      thread_id: threadId,
+      sender_id: profile.id,
+      body: sticker,
+      message_type: 'sticker',
+    });
+  }
+
   if (loading || !profile || (!otherUser && !notFound)) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-gradient-hero text-white">
@@ -138,40 +148,51 @@ export default function DirectMessageThread() {
           <VoiceCallWidget locale={locale} />
         </div>
 
-        <div className="flex-1 overflow-y-auto py-4">
-          {messages.length === 0 && <p className="text-center text-sm text-ink-muted dark:text-ink-dark-muted">{t('common.noResults')}</p>}
+        <div
+          className="mt-3 max-h-[calc(100dvh-22rem)] flex-1 overflow-y-auto rounded-2xl bg-[#0d1117] p-3"
+          style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '18px 18px' }}
+        >
+          {messages.length === 0 && <p className="text-center text-sm text-white/50">{t('common.noResults')}</p>}
           {messages.map((message, index) => {
             const isMine = message.sender_id === profile.id;
             const bundled = isBundled(message, messages[index - 1]);
+            const isSticker = message.message_type === 'sticker';
             return (
               <div key={message.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} ${bundled ? 'mt-0.5' : 'mt-3'}`}>
-                <div
-                  className={`max-w-[75%] rounded-xl2 px-3 py-2 text-sm shadow-glass-sm ${
-                    isMine ? 'bg-brand-600 text-white' : 'bg-black/5 dark:bg-white/10'
-                  }`}
-                >
-                  {message.body && <p className="whitespace-pre-wrap">{message.body}</p>}
-                  {message.attachment_url && <MessageAttachment path={message.attachment_url} />}
-                </div>
+                {isSticker ? (
+                  <span className="text-6xl leading-none">{message.body}</span>
+                ) : (
+                  <div
+                    className={`max-w-[75%] px-3 py-2 text-sm ${
+                      isMine
+                        ? 'rounded-2xl rounded-ee-none bg-amber-600 text-white shadow-lg'
+                        : 'rounded-2xl rounded-es-none border border-gray-800 bg-[#161b22] text-gray-200'
+                    }`}
+                  >
+                    {message.body && <p className="whitespace-pre-wrap">{message.body}</p>}
+                    {message.attachment_url && <MessageAttachment path={message.attachment_url} />}
+                  </div>
+                )}
               </div>
             );
           })}
           <div ref={listEndRef} />
         </div>
 
-        <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-black/5 pt-3 dark:border-white/10">
+        <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-white/10 pt-3">
           <AttachmentUploader pathPrefix={`dm/${threadId}`} onUploaded={setPendingAttachment} locale={locale} />
           <VoiceRecorder pathPrefix={`dm/${threadId}`} onUploaded={setPendingAttachment} locale={locale} />
+          <StickerPicker onPick={handleSendSticker} locale={locale} />
           <input
             value={body}
             onChange={(event) => setBody(event.target.value)}
             placeholder={t('chat.messagePlaceholder')}
-            className="flex-1 rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-surface-dark"
+            className="flex-1 rounded-xl2 border border-white/10 bg-[#161b22] px-3 py-2 text-sm text-white transition-all placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-amber-500"
           />
           <button
             type="submit"
             disabled={sending}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl2 bg-brand-600 text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl2 bg-amber-600 text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
             aria-label={t('chat.sendCta')}
           >
             <Send className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
