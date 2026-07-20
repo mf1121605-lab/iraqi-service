@@ -1,12 +1,13 @@
 import { requireStaff } from '../../../lib/founderAuth';
 
 const MAX_TEXT_LENGTH = 8000;
-// Gemini 1.5 was fully retired by Google (confirmed via a live 404). Using
-// the "-latest" alias instead of a pinned version like "gemini-3.5-flash"
-// so Google's own model rotation doesn't silently break this again —
-// the alias always points at their current recommended flash model.
-const GEMINI_MODEL = 'gemini-flash-latest';
-const GEMINI_TIMEOUT_MS = 30_000;
+// Groq's free tier (no credit card, generous rate limits) hosting an
+// open-weight model. llama-3.3-70b-versatile — the model originally used
+// here — was deprecated by Groq in June 2026 with requests cut off by
+// August 2026; this is the model Groq's own deprecation notice recommends
+// migrating to.
+const GROQ_MODEL = 'openai/gpt-oss-120b';
+const REQUEST_TIMEOUT_MS = 30_000;
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1200;
 
@@ -52,44 +53,47 @@ export default async function handler(req, res) {
   // Server-only env var (no NEXT_PUBLIC_ prefix) — Next.js API routes never
   // ship to the client bundle regardless, but the naming itself also makes
   // that intent explicit for anyone reading the Vercel env var list.
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     return res.status(503).json({ error: 'خدمة التحليل الذكي غير مفعّلة حالياً' });
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
     let response;
     let errorBody = '';
-    // Gemini occasionally returns 503 UNAVAILABLE under load ("Spikes in
-    // demand are usually temporary") — worth a couple of short retries
+    // Retry transient 5xx (model overloaded / rate-limited momentarily)
     // instead of immediately failing the founder's paste.
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
-      response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            contents: [{ parts: [{ text: trimmedText }] }],
-            // Gemini's native JSON mode — guarantees a valid JSON string
-            // back instead of relying purely on the prompt instruction.
-            generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
-          }),
-          signal: controller.signal,
-        }
-      );
+      response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: trimmedText },
+          ],
+          // OpenAI-compatible JSON mode — guarantees a valid JSON string
+          // back instead of relying purely on the prompt instruction.
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+        }),
+        signal: controller.signal,
+      });
       if (response.ok) break;
       errorBody = await response.text().catch(() => '');
-      if (response.status !== 503 || attempt === MAX_RETRIES) break;
+      if (response.status < 500 || attempt === MAX_RETRIES) break;
       await sleep(RETRY_DELAY_MS);
     }
 
     if (!response.ok) {
-      console.error('hq/parse-announcement: Gemini API error', response.status, errorBody);
+      console.error('hq/parse-announcement: Groq API error', response.status, errorBody);
       // Surfaced directly rather than a generic message — this is a
       // low-traffic staff-only tool, so the real upstream error is more
       // useful here than it would be on a customer-facing route.
@@ -97,7 +101,7 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const rawText = data.choices?.[0]?.message?.content?.trim();
     if (!rawText) {
       return res.status(502).json({ error: `تعذر تحليل النص: استجابة فارغة من النموذج — ${JSON.stringify(data).slice(0, 300)}` });
     }
