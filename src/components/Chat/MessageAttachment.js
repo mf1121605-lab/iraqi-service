@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Download, FileSpreadsheet, FileText, FileType } from 'lucide-react';
 import { supabaseClient } from '../../lib/supabaseClient';
 import SafeImage from '../UI/SafeImage';
+import VoiceMessagePlayer from './VoiceMessagePlayer';
 
 function displayName(path) {
   const basename = path.split('/').pop() ?? path;
@@ -41,7 +42,7 @@ function fileKindFor(mime, name) {
   return 'other';
 }
 
-export default function MessageAttachment({ path, name, size, mime }) {
+export default function MessageAttachment({ path, name, size, mime, isMine }) {
   const [signedUrl, setSignedUrl] = useState(null);
 
   useEffect(() => {
@@ -66,10 +67,7 @@ export default function MessageAttachment({ path, name, size, mime }) {
   const isAudio = mime ? mime.startsWith('audio/') : /\.(webm|m4a|ogg|mp3)$/i.test(path);
 
   if (isAudio) {
-    return (
-      // eslint-disable-next-line jsx-a11y/media-has-caption
-      <audio src={signedUrl} controls preload="metadata" className="mt-2 h-9 w-full max-w-[16rem]" />
-    );
+    return <VoiceMessagePlayer src={signedUrl} isMine={isMine} />;
   }
 
   if (isImage) {

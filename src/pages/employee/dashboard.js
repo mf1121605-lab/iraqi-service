@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
+import { AnimatePresence } from 'framer-motion';
 import {
   Check,
   CheckCheck,
@@ -22,6 +23,7 @@ import VoiceCallWidget from '../../components/Chat/VoiceCallWidget';
 import StickerPicker from '../../components/Chat/StickerPicker';
 import VoiceRecorder from '../../components/Chat/VoiceRecorder';
 import MessageAttachment from '../../components/Chat/MessageAttachment';
+import MessageBubble from '../../components/Chat/MessageBubble';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { translate } from '../../utils/i18n';
@@ -43,6 +45,7 @@ export default function EmployeeDashboard() {
 
   const [queue, setQueue] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
+  const [customer, setCustomer] = useState(null);
   const [history, setHistory] = useState([]);
   const [messages, setMessages] = useState([]);
   const [messageBody, setMessageBody] = useState('');
@@ -111,7 +114,7 @@ export default function EmployeeDashboard() {
 
   async function loadDetail(requestId) {
     setSelectedId(requestId);
-    const [{ data: historyRows }, { data: messageRows }] = await Promise.all([
+    const [{ data: historyRows }, { data: messageRows }, { data: requestRow }] = await Promise.all([
       supabaseClient
         .from('request_status_history')
         .select('old_status, new_status, note, created_at')
@@ -122,6 +125,7 @@ export default function EmployeeDashboard() {
         .select('id, sender_id, body, attachment_url, created_at, read_at, message_type')
         .eq('request_id', requestId)
         .order('created_at'),
+      supabaseClient.from('requests').select('customer_id').eq('id', requestId).maybeSingle(),
     ]);
     setHistory(historyRows ?? []);
     const rows = messageRows ?? [];
@@ -134,6 +138,21 @@ export default function EmployeeDashboard() {
         .in('id', unreadFromOther.map((message) => message.id))
         .then(() => {});
     }
+    if (requestRow?.customer_id) {
+      supabaseClient
+        .from('profiles')
+        .select('id, given_name, avatar_key')
+        .eq('id', requestRow.customer_id)
+        .maybeSingle()
+        .then(({ data }) => setCustomer(data ?? null));
+    } else {
+      setCustomer(null);
+    }
+  }
+
+  async function handleDeleteMessage(messageId) {
+    await supabaseClient.from('request_messages').delete().eq('id', messageId);
+    loadDetail(selectedId);
   }
 
   // Lets RequestAlertBell's "approve" action land the employee directly in
@@ -144,6 +163,25 @@ export default function EmployeeDashboard() {
     if (typeof requestId === 'string') loadDetail(requestId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, router.isReady, router.query.request]);
+
+  // The queue-level channel above only tracks `requests` row changes, not
+  // message-level ones — without this, a new/deleted message in the
+  // currently open chat never appears until the employee navigates away
+  // and back (loadDetail is otherwise only re-invoked after the employee's
+  // own actions). Scoped per selectedId so it re-subscribes on chat switch.
+  useEffect(() => {
+    if (!selectedId) return undefined;
+    const channel = supabaseClient
+      .channel(`request-detail-${selectedId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'request_messages', filter: `request_id=eq.${selectedId}` },
+        () => loadDetail(selectedId)
+      )
+      .subscribe();
+    return () => supabaseClient.removeChannel(channel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
 
   async function toggleService(category) {
     const next = activeServices.includes(category)
@@ -396,50 +434,66 @@ export default function EmployeeDashboard() {
                     <MessageSquare className="h-3.5 w-3.5 text-gold-300" aria-hidden="true" />
                     {t('employeeDesk.messagesTitle')}
                   </h4>
-                  <VoiceCallWidget locale={locale} />
-                  <ul
+                  <VoiceCallWidget
+                    locale={locale}
+                    recipientName={customer?.given_name}
+                    recipientAvatarKey={customer?.avatar_key}
+                    recipientSeed={customer?.id}
+                  />
+                  <div
                     className="mt-2 max-h-56 overflow-y-auto rounded-xl bg-[#0d1117] p-2"
                     style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '18px 18px' }}
                   >
-                    {messages.map((message, index) => {
-                      const isMine = message.sender_id === profile.id;
-                      const bundled = isBundled(message, messages[index - 1]);
-                      const isSticker = message.message_type === 'sticker';
-                      return (
-                        <li
-                          key={message.id}
-                          className={`flex ${isMine ? 'justify-end' : 'justify-start'} ${bundled ? 'mt-0.5' : 'mt-2'}`}
-                        >
-                          {isSticker ? (
-                            <span className="text-6xl leading-none">{message.body}</span>
-                          ) : (
-                            <div
-                              className={`max-w-[70%] px-3 py-2 text-sm ${
-                                isMine
-                                  ? 'rounded-2xl rounded-ee-none bg-amber-600 text-white shadow-lg'
-                                  : 'rounded-2xl rounded-es-none border border-gray-800 bg-[#161b22] text-gray-200'
-                              }`}
-                            >
-                              {message.body}
-                              {message.attachment_url && <MessageAttachment path={message.attachment_url} />}
-                              {isMine && (
-                                <span
-                                  className="mt-0.5 flex justify-end"
-                                  aria-label={message.read_at ? t('employeeDesk.readReceiptRead') : t('employeeDesk.readReceiptSent')}
-                                >
-                                  {message.read_at ? (
-                                    <CheckCheck className="h-3.5 w-3.5 text-gold-200" aria-hidden="true" />
-                                  ) : (
-                                    <Check className="h-3.5 w-3.5 text-white/50" aria-hidden="true" />
-                                  )}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
+                    <AnimatePresence initial={false}>
+                      {messages.map((message, index) => {
+                        const isMine = message.sender_id === profile.id;
+                        const bundled = isBundled(message, messages[index - 1]);
+                        const isFirst = !bundled;
+                        const isLast = !isBundled(messages[index + 1], message);
+                        const isSticker = message.message_type === 'sticker';
+                        return (
+                          <MessageBubble
+                            key={message.id}
+                            isMine={isMine}
+                            isFirst={isFirst}
+                            isLast={isLast}
+                            bundled={bundled}
+                            isSticker={isSticker}
+                            bubbleClassName={
+                              isSticker
+                                ? 'text-7xl leading-none'
+                                : `max-w-[70%] px-3 py-2 text-sm ${
+                                    isMine ? 'bg-amber-600 text-white shadow-lg' : 'border border-gray-800 bg-[#161b22] text-gray-200'
+                                  }`
+                            }
+                            onDelete={() => handleDeleteMessage(message.id)}
+                            locale={locale}
+                          >
+                            {isSticker ? (
+                              message.body
+                            ) : (
+                              <>
+                                {message.body && <p className="whitespace-pre-wrap">{message.body}</p>}
+                                {message.attachment_url && <MessageAttachment path={message.attachment_url} isMine={isMine} />}
+                                {isMine && (
+                                  <span
+                                    className="mt-0.5 flex justify-end"
+                                    aria-label={message.read_at ? t('employeeDesk.readReceiptRead') : t('employeeDesk.readReceiptSent')}
+                                  >
+                                    {message.read_at ? (
+                                      <CheckCheck className="h-3.5 w-3.5 text-gold-200" aria-hidden="true" />
+                                    ) : (
+                                      <Check className="h-3.5 w-3.5 text-white/50" aria-hidden="true" />
+                                    )}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </MessageBubble>
+                        );
+                      })}
+                    </AnimatePresence>
+                  </div>
                   {pendingAttachment && <p className="mt-1 text-xs text-white/60">{pendingAttachment.name}</p>}
                   <form onSubmit={handleSendMessage} className="relative mt-3 flex items-center gap-2">
                     <input

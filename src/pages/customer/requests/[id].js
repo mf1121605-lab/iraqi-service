@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Check, CheckCheck, ClipboardList, GraduationCap, Inbox, LayoutGrid, Send, Star } from 'lucide-react';
 import AppShell, { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
@@ -10,6 +11,7 @@ import VoiceCallWidget from '../../../components/Chat/VoiceCallWidget';
 import VoiceRecorder from '../../../components/Chat/VoiceRecorder';
 import MessageAttachment from '../../../components/Chat/MessageAttachment';
 import StickerPicker from '../../../components/Chat/StickerPicker';
+import MessageBubble from '../../../components/Chat/MessageBubble';
 import { supabaseClient } from '../../../lib/supabaseClient';
 import { useRequireRole } from '../../../utils/useSession';
 import { translate } from '../../../utils/i18n';
@@ -188,6 +190,11 @@ export default function CustomerRequestDetail() {
     loadAll();
   }
 
+  async function handleDeleteMessage(messageId) {
+    await supabaseClient.from('request_messages').delete().eq('id', messageId);
+    loadAll();
+  }
+
   if (loading || !profile || !request) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-gradient-hero text-white">
@@ -236,47 +243,68 @@ export default function CustomerRequestDetail() {
 
         <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-[#0d1117] p-4 text-white shadow-soft">
           <h3 className="mb-3 text-sm font-bold">{t('employeeDesk.messagesTitle')}</h3>
-          {employee && <VoiceCallWidget locale={locale} />}
+          {employee && (
+            <VoiceCallWidget
+              locale={locale}
+              recipientName={employee.given_name}
+              recipientAvatarKey={employee.avatar_key}
+              recipientSeed={employee.id}
+            />
+          )}
           <div
             className="max-h-96 overflow-y-auto rounded-xl p-2"
             style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '18px 18px' }}
           >
             {messages.length === 0 && <p className="text-sm text-white/50">{t('common.noResults')}</p>}
-            {messages.map((message, index) => {
-              const isMine = message.sender_id === profile.id;
-              const bundled = isBundled(message, messages[index - 1]);
-              const isSticker = message.message_type === 'sticker';
-              return (
-                <div key={message.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} ${bundled ? 'mt-0.5' : 'mt-3'}`}>
-                  {isSticker ? (
-                    <span className="text-6xl leading-none">{message.body}</span>
-                  ) : (
-                    <div
-                      className={`max-w-[70%] px-3 py-2 text-sm ${
-                        isMine
-                          ? 'rounded-2xl rounded-ee-none bg-amber-600 text-white shadow-lg'
-                          : 'rounded-2xl rounded-es-none border border-gray-800 bg-[#161b22] text-gray-200'
-                      }`}
-                    >
-                      {message.body && <p className="whitespace-pre-wrap">{message.body}</p>}
-                      {message.attachment_url && <MessageAttachment path={message.attachment_url} />}
-                      {isMine && (
-                        <span
-                          className="mt-0.5 flex justify-end"
-                          aria-label={message.read_at ? t('employeeDesk.readReceiptRead') : t('employeeDesk.readReceiptSent')}
-                        >
-                          {message.read_at ? (
-                            <CheckCheck className="h-3.5 w-3.5 text-gold-200" aria-hidden="true" />
-                          ) : (
-                            <Check className="h-3.5 w-3.5 text-white/50" aria-hidden="true" />
-                          )}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            <AnimatePresence initial={false}>
+              {messages.map((message, index) => {
+                const isMine = message.sender_id === profile.id;
+                const bundled = isBundled(message, messages[index - 1]);
+                const isFirst = !bundled;
+                const isLast = !isBundled(messages[index + 1], message);
+                const isSticker = message.message_type === 'sticker';
+                return (
+                  <MessageBubble
+                    key={message.id}
+                    isMine={isMine}
+                    isFirst={isFirst}
+                    isLast={isLast}
+                    bundled={bundled}
+                    isSticker={isSticker}
+                    bubbleClassName={
+                      isSticker
+                        ? 'text-7xl leading-none'
+                        : `max-w-[70%] px-3 py-2 text-sm ${
+                            isMine ? 'bg-amber-600 text-white shadow-lg' : 'border border-gray-800 bg-[#161b22] text-gray-200'
+                          }`
+                    }
+                    onDelete={() => handleDeleteMessage(message.id)}
+                    locale={locale}
+                  >
+                    {isSticker ? (
+                      message.body
+                    ) : (
+                      <>
+                        {message.body && <p className="whitespace-pre-wrap">{message.body}</p>}
+                        {message.attachment_url && <MessageAttachment path={message.attachment_url} isMine={isMine} />}
+                        {isMine && (
+                          <span
+                            className="mt-0.5 flex justify-end"
+                            aria-label={message.read_at ? t('employeeDesk.readReceiptRead') : t('employeeDesk.readReceiptSent')}
+                          >
+                            {message.read_at ? (
+                              <CheckCheck className="h-3.5 w-3.5 text-gold-200" aria-hidden="true" />
+                            ) : (
+                              <Check className="h-3.5 w-3.5 text-white/50" aria-hidden="true" />
+                            )}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </MessageBubble>
+                );
+              })}
+            </AnimatePresence>
           </div>
 
           <form onSubmit={handleSendMessage} className="mt-3 flex items-center gap-2 border-t border-white/10 pt-3">

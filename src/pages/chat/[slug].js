@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { AnimatePresence } from 'framer-motion';
 import { ArrowRight, Eye, EyeOff, Info, Pencil, Pin, Send, Volume2, VolumeX } from 'lucide-react';
 import { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -12,6 +13,7 @@ import ReactionBar from '../../components/Chat/ReactionBar';
 import TypingIndicator from '../../components/Chat/TypingIndicator';
 import ChatSettingsSidebar from '../../components/Chat/ChatSettingsSidebar';
 import StickerPicker from '../../components/Chat/StickerPicker';
+import MessageBubble from '../../components/Chat/MessageBubble';
 import EditCardModal from '../../components/UI/EditCardModal';
 import { ChatBackgroundLayer, ChatBackgroundPicker, useChatBackgroundPreference } from '../../components/Chat/ChatBackground';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -130,6 +132,11 @@ export default function ChatRoom() {
         )
         .on(
           'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${roomRow.id}` },
+          (payload) => setMessages((current) => current.filter((m) => m.id !== payload.old.id))
+        )
+        .on(
+          'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${roomRow.id}` },
           (payload) => setRoom(payload.new)
         )
@@ -233,6 +240,11 @@ export default function ChatRoom() {
       body: sticker,
       message_type: 'sticker',
     });
+    if (error) setSendError(error.message || t('common.errorGeneric'));
+  }
+
+  async function handleDeleteMessage(message) {
+    const { error } = await supabaseClient.from('chat_messages').delete().eq('id', message.id);
     if (error) setSendError(error.message || t('common.errorGeneric'));
   }
 
@@ -420,67 +432,78 @@ export default function ChatRoom() {
 
       <main className="relative z-0 mx-auto flex h-[calc(100vh-136px)] max-w-3xl flex-col p-4">
         <div className="flex-1 overflow-y-auto">
-          {messages.map((message, index) => {
-            const messageReactions = reactions.filter((r) => r.message_id === message.id);
-            const isMine = message.sender_id === profile.id;
-            const bundled = isBundled(message, messages[index - 1]);
-            const isSticker = message.message_type === 'sticker' && !message.is_hidden;
-            return (
-              <div
-                key={message.id}
-                className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : ''} ${bundled ? 'mt-0.5' : 'mt-3'}`}
-              >
-                {bundled ? (
-                  <div className="h-8 w-8 shrink-0" aria-hidden="true" />
-                ) : (
-                  <Avatar avatarKey={message.sender_avatar_key} name={message.sender_display_name} seed={message.sender_id} className="h-8 w-8" />
-                )}
-                {isSticker ? (
-                  <span className="text-6xl leading-none">{message.body}</span>
-                ) : (
-                <div
-                  className={`max-w-[75%] animate-slide-up rounded-xl2 px-4 py-2 shadow-glass-sm transition-all duration-300 ${
-                    isMine ? 'rounded-ee-none bg-brand-600' : 'rounded-es-none bg-white/10'
-                  }`}
+          <AnimatePresence initial={false}>
+            {messages.map((message, index) => {
+              const messageReactions = reactions.filter((r) => r.message_id === message.id);
+              const isMine = message.sender_id === profile.id;
+              const bundled = isBundled(message, messages[index - 1]);
+              const isFirst = !bundled;
+              const isLast = !isBundled(messages[index + 1], message);
+              const isSticker = message.message_type === 'sticker' && !message.is_hidden;
+              const avatarNode = bundled ? (
+                <div className="h-8 w-8 shrink-0" aria-hidden="true" />
+              ) : (
+                <Avatar avatarKey={message.sender_avatar_key} name={message.sender_display_name} seed={message.sender_id} className="h-8 w-8" />
+              );
+              return (
+                <MessageBubble
+                  key={message.id}
+                  isMine={isMine}
+                  isFirst={isFirst}
+                  isLast={isLast}
+                  bundled={bundled}
+                  isSticker={isSticker}
+                  avatar={avatarNode}
+                  bubbleClassName={
+                    isSticker ? 'text-7xl leading-none' : `max-w-[75%] px-4 py-2 shadow-glass-sm ${isMine ? 'bg-brand-600' : 'bg-white/10'}`
+                  }
+                  onDelete={() => handleDeleteMessage(message)}
+                  locale={locale}
                 >
-                  {!bundled && <p className="text-xs font-semibold text-white/70">{message.sender_display_name}</p>}
-                  {message.is_hidden ? (
-                    <p className="text-sm italic text-white/50">{t('chat.hiddenMessage')}</p>
+                  {isSticker ? (
+                    message.body
                   ) : (
                     <>
-                      {message.body && <p className="text-sm">{message.body}</p>}
-                      {message.attachment_url && (
-                        <MessageAttachment
-                          path={message.attachment_url}
-                          name={message.attachment_name}
-                          size={message.attachment_size}
-                          mime={message.attachment_mime}
-                        />
+                      {!bundled && <p className="text-xs font-semibold text-white/70">{message.sender_display_name}</p>}
+                      {message.is_hidden ? (
+                        <p className="text-sm italic text-white/50">{t('chat.hiddenMessage')}</p>
+                      ) : (
+                        <>
+                          {message.body && <p className="text-sm">{message.body}</p>}
+                          {message.attachment_url && (
+                            <MessageAttachment
+                              path={message.attachment_url}
+                              name={message.attachment_name}
+                              size={message.attachment_size}
+                              mime={message.attachment_mime}
+                              isMine={isMine}
+                            />
+                          )}
+                        </>
+                      )}
+                      {!message.is_hidden && (
+                        <ReactionBar reactions={messageReactions} currentUserId={profile.id} onToggle={(emoji) => toggleReaction(message, emoji)} locale={locale} />
+                      )}
+                      {canModerate(message) && (
+                        <button
+                          type="button"
+                          onClick={() => toggleHidden(message)}
+                          className="mt-1 flex items-center gap-1 rounded text-xs text-white/50 underline transition-colors hover:text-white/80 focus:outline-none focus:ring-2 focus:ring-gold-300"
+                        >
+                          {message.is_hidden ? (
+                            <Eye className="h-3 w-3" aria-hidden="true" />
+                          ) : (
+                            <EyeOff className="h-3 w-3" aria-hidden="true" />
+                          )}
+                          {message.is_hidden ? t('common.retry') : t('chat.hideCta')}
+                        </button>
                       )}
                     </>
                   )}
-                  {!message.is_hidden && (
-                    <ReactionBar reactions={messageReactions} currentUserId={profile.id} onToggle={(emoji) => toggleReaction(message, emoji)} locale={locale} />
-                  )}
-                  {canModerate(message) && (
-                    <button
-                      type="button"
-                      onClick={() => toggleHidden(message)}
-                      className="mt-1 flex items-center gap-1 rounded text-xs text-white/50 underline transition-colors hover:text-white/80 focus:outline-none focus:ring-2 focus:ring-gold-300"
-                    >
-                      {message.is_hidden ? (
-                        <Eye className="h-3 w-3" aria-hidden="true" />
-                      ) : (
-                        <EyeOff className="h-3 w-3" aria-hidden="true" />
-                      )}
-                      {message.is_hidden ? t('common.retry') : t('chat.hideCta')}
-                    </button>
-                  )}
-                </div>
-                )}
-              </div>
-            );
-          })}
+                </MessageBubble>
+              );
+            })}
+          </AnimatePresence>
           <div ref={listEndRef} />
         </div>
 
