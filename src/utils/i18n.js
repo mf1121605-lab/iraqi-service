@@ -495,6 +495,9 @@ const dictionaries = {
       sidebarFilesEmpty: 'لا توجد ملفات مشتركة بعد',
       memberOnline: 'نشط الآن',
       memberOffline: 'غير نشط',
+      inviteMemberCta: 'طلب مراسلة خاصة',
+      invitePending: 'بانتظار الرد',
+      dmThreadsTitle: 'الرسائل الخاصة',
       pinRoomCta: 'تثبيت المحادثة',
       pinnedRoomsTitle: 'المحادثات المثبتة',
       ambientAudioLabel: 'الموسيقى الخلفية',
@@ -524,6 +527,11 @@ const dictionaries = {
       approveCta: 'استلام الطلب',
       moreWaiting: '{count} طلبات أخرى بانتظار الاستلام',
       empty: 'لا توجد تنبيهات جديدة',
+    },
+    dmInvitations: {
+      newRequestTitle: 'لديك طلب مراسلة خاص جديد من {name}',
+      acceptCta: 'موافقة',
+      rejectCta: 'رفض',
     },
     mediaStudio: {
       title: 'استوديو الوسائط',
@@ -1056,6 +1064,9 @@ const dictionaries = {
       sidebarFilesEmpty: 'هێشتا هیچ فایلێکی هاوبەش نییە',
       memberOnline: 'ئێستا چالاکە',
       memberOffline: 'ناچالاک',
+      inviteMemberCta: 'داوای گفتوگۆی تایبەت',
+      invitePending: 'چاوەڕوانی وەڵام',
+      dmThreadsTitle: 'نامە تایبەتەکان',
       pinRoomCta: 'نیشانکردنی گفتوگۆ',
       pinnedRoomsTitle: 'گفتوگۆ نیشانکراوەکان',
       ambientAudioLabel: 'مۆسیقای پاشبنەما',
@@ -1085,6 +1096,11 @@ const dictionaries = {
       approveCta: 'وەرگرتنی داواکاری',
       moreWaiting: '{count} داواکاری تری چاوەڕوانی وەرگرتن',
       empty: 'هیچ ئاگادارییەکی نوێ نییە',
+    },
+    dmInvitations: {
+      newRequestTitle: 'داوایەکی گفتوگۆی تایبەتت هەیە لە {name}',
+      acceptCta: 'ڕازیبوون',
+      rejectCta: 'ڕەتکردنەوە',
     },
     mediaStudio: {
       title: 'ستۆدیۆی میدیا',

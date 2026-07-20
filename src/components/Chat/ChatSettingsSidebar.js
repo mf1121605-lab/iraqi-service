@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader as Loader2, Music, Paperclip, Pin, UploadCloud, Users, X } from 'lucide-react';
+import { Loader as Loader2, MessageCirclePlus, Music, Paperclip, Pin, UploadCloud, Users, X } from 'lucide-react';
 import Avatar from './Avatar';
 import MessageAttachment from './MessageAttachment';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -100,6 +100,9 @@ export default function ChatSettingsSidebar({
   roomId,
   currentTrack,
   profileId,
+  currentUserId,
+  onInviteMember,
+  pendingInviteIds,
 }) {
   const [tab, setTab] = useState('members');
   const t = (path) => translate(locale, path);
@@ -159,10 +162,23 @@ export default function ChatSettingsSidebar({
                       aria-hidden="true"
                     />
                   </span>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{member.name}</p>
                     <p className="text-xs text-white/50">{member.online ? t('chat.memberOnline') : t('chat.memberOffline')}</p>
                   </div>
+                  {member.id !== currentUserId &&
+                    (pendingInviteIds?.includes(member.id) ? (
+                      <span className="shrink-0 text-xs text-white/40">{t('chat.invitePending')}</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onInviteMember(member.id)}
+                        aria-label={t('chat.inviteMemberCta')}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gold-300 transition-colors hover:bg-gold-400/10 focus:outline-none focus:ring-2 focus:ring-gold-300"
+                      >
+                        <MessageCirclePlus className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    ))}
                 </li>
               ))}
             </ul>

@@ -13,6 +13,7 @@ import { toggleAmbientAudio, useAmbientAudioPlaying } from '../../utils/ambientA
 import { useSiteSettings } from '../../utils/useSiteSettings';
 import NotificationBell from '../UI/NotificationBell';
 import RequestAlertBell from '../UI/RequestAlertBell';
+import DmInvitationBell from '../UI/DmInvitationBell';
 import Avatar from '../Chat/Avatar';
 import ProfileDrawer from '../UI/ProfileDrawer';
 
@@ -142,6 +143,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
             )}
             <RequestAlertBell profile={profile} locale={locale} />
             {userId && <NotificationBell userId={userId} locale={locale} />}
+            {userId && <DmInvitationBell userId={userId} locale={locale} />}
             {siteSettings?.site_ambient_audio_url && (
               <button
                 type="button"

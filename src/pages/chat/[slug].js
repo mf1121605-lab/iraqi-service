@@ -54,6 +54,7 @@ export default function ChatRoom() {
   const [roomEditForm, setRoomEditForm] = useState(null);
   const [roomSaving, setRoomSaving] = useState(false);
   const [roomEditError, setRoomEditError] = useState('');
+  const [pendingInviteIds, setPendingInviteIds] = useState([]);
   const ambientAudioRef = useRef(null);
   const listEndRef = useRef(null);
   const channelRef = useRef(null);
@@ -185,6 +186,11 @@ export default function ChatRoom() {
     listEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
 
+  useEffect(() => {
+    if (profile) loadPendingInvites();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
+
   function handleBodyChange(event) {
     setBody(event.target.value);
     const now = Date.now();
@@ -243,6 +249,24 @@ export default function ChatRoom() {
       return;
     }
     refreshProfile();
+  }
+
+  function loadPendingInvites() {
+    supabaseClient
+      .from('chat_room_invitations')
+      .select('receiver_id')
+      .eq('sender_id', profile.id)
+      .eq('status', 'pending')
+      .then(({ data }) => setPendingInviteIds((data ?? []).map((row) => row.receiver_id)));
+  }
+
+  async function inviteMember(receiverId) {
+    const { error } = await supabaseClient.from('chat_room_invitations').insert({ sender_id: profile.id, receiver_id: receiverId });
+    if (error) {
+      setSendError(error.message || t('common.errorGeneric'));
+      return;
+    }
+    loadPendingInvites();
   }
 
   function startRoomEdit() {
@@ -482,6 +506,9 @@ export default function ChatRoom() {
         roomId={room.id}
         currentTrack={ambientTrack}
         profileId={profile.id}
+        currentUserId={profile.id}
+        onInviteMember={inviteMember}
+        pendingInviteIds={pendingInviteIds}
       />
 
       <EditCardModal
