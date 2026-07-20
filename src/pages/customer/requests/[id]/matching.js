@@ -22,7 +22,13 @@ function CandidateCard({ candidate, t }) {
   return (
     <div className="glass-panel-dark flex w-56 flex-col items-center gap-2 rounded-2xl p-5 text-center shadow-[0_20px_45px_-15px_rgba(0,0,0,0.6)]">
       <Avatar avatarKey={candidate.avatar_key} name={candidate.given_name} seed={candidate.id} className="h-16 w-16 ring-2 ring-gold-400/30" />
-      <p className="flex items-center gap-1 truncate text-sm font-bold text-white">
+      <p className="flex items-center gap-1.5 truncate text-sm font-bold text-white">
+        <span
+          className={`h-2 w-2 shrink-0 rounded-full ${
+            candidate.is_online ? 'bg-yellow-400 shadow-[0_0_8px_#f59e0b]' : 'bg-gray-500'
+          }`}
+          aria-label={candidate.is_online ? t('requestMatching.onlineLabel') : t('requestMatching.offlineLabel')}
+        />
         {candidateName(candidate, t)}
         {candidate.is_verified && (
           <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-blue-400" aria-label={t('requestMatching.verifiedBadgeLabel')} />
