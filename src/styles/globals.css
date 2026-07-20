@@ -136,3 +136,72 @@ body {
   right: 18px;
   transform: scale(-1, -1);
 }
+
+/* Premium UI Utilities */
+.glass-premium {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(230, 171, 44, 0.15);
+  box-shadow: 
+    0 8px 32px 0 rgba(0, 0, 0, 0.37),
+    inset 0 0 12px rgba(230, 171, 44, 0.05);
+}
+
+.dark .glass-premium {
+  background: rgba(10, 10, 10, 0.6);
+  border: 1px solid rgba(230, 171, 44, 0.18);
+  box-shadow: 
+    0 12px 40px 0 rgba(0, 0, 0, 0.7),
+    inset 0 0 15px rgba(230, 171, 44, 0.08);
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #fff3d1 0%, #e6ab2c 50%, #b46f17 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+.bento-card {
+  @apply relative overflow-hidden rounded-2xl transition-all duration-500;
+}
+
+.bento-card-glow {
+  @apply absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none;
+  background: radial-gradient(800px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(230, 171, 44, 0.1), transparent 40%);
+}
+
+.bento-card:hover .bento-card-glow {
+  @apply opacity-100;
+}
+
+.animate-float-slow {
+  animation: floatSlow 6s ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulseSlow 4s ease-in-out infinite;
+}
+
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(2deg);
+  }
+}
+
+@keyframes pulseSlow {
+  0%, 100% {
+    opacity: 0.8;
+    box-shadow: 0 0 15px rgba(230, 171, 44, 0.1);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 25px rgba(230, 171, 44, 0.25);
+  }
+}
+
