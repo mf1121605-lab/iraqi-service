@@ -5,6 +5,7 @@ import { ArrowRight, Eye, EyeOff, Info, Pencil, Pin, Send, Volume2, VolumeX } fr
 import { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import AttachmentUploader from '../../components/Chat/AttachmentUploader';
+import VoiceRecorder from '../../components/Chat/VoiceRecorder';
 import MessageAttachment from '../../components/Chat/MessageAttachment';
 import Avatar from '../../components/Chat/Avatar';
 import ReactionBar from '../../components/Chat/ReactionBar';
@@ -456,6 +457,7 @@ export default function ChatRoom() {
             className="flex-1 bg-transparent px-2 py-2 text-sm text-white placeholder-white/50 focus:outline-none"
           />
           <AttachmentUploader pathPrefix={`chat/${room.id}`} locale={locale} onUploaded={setPendingAttachment} />
+          <VoiceRecorder pathPrefix={`chat/${room.id}`} locale={locale} onUploaded={setPendingAttachment} />
           <button
             type="submit"
             className="flex items-center gap-1.5 rounded-xl2 bg-gold-500 px-4 py-2 text-sm font-semibold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.03] hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-900"

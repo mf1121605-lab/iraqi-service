@@ -63,6 +63,14 @@ export default function MessageAttachment({ path, name, size, mime }) {
 
   const fileName = name || displayName(path);
   const isImage = mime ? mime.startsWith('image/') : /\.(png|jpe?g)$/i.test(path);
+  const isAudio = mime ? mime.startsWith('audio/') : /\.(webm|m4a|ogg|mp3)$/i.test(path);
+
+  if (isAudio) {
+    return (
+      // eslint-disable-next-line jsx-a11y/media-has-caption
+      <audio src={signedUrl} controls preload="metadata" className="mt-2 h-9 w-full max-w-[16rem]" />
+    );
+  }
 
   if (isImage) {
     return (

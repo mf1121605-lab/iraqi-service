@@ -6,6 +6,7 @@ import LoadingSpinner from '../../../components/LoadingSpinner';
 import StatusBadge from '../../../components/UI/StatusBadge';
 import Avatar from '../../../components/Chat/Avatar';
 import AttachmentUploader from '../../../components/Chat/AttachmentUploader';
+import VoiceRecorder from '../../../components/Chat/VoiceRecorder';
 import MessageAttachment from '../../../components/Chat/MessageAttachment';
 import { supabaseClient } from '../../../lib/supabaseClient';
 import { useRequireRole } from '../../../utils/useSession';
@@ -250,6 +251,7 @@ export default function CustomerRequestDetail() {
 
           <form onSubmit={handleSendMessage} className="mt-3 flex items-center gap-2 border-t border-black/5 pt-3 dark:border-white/10">
             <AttachmentUploader pathPrefix={`requests/${id}`} onUploaded={setPendingAttachment} locale={locale} />
+            <VoiceRecorder pathPrefix={`requests/${id}`} onUploaded={setPendingAttachment} locale={locale} />
             <input
               value={messageBody}
               onChange={(e) => setMessageBody(e.target.value)}

@@ -18,6 +18,7 @@ import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import StatusBadge from '../../components/UI/StatusBadge';
 import AttachmentUploader from '../../components/Chat/AttachmentUploader';
+import VoiceRecorder from '../../components/Chat/VoiceRecorder';
 import MessageAttachment from '../../components/Chat/MessageAttachment';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
@@ -421,6 +422,7 @@ export default function EmployeeDashboard() {
                       locale={locale}
                       onUploaded={setPendingAttachment}
                     />
+                    <VoiceRecorder pathPrefix={`requests/${selectedId}`} locale={locale} onUploaded={setPendingAttachment} />
                     <button type="submit" className="btn-cinematic-gold flex items-center gap-1.5 px-4 py-2 text-sm">
                       <Send className="h-3.5 w-3.5 rtl:-scale-x-100" aria-hidden="true" />
                       {t('employeeDesk.sendCta')}
