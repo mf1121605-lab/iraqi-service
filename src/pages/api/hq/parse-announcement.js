@@ -70,13 +70,15 @@ export default async function handler(req, res) {
     if (!response.ok) {
       const errorBody = await response.text().catch(() => '');
       console.error('hq/parse-announcement: Gemini API error', response.status, errorBody);
-      return res.status(502).json({ error: 'تعذر تحليل النص، حاول مرة أخرى' });
+      // Temporary: surface the real upstream error so the next attempt is
+      // self-diagnosing instead of needing a trip through Vercel's log UI.
+      return res.status(502).json({ error: `تعذر تحليل النص (${response.status}): ${errorBody.slice(0, 300)}` });
     }
 
     const data = await response.json();
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!rawText) {
-      return res.status(502).json({ error: 'تعذر تحليل النص، حاول مرة أخرى' });
+      return res.status(502).json({ error: `تعذر تحليل النص: استجابة فارغة من النموذج — ${JSON.stringify(data).slice(0, 300)}` });
     }
 
     let parsed;
@@ -84,7 +86,7 @@ export default async function handler(req, res) {
       parsed = extractJson(rawText);
     } catch (parseErr) {
       console.error('hq/parse-announcement: failed to parse model JSON', parseErr, rawText);
-      return res.status(502).json({ error: 'تعذر فهم استجابة الذكاء الاصطناعي، جرّب تعديل النص المُلصق' });
+      return res.status(502).json({ error: `تعذر فهم استجابة الذكاء الاصطناعي: ${rawText.slice(0, 300)}` });
     }
 
     return res.status(200).json({
@@ -96,7 +98,7 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('hq/parse-announcement: unexpected exception', err);
-    return res.status(502).json({ error: 'تعذر تحليل النص، حاول مرة أخرى' });
+    return res.status(502).json({ error: `تعذر تحليل النص: ${err?.message ?? String(err)}` });
   } finally {
     clearTimeout(timeout);
   }
