@@ -1,8 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, CheckCircle2, Loader as Loader2, Lock, Sparkles, User, X, XCircle } from 'lucide-react';
+import Link from 'next/link';
+import {
+  Camera,
+  CheckCircle2,
+  Globe,
+  Headset,
+  Loader as Loader2,
+  Lock,
+  LogOut,
+  Moon,
+  Settings as SettingsIcon,
+  Sun,
+  User,
+  X,
+  XCircle,
+} from 'lucide-react';
 import Avatar from '../Chat/Avatar';
 import { supabaseClient } from '../../lib/supabaseClient';
-import { translate } from '../../utils/i18n';
+import { LOCALE_META, translate } from '../../utils/i18n';
 import { safeSlug } from '../../utils/safeStorageName';
 import { isValidIraqiPhone, toLocalFormat } from '../../utils/phoneHelper';
 
@@ -11,7 +26,6 @@ const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const USERNAME_PATTERN = /^[a-z][a-z0-9_]{2,}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
-const TUTOR_DAILY_LIMIT = 60;
 
 async function authHeader() {
   const {
@@ -20,8 +34,19 @@ async function authHeader() {
   return { Authorization: `Bearer ${session?.access_token ?? ''}` };
 }
 
-export default function ProfileDrawer({ open, onClose, profile, locale, onProfileUpdated }) {
+export default function ProfileDrawer({
+  open,
+  onClose,
+  profile,
+  locale,
+  onProfileUpdated,
+  theme,
+  onToggleTheme,
+  onToggleLocale,
+  onSignOut,
+}) {
   const t = (path) => translate(locale, path);
+  const [activeTab, setActiveTab] = useState('info');
 
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -47,7 +72,6 @@ export default function ProfileDrawer({ open, onClose, profile, locale, onProfil
   const [passwordError, setPasswordError] = useState('');
   const [passwordSaved, setPasswordSaved] = useState(false);
 
-  const [tutorUsageToday, setTutorUsageToday] = useState(null);
   const previewUrlRef = useRef(null);
 
   useEffect(() => {
@@ -66,19 +90,6 @@ export default function ProfileDrawer({ open, onClose, profile, locale, onProfil
     setConfirmPassword('');
     setPasswordError('');
     setPasswordSaved(false);
-  }, [open, profile]);
-
-  useEffect(() => {
-    if (!open || !profile || profile.role !== 'customer') return;
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    supabaseClient
-      .from('tutor_messages')
-      .select('id', { count: 'exact', head: true })
-      .eq('student_id', profile.id)
-      .eq('role', 'user')
-      .gte('created_at', startOfDay.toISOString())
-      .then(({ count }) => setTutorUsageToday(count ?? 0));
   }, [open, profile]);
 
   useEffect(
@@ -263,120 +274,185 @@ export default function ProfileDrawer({ open, onClose, profile, locale, onProfil
             {avatarError && <p className="text-xs text-red-400" dir="ltr">{avatarError}</p>}
           </div>
 
-          {/* Status + quota */}
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div
-              className={`flex items-center gap-2 rounded-xl2 border px-3 py-2.5 text-sm font-semibold ${
-                isActive ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300' : 'border-red-400/30 bg-red-400/10 text-red-300'
-              }`}
-            >
-              {isActive ? <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" /> : <XCircle className="h-4 w-4 shrink-0" aria-hidden="true" />}
-              {isActive ? t('profileDrawer.statusActive') : t('profileDrawer.statusSuspended')}
-            </div>
-            {profile?.role === 'customer' && (
-              <div className="flex items-center gap-2 rounded-xl2 border border-gold-400/25 bg-gold-400/10 px-3 py-2.5 text-sm font-semibold text-gold-300">
-                <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />
-                {tutorUsageToday === null
-                  ? t('common.loading')
-                  : `${t('profileDrawer.tutorQuotaLabel')} ${Math.max(TUTOR_DAILY_LIMIT - tutorUsageToday, 0)}/${TUTOR_DAILY_LIMIT}`}
-              </div>
-            )}
+          {/* Status */}
+          <div
+            className={`flex items-center gap-2 rounded-xl2 border px-3 py-2.5 text-sm font-semibold ${
+              isActive ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300' : 'border-red-400/30 bg-red-400/10 text-red-300'
+            }`}
+          >
+            {isActive ? <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" /> : <XCircle className="h-4 w-4 shrink-0" aria-hidden="true" />}
+            {isActive ? t('profileDrawer.statusActive') : t('profileDrawer.statusSuspended')}
           </div>
 
-          {/* Personal & contact info */}
-          <form onSubmit={handleSaveInfo} className="space-y-3 border-t border-white/10 pt-5">
-            <h3 className="text-sm font-bold text-gold-300">{t('profileDrawer.infoSectionTitle')}</h3>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className={labelClass}>{t('profileDrawer.givenNameLabel')}</label>
-                <input value={givenName} onChange={(e) => setGivenName(e.target.value)} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>{t('profileDrawer.familyNameLabel')}</label>
-                <input value={familyName} onChange={(e) => setFamilyName(e.target.value)} className={inputClass} />
-              </div>
-            </div>
-            <div>
-              <label className={labelClass}>{t('profileDrawer.phoneLabel')}</label>
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" className={inputClass} />
-            </div>
-            <div>
-              <label className={labelClass}>{t('profileDrawer.emailLabel')}</label>
-              <input value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" placeholder="you@example.com" className={inputClass} />
-            </div>
-            {infoError && <p className="text-xs text-red-400">{infoError}</p>}
-            {infoSaved && <p className="text-xs text-emerald-400">{t('profileDrawer.savedMessage')}</p>}
-            <button type="submit" disabled={infoSaving} className="btn-cinematic-gold w-full px-4 py-2.5 text-sm disabled:opacity-50">
-              {infoSaving ? <Loader2 className="mx-auto h-4 w-4 animate-spin" aria-hidden="true" /> : t('profileDrawer.saveInfoCta')}
-            </button>
-          </form>
+          {/* Tabs */}
+          <div className="flex gap-1 rounded-xl2 bg-white/5 p-1">
+            {[
+              { key: 'info', label: t('profileDrawer.tabInfo'), icon: User },
+              { key: 'password', label: t('profileDrawer.tabPassword'), icon: Lock },
+              { key: 'settings', label: t('profileDrawer.tabSettings'), icon: SettingsIcon },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-gold-400 ${
+                  activeTab === tab.key ? 'bg-gold-500/90 text-brand-950' : 'text-white/60 hover:bg-white/5'
+                }`}
+              >
+                <tab.icon className="h-3.5 w-3.5" aria-hidden="true" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-          {/* Username */}
-          {profile?.role === 'customer' && (
-            <form onSubmit={handleSaveUsername} className="space-y-3 border-t border-white/10 pt-5">
-              <h3 className="text-sm font-bold text-gold-300">{t('profileDrawer.usernameSectionTitle')}</h3>
+          {activeTab === 'info' && (
+            <>
+              {/* Personal & contact info */}
+              <form onSubmit={handleSaveInfo} className="space-y-3 border-t border-white/10 pt-5">
+                <h3 className="text-sm font-bold text-gold-300">{t('profileDrawer.infoSectionTitle')}</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className={labelClass}>{t('profileDrawer.givenNameLabel')}</label>
+                    <input value={givenName} onChange={(e) => setGivenName(e.target.value)} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>{t('profileDrawer.familyNameLabel')}</label>
+                    <input value={familyName} onChange={(e) => setFamilyName(e.target.value)} className={inputClass} />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelClass}>{t('profileDrawer.phoneLabel')}</label>
+                  <input value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>{t('profileDrawer.emailLabel')}</label>
+                  <input value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" placeholder="you@example.com" className={inputClass} />
+                </div>
+                {infoError && <p className="text-xs text-red-400">{infoError}</p>}
+                {infoSaved && <p className="text-xs text-emerald-400">{t('profileDrawer.savedMessage')}</p>}
+                <button type="submit" disabled={infoSaving} className="btn-cinematic-gold w-full px-4 py-2.5 text-sm disabled:opacity-50">
+                  {infoSaving ? <Loader2 className="mx-auto h-4 w-4 animate-spin" aria-hidden="true" /> : t('profileDrawer.saveInfoCta')}
+                </button>
+              </form>
+
+              {/* Username */}
+              {profile?.role === 'customer' && (
+                <form onSubmit={handleSaveUsername} className="space-y-3 border-t border-white/10 pt-5">
+                  <h3 className="text-sm font-bold text-gold-300">{t('profileDrawer.usernameSectionTitle')}</h3>
+                  <div>
+                    <label className={labelClass}>{t('profileDrawer.usernameLabel')}</label>
+                    <input
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                      dir="ltr"
+                      className={inputClass}
+                    />
+                    <p className="mt-1 text-xs text-white/40">{t('profileDrawer.usernameHint')}</p>
+                  </div>
+                  {usernameError && (
+                    <p className="text-xs text-red-400" dir="ltr">
+                      {usernameError}
+                    </p>
+                  )}
+                  {usernameSaved && <p className="text-xs text-emerald-400">{t('profileDrawer.savedMessage')}</p>}
+                  <button type="submit" disabled={usernameSaving} className="btn-cinematic-outline w-full px-4 py-2.5 text-sm disabled:opacity-50">
+                    {usernameSaving ? <Loader2 className="mx-auto h-4 w-4 animate-spin" aria-hidden="true" /> : t('profileDrawer.saveUsernameCta')}
+                  </button>
+                </form>
+              )}
+            </>
+          )}
+
+          {activeTab === 'password' && (
+            <form onSubmit={handleChangePassword} className="space-y-3 border-t border-white/10 pt-5">
+              <h3 className="flex items-center gap-1.5 text-sm font-bold text-gold-300">
+                <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                {t('profileDrawer.passwordSectionTitle')}
+              </h3>
               <div>
-                <label className={labelClass}>{t('profileDrawer.usernameLabel')}</label>
+                <label className={labelClass}>{t('profileDrawer.currentPasswordLabel')}</label>
                 <input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
                   dir="ltr"
                   className={inputClass}
                 />
-                <p className="mt-1 text-xs text-white/40">{t('profileDrawer.usernameHint')}</p>
               </div>
-              {usernameError && (
+              <div>
+                <label className={labelClass}>{t('profileDrawer.newPasswordLabel')}</label>
+                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} dir="ltr" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>{t('profileDrawer.confirmPasswordLabel')}</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  dir="ltr"
+                  className={inputClass}
+                />
+              </div>
+              {passwordError && (
                 <p className="text-xs text-red-400" dir="ltr">
-                  {usernameError}
+                  {passwordError}
                 </p>
               )}
-              {usernameSaved && <p className="text-xs text-emerald-400">{t('profileDrawer.savedMessage')}</p>}
-              <button type="submit" disabled={usernameSaving} className="btn-cinematic-outline w-full px-4 py-2.5 text-sm disabled:opacity-50">
-                {usernameSaving ? <Loader2 className="mx-auto h-4 w-4 animate-spin" aria-hidden="true" /> : t('profileDrawer.saveUsernameCta')}
+              {passwordSaved && <p className="text-xs text-emerald-400">{t('profileDrawer.passwordSavedMessage')}</p>}
+              <button type="submit" disabled={passwordSaving} className="btn-cinematic-outline w-full px-4 py-2.5 text-sm disabled:opacity-50">
+                {passwordSaving ? <Loader2 className="mx-auto h-4 w-4 animate-spin" aria-hidden="true" /> : t('profileDrawer.changePasswordCta')}
               </button>
             </form>
           )}
 
-          {/* Password */}
-          <form onSubmit={handleChangePassword} className="space-y-3 border-t border-white/10 pt-5">
-            <h3 className="flex items-center gap-1.5 text-sm font-bold text-gold-300">
-              <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-              {t('profileDrawer.passwordSectionTitle')}
-            </h3>
-            <div>
-              <label className={labelClass}>{t('profileDrawer.currentPasswordLabel')}</label>
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                dir="ltr"
-                className={inputClass}
-              />
+          {activeTab === 'settings' && (
+            <div className="space-y-2 border-t border-white/10 pt-5">
+              <h3 className="text-sm font-bold text-gold-300">{t('profileDrawer.tabSettings')}</h3>
+              {onToggleLocale && (
+                <button
+                  type="button"
+                  onClick={onToggleLocale}
+                  className="flex w-full items-center gap-3 rounded-xl2 border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-gold-400"
+                >
+                  <Globe className="h-4 w-4 shrink-0 text-gold-300" aria-hidden="true" />
+                  <span className="flex-1 text-start">{t('profileDrawer.settingsLanguageCta')}</span>
+                  <span className="text-xs text-white/50">{LOCALE_META.find((meta) => meta.code !== locale)?.nativeName}</span>
+                </button>
+              )}
+              {onToggleTheme && (
+                <button
+                  type="button"
+                  onClick={onToggleTheme}
+                  className="flex w-full items-center gap-3 rounded-xl2 border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-gold-400"
+                >
+                  {theme === 'dark' ? (
+                    <Moon className="h-4 w-4 shrink-0 text-gold-300" aria-hidden="true" />
+                  ) : (
+                    <Sun className="h-4 w-4 shrink-0 text-gold-300" aria-hidden="true" />
+                  )}
+                  <span className="flex-1 text-start">{t('profileDrawer.settingsThemeCta')}</span>
+                </button>
+              )}
+              <Link
+                href="/chat"
+                onClick={onClose}
+                className="flex w-full items-center gap-3 rounded-xl2 border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-gold-400"
+              >
+                <Headset className="h-4 w-4 shrink-0 text-gold-300" aria-hidden="true" />
+                <span className="flex-1 text-start">{t('profileDrawer.settingsSupportCta')}</span>
+              </Link>
+              {onSignOut && (
+                <button
+                  type="button"
+                  onClick={onSignOut}
+                  className="flex w-full items-center gap-3 rounded-xl2 border border-red-400/20 bg-red-400/5 px-4 py-3 text-sm font-semibold text-red-300 transition-colors hover:bg-red-400/10 focus:outline-none focus:ring-2 focus:ring-red-400"
+                >
+                  <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="flex-1 text-start">{t('profileDrawer.settingsSignOutCta')}</span>
+                </button>
+              )}
             </div>
-            <div>
-              <label className={labelClass}>{t('profileDrawer.newPasswordLabel')}</label>
-              <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} dir="ltr" className={inputClass} />
-            </div>
-            <div>
-              <label className={labelClass}>{t('profileDrawer.confirmPasswordLabel')}</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                dir="ltr"
-                className={inputClass}
-              />
-            </div>
-            {passwordError && (
-              <p className="text-xs text-red-400" dir="ltr">
-                {passwordError}
-              </p>
-            )}
-            {passwordSaved && <p className="text-xs text-emerald-400">{t('profileDrawer.passwordSavedMessage')}</p>}
-            <button type="submit" disabled={passwordSaving} className="btn-cinematic-outline w-full px-4 py-2.5 text-sm disabled:opacity-50">
-              {passwordSaving ? <Loader2 className="mx-auto h-4 w-4 animate-spin" aria-hidden="true" /> : t('profileDrawer.changePasswordCta')}
-            </button>
-          </form>
+          )}
         </div>
       </aside>
     </>

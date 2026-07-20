@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { CircleCheck as CheckCircle2, File as FileEdit } from 'lucide-react';
+import { CircleCheck as CheckCircle2, File as FileEdit, Newspaper } from 'lucide-react';
 import AppShell, { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { supabaseClient } from '../../../lib/supabaseClient';
@@ -9,6 +9,10 @@ import { translate } from '../../../utils/i18n';
 import { categoryLabel, useCategories } from '../../../utils/useCategories';
 
 const TITLE_FROM_DETAILS_MAX_LENGTH = 80;
+
+function bilingualText(row, base, locale) {
+  return (locale === 'ckb' ? row[`${base}_ckb`] : row[`${base}_ar`]) || row[`${base}_ar`] || '';
+}
 
 export default function NewRequest() {
   const { profile, loading, signOut, refreshProfile } = useRequireRole(['customer']);
@@ -26,6 +30,7 @@ export default function NewRequest() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [newsItems, setNewsItems] = useState([]);
 
   useEffect(() => {
     if (!category) return;
@@ -36,6 +41,21 @@ export default function NewRequest() {
       .eq('is_active', true)
       .order('sort_order')
       .then(({ data }) => setServices(data ?? []));
+  }, [category]);
+
+  // Any founder-published announcement assigned to this same category
+  // shows here too, above the request form — the founder assigns a
+  // category to an announcement from /hq/news-links so it's actually
+  // relevant to citizens starting a request in that category.
+  useEffect(() => {
+    if (!category) return;
+    supabaseClient
+      .from('news_links')
+      .select('id, title_ar, title_ckb, deadline, requirements_ar, requirements_ckb, required_documents')
+      .eq('category', category)
+      .eq('is_published', true)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setNewsItems(data ?? []));
   }, [category]);
 
   const selectedService = services?.find((service) => service.id === selectedServiceId);
@@ -86,6 +106,37 @@ export default function NewRequest() {
 
   return (
     <AppShell onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
+      {newsItems.length > 0 && (
+        <div className="mx-auto mb-4 max-w-xl animate-slide-up rounded-2xl border border-gold-400/20 bg-gold-400/5 p-5">
+          <h3 className="flex items-center gap-1.5 text-sm font-bold text-gold-700 dark:text-gold-300">
+            <Newspaper className="h-4 w-4" aria-hidden="true" />
+            {t('requestForm.relatedNewsTitle')}
+          </h3>
+          <ul className="mt-2 space-y-3">
+            {newsItems.map((item) => (
+              <li key={item.id} className="border-b border-gold-400/10 pb-2 last:border-0 last:pb-0">
+                <p className="text-sm font-semibold">{bilingualText(item, 'title', locale)}</p>
+                {item.deadline && (
+                  <p className="mt-0.5 text-xs text-ink-muted dark:text-ink-dark-muted">
+                    {t('customerHub.newsDeadlineLabel')}: {item.deadline}
+                  </p>
+                )}
+                {bilingualText(item, 'requirements', locale) && (
+                  <p className="mt-1 whitespace-pre-wrap text-xs text-ink-muted dark:text-ink-dark-muted">
+                    {t('customerHub.newsRequirementsLabel')}: {bilingualText(item, 'requirements', locale)}
+                  </p>
+                )}
+                {item.required_documents && (
+                  <p className="mt-1 whitespace-pre-wrap text-xs text-ink-muted dark:text-ink-dark-muted">
+                    {t('customerHub.newsRequiredDocumentsLabel')}: {item.required_documents}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="mx-auto max-w-xl animate-slide-up rounded-3xl border border-black/5 bg-white/60 p-8 shadow-elevate dark:border-white/10 dark:bg-surface-dark-alt/60">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600/10 text-brand-700 dark:text-brand-300">

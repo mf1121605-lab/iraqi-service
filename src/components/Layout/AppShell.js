@@ -237,6 +237,10 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
           profile={profile}
           locale={locale}
           onProfileUpdated={onProfileUpdated}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onToggleLocale={toggleLocale}
+          onSignOut={onSignOut}
         />
       )}
     </div>

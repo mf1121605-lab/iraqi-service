@@ -14,6 +14,7 @@ import TypingIndicator from '../../components/Chat/TypingIndicator';
 import ChatSettingsSidebar from '../../components/Chat/ChatSettingsSidebar';
 import StickerPicker from '../../components/Chat/StickerPicker';
 import MessageBubble from '../../components/Chat/MessageBubble';
+import MemberProfileCard from '../../components/Chat/MemberProfileCard';
 import EditCardModal from '../../components/UI/EditCardModal';
 import { ChatBackgroundLayer, ChatBackgroundPicker, useChatBackgroundPreference } from '../../components/Chat/ChatBackground';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -58,6 +59,7 @@ export default function ChatRoom() {
   const [roomSaving, setRoomSaving] = useState(false);
   const [roomEditError, setRoomEditError] = useState('');
   const [pendingInviteIds, setPendingInviteIds] = useState([]);
+  const [selectedMember, setSelectedMember] = useState(null);
   const ambientAudioRef = useRef(null);
   const listEndRef = useRef(null);
   const channelRef = useRef(null);
@@ -93,7 +95,7 @@ export default function ChatRoom() {
       const { data: messageRows } = await supabaseClient
         .from('chat_messages')
         .select(
-          'id, sender_id, sender_display_name, sender_avatar_key, body, attachment_url, attachment_name, attachment_size, attachment_mime, is_hidden, message_type, created_at'
+          'id, sender_id, sender_display_name, sender_avatar_key, sender_role, body, attachment_url, attachment_name, attachment_size, attachment_mime, is_hidden, message_type, created_at'
         )
         .eq('room_id', roomRow.id)
         .order('created_at');
@@ -217,6 +219,7 @@ export default function ChatRoom() {
       sender_id: profile.id,
       sender_display_name: displayNameFor(profile),
       sender_avatar_key: profile.avatar_key ?? null,
+      sender_role: profile.role,
       body: body.trim() || null,
       attachment_url: pendingAttachment?.path ?? null,
       attachment_name: pendingAttachment?.name ?? null,
@@ -237,6 +240,7 @@ export default function ChatRoom() {
       sender_id: profile.id,
       sender_display_name: displayNameFor(profile),
       sender_avatar_key: profile.avatar_key ?? null,
+      sender_role: profile.role,
       body: sticker,
       message_type: 'sticker',
     });
@@ -329,7 +333,7 @@ export default function ChatRoom() {
   const members = useMemo(() => {
     const map = new Map();
     if (profile) {
-      map.set(profile.id, { id: profile.id, name: displayNameFor(profile), avatarKey: profile.avatar_key ?? null });
+      map.set(profile.id, { id: profile.id, name: displayNameFor(profile), avatarKey: profile.avatar_key ?? null, role: profile.role });
     }
     messages.forEach((message) => {
       if (!map.has(message.sender_id)) {
@@ -337,6 +341,7 @@ export default function ChatRoom() {
           id: message.sender_id,
           name: message.sender_display_name,
           avatarKey: message.sender_avatar_key ?? null,
+          role: message.sender_role ?? null,
         });
       }
     });
@@ -443,7 +448,21 @@ export default function ChatRoom() {
               const avatarNode = bundled ? (
                 <div className="h-8 w-8 shrink-0" aria-hidden="true" />
               ) : (
-                <Avatar avatarKey={message.sender_avatar_key} name={message.sender_display_name} seed={message.sender_id} className="h-8 w-8" />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedMember({
+                      id: message.sender_id,
+                      name: message.sender_display_name,
+                      avatarKey: message.sender_avatar_key ?? null,
+                      role: message.sender_role ?? null,
+                    })
+                  }
+                  className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-gold-300"
+                  aria-label={message.sender_display_name}
+                >
+                  <Avatar avatarKey={message.sender_avatar_key} name={message.sender_display_name} seed={message.sender_id} className="h-8 w-8" />
+                </button>
               );
               return (
                 <MessageBubble
@@ -553,6 +572,19 @@ export default function ChatRoom() {
         onInviteMember={inviteMember}
         pendingInviteIds={pendingInviteIds}
       />
+
+      <AnimatePresence>
+        {selectedMember && (
+          <MemberProfileCard
+            member={selectedMember}
+            currentUserId={profile.id}
+            isPending={pendingInviteIds.includes(selectedMember.id)}
+            onInviteMember={inviteMember}
+            onClose={() => setSelectedMember(null)}
+            locale={locale}
+          />
+        )}
+      </AnimatePresence>
 
       <EditCardModal
         open={roomEditOpen}
