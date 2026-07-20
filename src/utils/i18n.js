@@ -133,6 +133,7 @@ const dictionaries = {
       newsDeadlineLabel: 'الموعد النهائي',
       newsRequirementsLabel: 'شروط التقديم',
       newsRequiredDocumentsLabel: 'المستمسكات المطلوبة',
+      newsGeneralLabel: 'إعلانات عامة',
     },
     aiTutor: {
       navCta: 'المدرس الخصوصي الذكي',
@@ -546,6 +547,7 @@ const dictionaries = {
       titleCkbLabel: 'العنوان بالكردية',
       urlLabel: 'الرابط',
       sourceLabel: 'المصدر (اختياري)',
+      categoryPlaceholder: 'إضافة الإعلان على قسم... (اختياري)',
       deadlineLabel: 'الموعد النهائي (اختياري)',
       requirementsLabel: 'شروط التقديم (اختياري)',
       requirementsCkbLabel: 'شروط التقديم بالكردية (اختياري)',
@@ -738,6 +740,7 @@ const dictionaries = {
       newsDeadlineLabel: 'کۆتا وادە',
       newsRequirementsLabel: 'مەرجەکانی داواکاری',
       newsRequiredDocumentsLabel: 'مستمسکە پێویستەکان',
+      newsGeneralLabel: 'ڕاگەیاندنی گشتی',
     },
     aiTutor: {
       navCta: 'مامۆستای تایبەتی زیرەک',
@@ -1151,6 +1154,7 @@ const dictionaries = {
       titleCkbLabel: 'ناونیشان بە کوردی',
       urlLabel: 'بەستەر',
       sourceLabel: 'سەرچاوە (ئارەزوومەندانە)',
+      categoryPlaceholder: 'زیادکردنی ڕاگەیاندن لە بەشی... (ئارەزوومەندانە)',
       deadlineLabel: 'کۆتا وادە (ئارەزوومەندانە)',
       requirementsLabel: 'مەرجەکانی داواکاری (ئارەزوومەندانە)',
       requirementsCkbLabel: 'مەرجەکانی داواکاری بە کوردی (ئارەزوومەندانە)',

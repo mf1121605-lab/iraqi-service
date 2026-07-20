@@ -114,6 +114,30 @@ export default function CustomerDashboard() {
   const serviceCategories = useMemo(() => (categories ?? []).filter((category) => category.section_type !== 'tools'), [categories]);
   const toolCategories = useMemo(() => (categories ?? []).filter((category) => category.section_type === 'tools'), [categories]);
 
+  // Groups published news items under the category the founder assigned
+  // them to (from /hq/news-links), in the same order categories are
+  // defined — items with no category collect into a trailing "general" group.
+  const newsLinkGroups = useMemo(() => {
+    const byCategory = new Map();
+    const general = [];
+    newsLinks.forEach((item) => {
+      if (!item.category) {
+        general.push(item);
+        return;
+      }
+      if (!byCategory.has(item.category)) byCategory.set(item.category, []);
+      byCategory.get(item.category).push(item);
+    });
+    const groups = (categories ?? [])
+      .filter((category) => byCategory.has(category.key))
+      .map((category) => ({ key: category.key, label: categoryLabel(category, locale), items: byCategory.get(category.key) }));
+    if (general.length > 0) {
+      groups.push({ key: '__general', label: t('customerHub.newsGeneralLabel'), items: general });
+    }
+    return groups;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newsLinks, categories, locale]);
+
   useEffect(() => {
     if (!profile) return undefined;
 
@@ -139,7 +163,7 @@ export default function CustomerDashboard() {
     function loadNewsLinks() {
       supabaseClient
         .from('news_links')
-        .select('id, title_ar, title_ckb, source, deadline, requirements_ar, requirements_ckb, required_documents, image_url, video_url')
+        .select('id, title_ar, title_ckb, source, category, deadline, requirements_ar, requirements_ckb, required_documents, image_url, video_url')
         .eq('is_published', true)
         .order('created_at', { ascending: false })
         .then(({ data }) => setNewsLinks(data ?? []));
@@ -214,47 +238,52 @@ export default function CustomerDashboard() {
         </section>
       )}
 
-      {newsLinks.length > 0 && (
+      {newsLinkGroups.length > 0 && (
         <section className="metal-panel mt-6 p-4 text-white sm:mt-10 sm:p-6">
           <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">
             <Newspaper className="h-4 w-4 text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
             {t('customerHub.newsLinksTitle')}
           </h3>
-          <ul className="mt-3 space-y-3">
-            {newsLinks.map((item) => (
-              <li key={item.id} className="flex gap-3 border-b border-white/5 pb-3 last:border-0 last:pb-0">
-                {(item.image_url || item.video_url) && (
-                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-black/30">
-                    {item.image_url ? (
-                      <SafeImage src={item.image_url} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      // eslint-disable-next-line jsx-a11y/media-has-caption
-                      <video src={item.video_url} className="h-full w-full object-cover" controls />
+          {newsLinkGroups.map((group) => (
+            <div key={group.key} className="mt-4 first:mt-3">
+              {newsLinkGroups.length > 1 && <p className="text-xs font-bold uppercase tracking-wide text-gold-300/80">{group.label}</p>}
+              <ul className="mt-2 space-y-3">
+                {group.items.map((item) => (
+                  <li key={item.id} className="flex gap-3 border-b border-white/5 pb-3 last:border-0 last:pb-0">
+                    {(item.image_url || item.video_url) && (
+                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-black/30">
+                        {item.image_url ? (
+                          <SafeImage src={item.image_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          // eslint-disable-next-line jsx-a11y/media-has-caption
+                          <video src={item.video_url} className="h-full w-full object-cover" controls />
+                        )}
+                      </div>
                     )}
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gold-300">{bilingualText(item, 'title', locale)}</p>
-                  {item.source && <p className="mt-0.5 text-xs text-white/50">{item.source}</p>}
-                  {item.deadline && (
-                    <p className="mt-0.5 text-xs text-white/50">
-                      {t('customerHub.newsDeadlineLabel')}: {item.deadline}
-                    </p>
-                  )}
-                  {bilingualText(item, 'requirements', locale) && (
-                    <p className="mt-1 whitespace-pre-wrap text-xs text-white/70">
-                      {t('customerHub.newsRequirementsLabel')}: {bilingualText(item, 'requirements', locale)}
-                    </p>
-                  )}
-                  {item.required_documents && (
-                    <p className="mt-1 whitespace-pre-wrap text-xs text-white/70">
-                      {t('customerHub.newsRequiredDocumentsLabel')}: {item.required_documents}
-                    </p>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gold-300">{bilingualText(item, 'title', locale)}</p>
+                      {item.source && <p className="mt-0.5 text-xs text-white/50">{item.source}</p>}
+                      {item.deadline && (
+                        <p className="mt-0.5 text-xs text-white/50">
+                          {t('customerHub.newsDeadlineLabel')}: {item.deadline}
+                        </p>
+                      )}
+                      {bilingualText(item, 'requirements', locale) && (
+                        <p className="mt-1 whitespace-pre-wrap text-xs text-white/70">
+                          {t('customerHub.newsRequirementsLabel')}: {bilingualText(item, 'requirements', locale)}
+                        </p>
+                      )}
+                      {item.required_documents && (
+                        <p className="mt-1 whitespace-pre-wrap text-xs text-white/70">
+                          {t('customerHub.newsRequiredDocumentsLabel')}: {item.required_documents}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </section>
       )}
 

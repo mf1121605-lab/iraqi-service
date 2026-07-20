@@ -20,6 +20,7 @@ import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
 import { translate } from '../../utils/i18n';
 import { safeSlug } from '../../utils/safeStorageName';
+import { categoryLabel, useCategories } from '../../utils/useCategories';
 
 const ALLOWED_MEDIA_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'video/mp4'];
 const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
@@ -29,6 +30,7 @@ const emptyForm = {
   titleCkb: '',
   url: '',
   source: '',
+  category: '',
   deadline: '',
   requirements: '',
   requirementsCkb: '',
@@ -49,6 +51,7 @@ export default function HqNewsLinks() {
     { href: '/chat', label: t('chat.roomsTitle'), icon: MessageCircle },
   ];
   const navItems = profile?.role === 'founder' ? founderNavItems : employeeNavItems;
+  const categories = useCategories();
 
   const [items, setItems] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -94,6 +97,7 @@ export default function HqNewsLinks() {
       title_ckb: form.titleCkb.trim() || null,
       url: form.url.trim(),
       source: form.source.trim() || null,
+      category: form.category || null,
       deadline: form.deadline.trim() || null,
       requirements_ar: form.requirements.trim() || null,
       requirements_ckb: form.requirementsCkb.trim() || null,
@@ -252,6 +256,20 @@ export default function HqNewsLinks() {
           placeholder={t('hq.sourceLabel')}
           className="input-cinematic text-sm"
         />
+        <select
+          value={form.category}
+          onChange={(event) => setForm({ ...form, category: event.target.value })}
+          className="input-cinematic text-sm"
+        >
+          <option value="" className="bg-surface-dark text-white">
+            {t('hq.categoryPlaceholder')}
+          </option>
+          {(categories ?? []).map((category) => (
+            <option key={category.key} value={category.key} className="bg-surface-dark text-white">
+              {categoryLabel(category, locale)}
+            </option>
+          ))}
+        </select>
         <input
           value={form.deadline}
           onChange={(event) => setForm({ ...form, deadline: event.target.value })}
@@ -336,6 +354,11 @@ export default function HqNewsLinks() {
                   <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 </a>
                 {item.source && <p className="text-xs text-white/50">{item.source}</p>}
+                {item.category && (
+                  <p className="text-xs text-gold-300">
+                    {categoryLabel(categories?.find((category) => category.key === item.category), locale)}
+                  </p>
+                )}
                 {item.deadline && <p className="text-xs text-white/50">{t('hq.deadlineLabel')}: {item.deadline}</p>}
                 {item.required_documents && (
                   <p className="text-xs text-white/50">{t('hq.requiredDocumentsLabel')}: {item.required_documents}</p>
