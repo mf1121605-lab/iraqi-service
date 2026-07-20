@@ -7,6 +7,12 @@ const MAX_TEXT_LENGTH = 8000;
 // the alias always points at their current recommended flash model.
 const GEMINI_MODEL = 'gemini-flash-latest';
 const GEMINI_TIMEOUT_MS = 30_000;
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1500;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 const SYSTEM_PROMPT = `أنت خبير في استخلاص البيانات من إعلانات الخدمات الحكومية العراقية (مثل بوابة أور أو مظلتي).
 استخرج من النص المُعطى كائن JSON نظيف بدون أي نص إضافي أو تنسيق markdown، بالحقول التالية بالضبط:
@@ -55,24 +61,34 @@ export default async function handler(req, res) {
   const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents: [{ parts: [{ text: trimmedText }] }],
-          // Gemini's native JSON mode — guarantees a valid JSON string back
-          // instead of relying purely on the prompt instruction.
-          generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
-        }),
-        signal: controller.signal,
-      }
-    );
+    let response;
+    let errorBody = '';
+    // Gemini occasionally returns 503 UNAVAILABLE under load ("Spikes in
+    // demand are usually temporary") — worth a couple of short retries
+    // instead of immediately failing the founder's paste.
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            contents: [{ parts: [{ text: trimmedText }] }],
+            // Gemini's native JSON mode — guarantees a valid JSON string
+            // back instead of relying purely on the prompt instruction.
+            generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
+          }),
+          signal: controller.signal,
+        }
+      );
+      if (response.ok) break;
+      errorBody = await response.text().catch(() => '');
+      if (response.status !== 503 || attempt === MAX_RETRIES) break;
+      await sleep(RETRY_DELAY_MS);
+    }
 
     if (!response.ok) {
-      const errorBody = await response.text().catch(() => '');
       console.error('hq/parse-announcement: Gemini API error', response.status, errorBody);
       // Surfaced directly rather than a generic message — this is a
       // low-traffic staff-only tool, so the real upstream error is more
