@@ -6,6 +6,7 @@ import LoadingSpinner from '../../../components/LoadingSpinner';
 import StatusBadge from '../../../components/UI/StatusBadge';
 import Avatar from '../../../components/Chat/Avatar';
 import AttachmentUploader from '../../../components/Chat/AttachmentUploader';
+import VoiceCallWidget from '../../../components/Chat/VoiceCallWidget';
 import VoiceRecorder from '../../../components/Chat/VoiceRecorder';
 import MessageAttachment from '../../../components/Chat/MessageAttachment';
 import { supabaseClient } from '../../../lib/supabaseClient';
@@ -99,6 +100,10 @@ export default function CustomerRequestDetail() {
   const [sending, setSending] = useState(false);
 
   async function loadAll() {
+    // Lazy SLA check (see expire_stale_claims() migration comment) — runs
+    // on every page load a customer does of their own request, no
+    // background worker involved.
+    supabaseClient.rpc('expire_stale_claims').then(() => {});
     const { data: requestRow } = await supabaseClient
       .from('requests')
       .select('id, title, description, category, status, assigned_employee_id, created_at')
@@ -220,6 +225,7 @@ export default function CustomerRequestDetail() {
 
         <div className="mt-6 rounded-2xl border border-black/5 bg-white/60 p-4 shadow-soft dark:border-white/10 dark:bg-surface-dark-alt/60">
           <h3 className="mb-3 text-sm font-bold">{t('employeeDesk.messagesTitle')}</h3>
+          {employee && <VoiceCallWidget locale={locale} />}
           <div className="max-h-96 overflow-y-auto">
             {messages.length === 0 && <p className="text-sm text-ink-muted dark:text-ink-dark-muted">{t('common.noResults')}</p>}
             {messages.map((message, index) => {

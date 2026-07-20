@@ -123,6 +123,10 @@ export default function RequestMatching() {
     let active = true;
 
     async function init() {
+      // Lazy SLA check (see expire_stale_claims() migration comment) — a
+      // customer landing on this page is exactly "checking their request
+      // state," so this is a natural trigger point too.
+      supabaseClient.rpc('expire_stale_claims').then(() => {});
       const { data: requestRow } = await supabaseClient
         .from('requests')
         .select('id, category, title, assigned_employee_id, created_at')

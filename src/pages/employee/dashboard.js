@@ -18,6 +18,7 @@ import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import StatusBadge from '../../components/UI/StatusBadge';
 import AttachmentUploader from '../../components/Chat/AttachmentUploader';
+import VoiceCallWidget from '../../components/Chat/VoiceCallWidget';
 import VoiceRecorder from '../../components/Chat/VoiceRecorder';
 import MessageAttachment from '../../components/Chat/MessageAttachment';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -66,6 +67,10 @@ export default function EmployeeDashboard() {
   // RequestAlertBell (mounted in AppShell) instead of here, so it fires
   // consistently on every page, not just this one.
   async function loadQueue() {
+    // Lazy SLA check: no background worker exists on this hosting, so a
+    // stale claim (3+ minutes, no first message sent) only ever gets
+    // freed up at the moment someone actually loads the queue.
+    supabaseClient.rpc('expire_stale_claims').then(() => {});
     const { data } = await supabaseClient
       .from('requests')
       .select('id, title, category, status, assigned_employee_id, customer_id, created_at')
@@ -380,6 +385,7 @@ export default function EmployeeDashboard() {
                     <MessageSquare className="h-3.5 w-3.5 text-gold-300" aria-hidden="true" />
                     {t('employeeDesk.messagesTitle')}
                   </h4>
+                  <VoiceCallWidget locale={locale} />
                   <ul className="mt-2 max-h-56 overflow-y-auto">
                     {messages.map((message, index) => {
                       const isMine = message.sender_id === profile.id;

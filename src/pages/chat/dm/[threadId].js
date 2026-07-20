@@ -8,6 +8,7 @@ import Avatar from '../../../components/Chat/Avatar';
 import AttachmentUploader from '../../../components/Chat/AttachmentUploader';
 import VoiceRecorder from '../../../components/Chat/VoiceRecorder';
 import MessageAttachment from '../../../components/Chat/MessageAttachment';
+import VoiceCallWidget from '../../../components/Chat/VoiceCallWidget';
 import { supabaseClient } from '../../../lib/supabaseClient';
 import { useRequireRole } from '../../../utils/useSession';
 import { translate } from '../../../utils/i18n';
@@ -131,6 +132,10 @@ export default function DirectMessageThread() {
           </Link>
           <Avatar avatarKey={otherUser.avatar_key} name={otherUser.given_name} seed={otherUser.id} className="h-9 w-9" />
           <p className="truncate font-display text-base font-bold">{displayNameFor(otherUser)}</p>
+        </div>
+
+        <div className="pt-3">
+          <VoiceCallWidget locale={locale} />
         </div>
 
         <div className="flex-1 overflow-y-auto py-4">
