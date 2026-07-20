@@ -196,6 +196,8 @@ const dictionaries = {
       sendCta: 'إرسال',
       noteLabel: 'ملاحظة على تغيير الحالة (اختياري)',
       updateStatusCta: 'تحديث الحالة',
+      readReceiptSent: 'تم الإرسال',
+      readReceiptRead: 'تمت القراءة',
     },
     founderDashboard: {
       title: 'اللوحة الرئيسية',
@@ -752,6 +754,8 @@ const dictionaries = {
       sendCta: 'ناردن',
       noteLabel: 'تێبینی لەسەر گۆڕینی دۆخ (ئارەزوومەندانە)',
       updateStatusCta: 'نوێکردنەوەی دۆخ',
+      readReceiptSent: 'نێردرا',
+      readReceiptRead: 'خوێندرایەوە',
     },
     founderDashboard: {
       title: 'پانێلی سەرەکی',

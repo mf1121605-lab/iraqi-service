@@ -15,6 +15,7 @@ import { ChatBackgroundLayer, ChatBackgroundPicker, useChatBackgroundPreference 
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { translate } from '../../utils/i18n';
+import { isBundled } from '../../utils/chatBundling';
 
 const TYPING_TIMEOUT_MS = 3000;
 const TYPING_BROADCAST_INTERVAL_MS = 2000;
@@ -380,19 +381,27 @@ export default function ChatRoom() {
       </header>
 
       <main className="relative z-0 mx-auto flex h-[calc(100vh-136px)] max-w-3xl flex-col p-4">
-        <div className="flex-1 space-y-3 overflow-y-auto">
-          {messages.map((message) => {
+        <div className="flex-1 overflow-y-auto">
+          {messages.map((message, index) => {
             const messageReactions = reactions.filter((r) => r.message_id === message.id);
             const isMine = message.sender_id === profile.id;
+            const bundled = isBundled(message, messages[index - 1]);
             return (
-              <div key={message.id} className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
-                <Avatar avatarKey={message.sender_avatar_key} name={message.sender_display_name} seed={message.sender_id} className="h-8 w-8" />
+              <div
+                key={message.id}
+                className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : ''} ${bundled ? 'mt-0.5' : 'mt-3'}`}
+              >
+                {bundled ? (
+                  <div className="h-8 w-8 shrink-0" aria-hidden="true" />
+                ) : (
+                  <Avatar avatarKey={message.sender_avatar_key} name={message.sender_display_name} seed={message.sender_id} className="h-8 w-8" />
+                )}
                 <div
                   className={`max-w-[75%] animate-slide-up rounded-xl2 px-4 py-2 shadow-glass-sm transition-all duration-300 ${
                     isMine ? 'bg-brand-600' : 'bg-white/10'
                   }`}
                 >
-                  <p className="text-xs font-semibold text-white/70">{message.sender_display_name}</p>
+                  {!bundled && <p className="text-xs font-semibold text-white/70">{message.sender_display_name}</p>}
                   {message.is_hidden ? (
                     <p className="text-sm italic text-white/50">{t('chat.hiddenMessage')}</p>
                   ) : (

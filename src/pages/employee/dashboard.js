@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import {
+  Check,
+  CheckCheck,
   ClipboardCheck,
   History,
   Inbox,
@@ -21,6 +23,7 @@ import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { translate } from '../../utils/i18n';
 import { categoryLabel, useCategories } from '../../utils/useCategories';
+import { isBundled } from '../../utils/chatBundling';
 
 const STATUS_OPTIONS = ['in_review', 'needs_changes', 'approved', 'rejected'];
 
@@ -109,12 +112,21 @@ export default function EmployeeDashboard() {
         .order('created_at'),
       supabaseClient
         .from('request_messages')
-        .select('id, sender_id, body, attachment_url, created_at')
+        .select('id, sender_id, body, attachment_url, created_at, read_at')
         .eq('request_id', requestId)
         .order('created_at'),
     ]);
     setHistory(historyRows ?? []);
-    setMessages(messageRows ?? []);
+    const rows = messageRows ?? [];
+    setMessages(rows);
+    const unreadFromOther = rows.filter((message) => message.sender_id !== profile.id && !message.read_at);
+    if (unreadFromOther.length > 0) {
+      supabaseClient
+        .from('request_messages')
+        .update({ read_at: new Date().toISOString() })
+        .in('id', unreadFromOther.map((message) => message.id))
+        .then(() => {});
+    }
   }
 
   // Lets RequestAlertBell's "approve" action land the employee directly in
@@ -367,18 +379,34 @@ export default function EmployeeDashboard() {
                     <MessageSquare className="h-3.5 w-3.5 text-gold-300" aria-hidden="true" />
                     {t('employeeDesk.messagesTitle')}
                   </h4>
-                  <ul className="mt-2 max-h-56 space-y-2 overflow-y-auto">
-                    {messages.map((message) => (
-                      <li
-                        key={message.id}
-                        className={`max-w-[80%] rounded-xl2 px-3 py-2 text-sm shadow-sm ${
-                          message.sender_id === profile.id ? 'ms-auto bg-gold-500/90 text-black' : 'bg-white/10 text-white'
-                        }`}
-                      >
-                        {message.body}
-                        {message.attachment_url && <MessageAttachment path={message.attachment_url} />}
-                      </li>
-                    ))}
+                  <ul className="mt-2 max-h-56 overflow-y-auto">
+                    {messages.map((message, index) => {
+                      const isMine = message.sender_id === profile.id;
+                      const bundled = isBundled(message, messages[index - 1]);
+                      return (
+                        <li
+                          key={message.id}
+                          className={`max-w-[80%] rounded-xl2 px-3 py-2 text-sm shadow-sm ${bundled ? 'mt-0.5' : 'mt-2'} ${
+                            isMine ? 'ms-auto bg-gold-500/90 text-black' : 'bg-white/10 text-white'
+                          }`}
+                        >
+                          {message.body}
+                          {message.attachment_url && <MessageAttachment path={message.attachment_url} />}
+                          {isMine && (
+                            <span
+                              className="mt-0.5 flex justify-end"
+                              aria-label={message.read_at ? t('employeeDesk.readReceiptRead') : t('employeeDesk.readReceiptSent')}
+                            >
+                              {message.read_at ? (
+                                <CheckCheck className="h-3.5 w-3.5 text-brand-800" aria-hidden="true" />
+                              ) : (
+                                <Check className="h-3.5 w-3.5 text-black/40" aria-hidden="true" />
+                              )}
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                   {pendingAttachment && <p className="mt-1 text-xs text-white/60">{pendingAttachment.name}</p>}
                   <form onSubmit={handleSendMessage} className="relative mt-3 flex items-center gap-2">

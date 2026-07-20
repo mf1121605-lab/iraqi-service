@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { ClipboardList, GraduationCap, Inbox, LayoutGrid, Send, Star } from 'lucide-react';
+import { Check, CheckCheck, ClipboardList, GraduationCap, Inbox, LayoutGrid, Send, Star } from 'lucide-react';
 import AppShell, { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import StatusBadge from '../../../components/UI/StatusBadge';
@@ -11,6 +11,7 @@ import { supabaseClient } from '../../../lib/supabaseClient';
 import { useRequireRole } from '../../../utils/useSession';
 import { translate } from '../../../utils/i18n';
 import { categoryLabel, useCategories } from '../../../utils/useCategories';
+import { isBundled } from '../../../utils/chatBundling';
 
 const FINISHED_STATUSES = ['approved', 'rejected'];
 
@@ -116,10 +117,21 @@ export default function CustomerRequestDetail() {
 
     supabaseClient
       .from('request_messages')
-      .select('id, sender_id, body, attachment_url, created_at')
+      .select('id, sender_id, body, attachment_url, created_at, read_at')
       .eq('request_id', id)
       .order('created_at')
-      .then(({ data }) => setMessages(data ?? []));
+      .then(({ data }) => {
+        const rows = data ?? [];
+        setMessages(rows);
+        const unreadFromOther = rows.filter((message) => message.sender_id !== profile.id && !message.read_at);
+        if (unreadFromOther.length > 0) {
+          supabaseClient
+            .from('request_messages')
+            .update({ read_at: new Date().toISOString() })
+            .in('id', unreadFromOther.map((message) => message.id))
+            .then(() => {});
+        }
+      });
 
     supabaseClient
       .from('request_ratings')
@@ -207,12 +219,13 @@ export default function CustomerRequestDetail() {
 
         <div className="mt-6 rounded-2xl border border-black/5 bg-white/60 p-4 shadow-soft dark:border-white/10 dark:bg-surface-dark-alt/60">
           <h3 className="mb-3 text-sm font-bold">{t('employeeDesk.messagesTitle')}</h3>
-          <div className="max-h-96 space-y-3 overflow-y-auto">
+          <div className="max-h-96 overflow-y-auto">
             {messages.length === 0 && <p className="text-sm text-ink-muted dark:text-ink-dark-muted">{t('common.noResults')}</p>}
-            {messages.map((message) => {
+            {messages.map((message, index) => {
               const isMine = message.sender_id === profile.id;
+              const bundled = isBundled(message, messages[index - 1]);
               return (
-                <div key={message.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                <div key={message.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} ${bundled ? 'mt-0.5' : 'mt-3'}`}>
                   <div
                     className={`max-w-[80%] rounded-xl2 px-3 py-2 text-sm ${
                       isMine ? 'bg-brand-600 text-white' : 'bg-black/5 dark:bg-white/10'
@@ -220,6 +233,15 @@ export default function CustomerRequestDetail() {
                   >
                     {message.body && <p className="whitespace-pre-wrap">{message.body}</p>}
                     {message.attachment_url && <MessageAttachment path={message.attachment_url} />}
+                    {isMine && (
+                      <span className="mt-0.5 flex justify-end" aria-label={message.read_at ? t('employeeDesk.readReceiptRead') : t('employeeDesk.readReceiptSent')}>
+                        {message.read_at ? (
+                          <CheckCheck className="h-3.5 w-3.5 text-gold-200" aria-hidden="true" />
+                        ) : (
+                          <Check className="h-3.5 w-3.5 text-white/50" aria-hidden="true" />
+                        )}
+                      </span>
+                    )}
                   </div>
                 </div>
               );
