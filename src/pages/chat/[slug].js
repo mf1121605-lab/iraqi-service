@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
-import { ArrowRight, ChevronDown, Eye, EyeOff, Info, Pencil, Pin, Send, Volume2, VolumeX } from 'lucide-react';
+import { ArrowRight, ChevronDown, Info, Pencil, Pin, Send, Volume2, VolumeX } from 'lucide-react';
 import { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import AttachmentUploader from '../../components/Chat/AttachmentUploader';
@@ -26,12 +26,12 @@ const TYPING_TIMEOUT_MS = 3000;
 const TYPING_BROADCAST_INTERVAL_MS = 2000;
 
 function displayNameFor(profile) {
-  if (profile.role === 'customer') {
-    return profile.given_name || 'مستخدم';
-  }
-  return [profile.given_name, profile.father_name, profile.grandfather_name, profile.family_name]
-    .filter(Boolean)
-    .join(' ') || profile.role;
+  if (!profile) return '';
+  const parts = [profile.given_name, profile.father_name, profile.grandfather_name, profile.family_name].filter(Boolean);
+  if (parts.length > 0) return parts.join(' ');
+  if (profile.username) return profile.username;
+  if (profile.phone) return `عضو ...${profile.phone.slice(-4)}`;
+  return 'عضو';
 }
 
 export default function ChatRoom() {
@@ -269,8 +269,11 @@ export default function ChatRoom() {
     if (error) setSendError(error.message || t('common.errorGeneric'));
   }
 
-  async function toggleHidden(message) {
-    const { error } = await supabaseClient.from('chat_messages').update({ is_hidden: !message.is_hidden }).eq('id', message.id);
+  // Moderator path: soft-hide so other clients see the message disappear via
+  // the UPDATE realtime event. The caller filters is_hidden from the view so
+  // from every user's perspective the message is simply gone — no placeholder.
+  async function handleModeratorDelete(message) {
+    const { error } = await supabaseClient.from('chat_messages').update({ is_hidden: true }).eq('id', message.id);
     if (error) setSendError(error.message || t('common.errorGeneric'));
   }
 
@@ -455,13 +458,19 @@ export default function ChatRoom() {
       <main className="relative z-0 mx-auto flex h-[calc(100dvh-136px)] max-w-3xl flex-col p-4 sm:h-[calc(100dvh-130px)]">
         <div ref={scrollContainerRef} onScroll={handleScroll} className="relative flex-1 overflow-y-auto">
           <AnimatePresence initial={false}>
-            {messages.map((message, index) => {
+            {messages.filter((m) => !m.is_hidden).map((message, index, visible) => {
               const messageReactions = reactions.filter((r) => r.message_id === message.id);
               const isMine = message.sender_id === profile.id;
-              const bundled = isBundled(message, messages[index - 1]);
+              const bundled = isBundled(message, visible[index - 1]);
               const isFirst = !bundled;
-              const isLast = !isBundled(messages[index + 1], message);
-              const isSticker = message.message_type === 'sticker' && !message.is_hidden;
+              const isLast = !isBundled(visible[index + 1], message);
+              const isSticker = message.message_type === 'sticker';
+              // Resolve sender display name — never show bare 'مستخدم'
+              const senderName =
+                message.sender_display_name && message.sender_display_name !== 'مستخدم'
+                  ? message.sender_display_name
+                  : 'عضو';
+              const canDelete = isMine || canModerate(message);
               const avatarNode = bundled ? (
                 <div className="h-8 w-8 shrink-0" aria-hidden="true" />
               ) : (
@@ -470,15 +479,15 @@ export default function ChatRoom() {
                   onClick={() =>
                     setSelectedMember({
                       id: message.sender_id,
-                      name: message.sender_display_name,
+                      name: senderName,
                       avatarKey: message.sender_avatar_key ?? null,
                       role: message.sender_role ?? null,
                     })
                   }
                   className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-gold-300"
-                  aria-label={message.sender_display_name}
+                  aria-label={senderName}
                 >
-                  <Avatar avatarKey={message.sender_avatar_key} name={message.sender_display_name} seed={message.sender_id} className="h-8 w-8" />
+                  <Avatar avatarKey={message.sender_avatar_key} name={senderName} seed={message.sender_id} className="h-8 w-8" />
                 </button>
               );
               return (
@@ -491,51 +500,30 @@ export default function ChatRoom() {
                   isSticker={isSticker}
                   avatar={avatarNode}
                   timestamp={message.created_at}
+                  canDelete={canDelete}
                   bubbleClassName={
                     isSticker ? 'text-7xl leading-none' : `max-w-[75%] px-4 py-2 shadow-glass-sm ${isMine ? 'bg-brand-600' : 'bg-white/10'}`
                   }
-                  onDelete={() => handleDeleteMessage(message)}
+                  onDelete={() => (isMine ? handleDeleteMessage(message) : handleModeratorDelete(message))}
                   locale={locale}
                 >
                   {isSticker ? (
                     message.body
                   ) : (
                     <>
-                      {!bundled && <p className="text-xs font-semibold text-white/70">{message.sender_display_name}</p>}
-                      {message.is_hidden ? (
-                        <p className="text-sm italic text-white/50">{t('chat.hiddenMessage')}</p>
-                      ) : (
-                        <>
-                          {message.body && <p className="text-sm">{message.body}</p>}
-                          {message.attachment_url && (
-                            <MessageAttachment
-                              path={message.attachment_url}
-                              name={message.attachment_name}
-                              size={message.attachment_size}
-                              mime={message.attachment_mime}
-                              isMine={isMine}
-                              locale={locale}
-                            />
-                          )}
-                        </>
+                      {!bundled && <p className="text-xs font-semibold text-white/70">{senderName}</p>}
+                      {message.body && <p className="text-sm">{message.body}</p>}
+                      {message.attachment_url && (
+                        <MessageAttachment
+                          path={message.attachment_url}
+                          name={message.attachment_name}
+                          size={message.attachment_size}
+                          mime={message.attachment_mime}
+                          isMine={isMine}
+                          locale={locale}
+                        />
                       )}
-                      {!message.is_hidden && (
-                        <ReactionBar reactions={messageReactions} currentUserId={profile.id} onToggle={(emoji) => toggleReaction(message, emoji)} locale={locale} />
-                      )}
-                      {canModerate(message) && (
-                        <button
-                          type="button"
-                          onClick={() => toggleHidden(message)}
-                          className="mt-1 flex items-center gap-1 rounded text-xs text-white/50 underline transition-colors hover:text-white/80 focus:outline-none focus:ring-2 focus:ring-gold-300"
-                        >
-                          {message.is_hidden ? (
-                            <Eye className="h-3 w-3" aria-hidden="true" />
-                          ) : (
-                            <EyeOff className="h-3 w-3" aria-hidden="true" />
-                          )}
-                          {message.is_hidden ? t('common.retry') : t('chat.hideCta')}
-                        </button>
-                      )}
+                      <ReactionBar reactions={messageReactions} currentUserId={profile.id} onToggle={(emoji) => toggleReaction(message, emoji)} locale={locale} />
                     </>
                   )}
                 </MessageBubble>

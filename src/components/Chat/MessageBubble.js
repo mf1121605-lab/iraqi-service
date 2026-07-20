@@ -9,11 +9,9 @@ function formatMsgTime(isoString) {
   return new Date(isoString).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
-// Shared row + bubble wrapper for every chat surface: handles the
-// Messenger-style compound corner radii, spring entry/exit animation
-// (AnimatePresence lives at the call site around the .map), the
-// long-press/right-click unsend menu, and the WhatsApp-style timestamp shown
-// on hover (desktop) / always (mobile touch).
+// canDelete: true for the message sender AND for moderators (passed from call
+// site). The real security boundary is the Postgres RLS policy — this prop
+// only controls whether the long-press menu renders.
 export default function MessageBubble({
   isMine,
   isFirst,
@@ -23,14 +21,16 @@ export default function MessageBubble({
   bubbleClassName,
   avatar,
   onDelete,
+  canDelete,
   timestamp,
   locale,
   children,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const longPress = useLongPress(() => {
-    if (isMine) setMenuOpen(true);
+  const { onTouchStart, onTouchEnd, onTouchMove, onContextMenu, isPressing } = useLongPress(() => {
+    if (canDelete ?? isMine) setMenuOpen(true);
   });
+
   const corners = isSticker ? '' : bubbleCorners(isMine, isFirst, isLast);
   const rowAlignment = avatar ? (isMine ? 'flex-row-reverse' : '') : isMine ? 'justify-end' : 'justify-start';
 
@@ -45,9 +45,21 @@ export default function MessageBubble({
     >
       {avatar}
       <motion.div
-        whileHover={{ scale: 1.01 }}
+        // Long-press feedback: bubble shrinks + gold ring glows while held.
+        // When the 500ms fires, isPressing resets and the menu opens.
+        animate={{
+          scale: isPressing ? 0.93 : 1,
+          boxShadow: isPressing
+            ? '0 0 0 3px rgba(230,171,44,0.65), 0 6px 24px rgba(230,171,44,0.25)'
+            : '0 0 0 0px rgba(230,171,44,0)',
+        }}
+        transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+        whileHover={!isPressing ? { scale: 1.01 } : undefined}
         className={`group relative ${corners} ${bubbleClassName}`}
-        {...longPress}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onTouchMove={onTouchMove}
+        onContextMenu={onContextMenu}
       >
         {children}
         {timestamp && !isSticker && (
@@ -58,7 +70,15 @@ export default function MessageBubble({
             {formatMsgTime(timestamp)}
           </time>
         )}
-        {isMine && <MessageUnsendMenu open={menuOpen} onClose={() => setMenuOpen(false)} onDelete={onDelete} locale={locale} />}
+        {(canDelete ?? isMine) && (
+          <MessageUnsendMenu
+            open={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            onDelete={onDelete}
+            isMine={isMine}
+            locale={locale}
+          />
+        )}
       </motion.div>
     </motion.div>
   );

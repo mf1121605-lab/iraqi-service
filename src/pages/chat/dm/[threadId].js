@@ -19,8 +19,11 @@ import { isBundled } from '../../../utils/chatBundling';
 
 function displayNameFor(profile) {
   if (!profile) return '';
-  if (profile.role === 'customer') return profile.given_name || 'مستخدم';
-  return [profile.given_name, profile.family_name].filter(Boolean).join(' ') || profile.role;
+  const parts = [profile.given_name, profile.family_name].filter(Boolean);
+  if (parts.length > 0) return parts.join(' ');
+  if (profile.username) return profile.username;
+  if (profile.phone) return `عضو ...${profile.phone.slice(-4)}`;
+  return 'عضو';
 }
 
 export default function DirectMessageThread() {

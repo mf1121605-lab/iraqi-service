@@ -1,12 +1,12 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 const LONG_PRESS_MS = 500;
 const MOVE_CANCEL_THRESHOLD_PX = 10;
 
-// Fires `onTrigger` after a sustained touch (mobile) or immediately on
-// right-click (desktop) — shared by every chat surface's unsend menu so the
-// timer/threshold logic only lives in one place.
+// Returns `isPressing` so callers can animate the element while the user is
+// holding — fires `onTrigger` after the full press, then clears the state.
 export function useLongPress(onTrigger) {
+  const [isPressing, setIsPressing] = useState(false);
   const timerRef = useRef(null);
   const startRef = useRef({ x: 0, y: 0 });
 
@@ -15,13 +15,18 @@ export function useLongPress(onTrigger) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+    setIsPressing(false);
   }
 
   function onTouchStart(event) {
     const touch = event.touches[0];
     startRef.current = { x: touch.clientX, y: touch.clientY };
     clear();
-    timerRef.current = setTimeout(onTrigger, LONG_PRESS_MS);
+    setIsPressing(true);
+    timerRef.current = setTimeout(() => {
+      setIsPressing(false);
+      onTrigger();
+    }, LONG_PRESS_MS);
   }
 
   function onTouchMove(event) {
@@ -36,5 +41,5 @@ export function useLongPress(onTrigger) {
     onTrigger();
   }
 
-  return { onTouchStart, onTouchEnd: clear, onTouchMove, onContextMenu };
+  return { onTouchStart, onTouchEnd: clear, onTouchMove, onContextMenu, isPressing };
 }
