@@ -1,7 +1,11 @@
 import { requireStaff } from '../../../lib/founderAuth';
 
 const MAX_TEXT_LENGTH = 8000;
-const GEMINI_MODEL = 'gemini-1.5-flash';
+// Gemini 1.5 was fully retired by Google (confirmed via a live 404). Using
+// the "-latest" alias instead of a pinned version like "gemini-3.5-flash"
+// so Google's own model rotation doesn't silently break this again —
+// the alias always points at their current recommended flash model.
+const GEMINI_MODEL = 'gemini-flash-latest';
 const GEMINI_TIMEOUT_MS = 30_000;
 
 const SYSTEM_PROMPT = `أنت خبير في استخلاص البيانات من إعلانات الخدمات الحكومية العراقية (مثل بوابة أور أو مظلتي).
@@ -70,8 +74,9 @@ export default async function handler(req, res) {
     if (!response.ok) {
       const errorBody = await response.text().catch(() => '');
       console.error('hq/parse-announcement: Gemini API error', response.status, errorBody);
-      // Temporary: surface the real upstream error so the next attempt is
-      // self-diagnosing instead of needing a trip through Vercel's log UI.
+      // Surfaced directly rather than a generic message — this is a
+      // low-traffic staff-only tool, so the real upstream error is more
+      // useful here than it would be on a customer-facing route.
       return res.status(502).json({ error: `تعذر تحليل النص (${response.status}): ${errorBody.slice(0, 300)}` });
     }
 
