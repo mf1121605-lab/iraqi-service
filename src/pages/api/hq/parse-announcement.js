@@ -1,8 +1,8 @@
 import { requireStaff } from '../../../lib/founderAuth';
 
 const MAX_TEXT_LENGTH = 8000;
-const ANTHROPIC_MODEL = 'claude-3-haiku-20240307';
-const ANTHROPIC_TIMEOUT_MS = 30_000;
+const GEMINI_MODEL = 'gemini-1.5-flash';
+const GEMINI_TIMEOUT_MS = 30_000;
 
 const SYSTEM_PROMPT = `أنت خبير في استخلاص البيانات من إعلانات الخدمات الحكومية العراقية (مثل بوابة أور أو مظلتي).
 استخرج من النص المُعطى كائن JSON نظيف بدون أي نص إضافي أو تنسيق markdown، بالحقول التالية بالضبط:
@@ -39,39 +39,42 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: `النص طويل جداً، الحد الأقصى ${MAX_TEXT_LENGTH} حرف` });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  // Server-only env var (no NEXT_PUBLIC_ prefix) — Next.js API routes never
+  // ship to the client bundle regardless, but the naming itself also makes
+  // that intent explicit for anyone reading the Vercel env var list.
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return res.status(503).json({ error: 'خدمة التحليل الذكي غير مفعّلة حالياً' });
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), ANTHROPIC_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        max_tokens: 1024,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: trimmedText }],
-      }),
-      signal: controller.signal,
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: [{ parts: [{ text: trimmedText }] }],
+          // Gemini's native JSON mode — guarantees a valid JSON string back
+          // instead of relying purely on the prompt instruction.
+          generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
+        }),
+        signal: controller.signal,
+      }
+    );
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => '');
-      console.error('hq/parse-announcement: Anthropic API error', response.status, errorBody);
+      console.error('hq/parse-announcement: Gemini API error', response.status, errorBody);
       return res.status(502).json({ error: 'تعذر تحليل النص، حاول مرة أخرى' });
     }
 
     const data = await response.json();
-    const rawText = (data.content ?? []).find((block) => block.type === 'text')?.text?.trim();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!rawText) {
       return res.status(502).json({ error: 'تعذر تحليل النص، حاول مرة أخرى' });
     }
