@@ -20,6 +20,20 @@ import ProfileDrawer from '../UI/ProfileDrawer';
 const THEME_KEY = 'iraqi-services:theme';
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
 
+// Fixed positions (not Math.random()) so server/client markup matches on
+// hydration — a small twinkling "night sky" layer behind the header,
+// dark mode only, echoing the founder's cinematic-gold night identity.
+const HEADER_STARS = [
+  { top: '22%', left: '6%', size: 2, delay: '0s' },
+  { top: '58%', left: '16%', size: 1.5, delay: '0.7s' },
+  { top: '32%', left: '30%', size: 2, delay: '1.4s' },
+  { top: '68%', left: '42%', size: 1.5, delay: '0.3s' },
+  { top: '18%', left: '56%', size: 2, delay: '1s' },
+  { top: '52%', left: '67%', size: 1.5, delay: '1.7s' },
+  { top: '28%', left: '79%', size: 2, delay: '0.5s' },
+  { top: '62%', left: '91%', size: 1.5, delay: '1.2s' },
+];
+
 function getStoredTheme() {
   if (typeof window === 'undefined') return 'light';
   return window.localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
@@ -94,10 +108,10 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
             key={item.href}
             href={item.href}
             onClick={onNavigate}
-            className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10 ${
+            className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-brand-400 ${
               item.active
-                ? 'bg-brand-600/10 font-semibold text-brand-700 shadow-inner-glass dark:bg-brand-400/10 dark:text-brand-300'
-                : 'text-ink-light/80 dark:text-ink-dark/80'
+                ? 'bg-gradient-to-r from-brand-600 to-brand-500 font-semibold text-white shadow-glow'
+                : 'bg-black/5 text-ink-light/80 hover:bg-black/10 dark:bg-white/5 dark:text-ink-dark/80 dark:hover:bg-white/10'
             }`}
           >
             {Icon && <Icon className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden="true" />}
@@ -113,21 +127,36 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
       <a href="#main-content" className="skip-link">
         {t('common.skipToContent')}
       </a>
-      <header className="sticky top-0 z-30 glass-nav relative border-b border-black/5 shadow-soft transition-colors dark:glass-nav-dark dark:border-gold-400/10">
+      <header className="sticky top-0 z-30 glass-nav relative overflow-hidden border-b border-black/5 shadow-soft transition-colors dark:glass-nav-dark dark:border-gold-400/10">
+        {/* Night-sky backdrop — dark mode only; light mode stays clean. */}
+        <div className="pointer-events-none absolute inset-0 hidden dark:block" aria-hidden="true">
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0a1622]/90 via-[#0d1b26]/40 to-transparent" />
+          {HEADER_STARS.map((star, index) => (
+            <span
+              key={index}
+              className="absolute animate-pulse-soft rounded-full bg-white"
+              style={{ top: star.top, left: star.left, width: star.size, height: star.size, animationDelay: star.delay }}
+            />
+          ))}
+          <div className="absolute -right-8 top-1/2 h-28 w-28 -translate-y-1/2 animate-pulse-soft rounded-full bg-gold-400/10 blur-3xl" style={{ animationDelay: '0.4s' }} />
+        </div>
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px overflow-hidden">
           <div className="h-full w-full animate-shimmer bg-[length:200%_100%] bg-gradient-to-r from-transparent via-gold-500/70 to-transparent dark:via-gold-300/80" />
         </div>
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
+        <div className="relative mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-hero text-white shadow-glow dark:bg-none dark:bg-gold-400/15 dark:text-gold-300 dark:shadow-[0_0_0_1px_rgba(230,171,44,0.35),0_4px_16px_-4px_rgba(230,171,44,0.4)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/brand/logo-icon-512.png" alt="" className="h-full w-full rounded-xl object-contain p-1" />
+            <span className="relative flex h-9 w-9 items-center justify-center">
+              <span className="absolute inset-0 -z-10 animate-pulse-soft rounded-xl bg-gold-400/25 blur-md dark:bg-gold-300/25" aria-hidden="true" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-hero text-white shadow-glow dark:bg-none dark:bg-gold-400/15 dark:text-gold-300 dark:shadow-[0_0_0_1px_rgba(230,171,44,0.35),0_4px_16px_-4px_rgba(230,171,44,0.4)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/brand/logo-icon-512.png" alt="" className="h-full w-full rounded-xl object-contain p-1" />
+              </span>
             </span>
             <h1 className="font-display text-lg font-bold tracking-tight">{title ?? t('common.platformName')}</h1>
           </div>
 
           {navItems && navItems.length > 0 && (
-            <nav className="hidden flex-wrap items-center gap-1 sm:flex">
+            <nav className="hidden flex-wrap items-center gap-1.5 sm:flex">
               <NavLinks />
             </nav>
           )}
@@ -138,9 +167,13 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
                 type="button"
                 onClick={() => setProfileOpen(true)}
                 aria-label={t('profileDrawer.title')}
-                className="flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
               >
                 <Avatar avatarKey={profile.avatar_key} name={profile.given_name} seed={profile.id} className="h-8 w-8" />
+                <span className="absolute bottom-0.5 h-2.5 w-2.5 rtl:left-0.5 ltr:right-0.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" aria-hidden="true" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-surface-dark" aria-hidden="true" />
+                </span>
               </button>
             )}
             <RequestAlertBell profile={profile} locale={locale} />
@@ -199,7 +232,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
               <button
                 type="button"
                 onClick={onSignOut}
-                className="flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 font-semibold text-white shadow-glass-sm transition-all duration-200 hover:bg-brand-700 hover:shadow-elevate focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2"
+                className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-brand-600 to-brand-500 px-3.5 py-2 font-semibold text-white shadow-glass-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-elevate focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2"
               >
                 <LogOut className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                 <span className="hidden sm:inline">{t('common.signOut')}</span>
