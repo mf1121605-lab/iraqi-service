@@ -8,10 +8,9 @@ import { playNewTicketPing } from '../../utils/notificationSound';
 import { categoryLabel, useCategories } from '../../utils/useCategories';
 
 // The "Big Bell" — mounted for founder/employee in AppShell's header.
-// Founders see every new unclaimed request regardless of category (they
-// can claim anything, per requests_update_staff RLS); employees only see
-// ones matching their own active_services, mirroring exactly what their
-// dashboard queue would show them anyway.
+// Every active employee sees every new unclaimed request now (per
+// requests_update_staff RLS, category no longer restricts who can claim
+// what), so this fires for founder and employee alike with no filtering.
 export default function RequestAlertBell({ profile, locale }) {
   const router = useRouter();
   const t = (path) => translate(locale, path);
@@ -25,9 +24,10 @@ export default function RequestAlertBell({ profile, locale }) {
     if (!profile || (profile.role !== 'founder' && profile.role !== 'employee')) return undefined;
 
     function matches(row) {
-      if (row.assigned_employee_id) return false;
-      if (profile.role === 'founder') return true;
-      return (profile.active_services ?? []).includes(row.category);
+      // Every active employee sees every new request now — the founder
+      // wants each employee to decide themselves whether to take it,
+      // rather than pre-filtering by their self-selected active_services.
+      return !row.assigned_employee_id;
     }
 
     const channel = supabaseClient
@@ -59,7 +59,7 @@ export default function RequestAlertBell({ profile, locale }) {
     setClaiming(false);
     dismiss();
     setOpen(false);
-    router.push('/employee/dashboard');
+    router.push(`/employee/dashboard?request=${current.id}`);
   }
 
   return (

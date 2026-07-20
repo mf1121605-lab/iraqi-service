@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/router';
 import {
   ClipboardCheck,
   History,
@@ -25,6 +26,7 @@ const STATUS_OPTIONS = ['in_review', 'needs_changes', 'approved', 'rejected'];
 
 export default function EmployeeDashboard() {
   const { profile, loading, signOut, refreshProfile } = useRequireRole(['employee']);
+  const router = useRouter();
   const locale = useLocale();
   const t = (path) => translate(locale, path);
 
@@ -114,6 +116,15 @@ export default function EmployeeDashboard() {
     setHistory(historyRows ?? []);
     setMessages(messageRows ?? []);
   }
+
+  // Lets RequestAlertBell's "approve" action land the employee directly in
+  // that request's chat (?request=<id>) instead of just the bare queue.
+  useEffect(() => {
+    if (!profile || !router.isReady) return;
+    const requestId = router.query.request;
+    if (typeof requestId === 'string') loadDetail(requestId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, router.isReady, router.query.request]);
 
   async function toggleService(category) {
     const next = activeServices.includes(category)
