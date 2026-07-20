@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Pause, Play } from 'lucide-react';
 import { registerPlayback } from '../../utils/voicePlaybackRegistry';
+import { translate } from '../../utils/i18n';
 
 function formatTime(seconds) {
   if (!Number.isFinite(seconds)) return '0:00';
@@ -10,7 +11,8 @@ function formatTime(seconds) {
   return `${minutes}:${secs}`;
 }
 
-export default function VoiceMessagePlayer({ src, isMine }) {
+export default function VoiceMessagePlayer({ src, isMine, locale }) {
+  const t = (path) => translate(locale, path);
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -58,8 +60,8 @@ export default function VoiceMessagePlayer({ src, isMine }) {
       <button
         type="button"
         onClick={togglePlay}
-        aria-label={isPlaying ? 'Pause' : 'Play'}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25"
+        aria-label={isPlaying ? t('chat.voicePauseLabel') : t('chat.voicePlayLabel')}
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-amber-400"
       >
         {isPlaying ? <Pause className="h-4 w-4" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}
       </button>
@@ -71,8 +73,8 @@ export default function VoiceMessagePlayer({ src, isMine }) {
         value={currentTime}
         onChange={handleSeek}
         style={{ accentColor: '#f59e0b' }}
-        className="h-1.5 flex-1 cursor-pointer"
-        aria-label="Seek"
+        className="h-1.5 flex-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        aria-label={t('chat.voiceSeekLabel')}
       />
       <span className="shrink-0 text-xs tabular-nums text-white/70" dir="ltr">
         {formatTime(currentTime)} / {formatTime(duration)}

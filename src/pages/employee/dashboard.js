@@ -463,7 +463,7 @@ export default function EmployeeDashboard() {
                               isSticker
                                 ? 'text-7xl leading-none'
                                 : `max-w-[70%] px-3 py-2 text-sm ${
-                                    isMine ? 'bg-amber-600 text-white shadow-lg' : 'border border-gray-800 bg-[#161b22] text-gray-200'
+                                    isMine ? 'bg-amber-600 text-white shadow-lg' : 'border border-white/[0.08] bg-[#161b22] text-gray-200'
                                   }`
                             }
                             onDelete={() => handleDeleteMessage(message.id)}
@@ -474,7 +474,7 @@ export default function EmployeeDashboard() {
                             ) : (
                               <>
                                 {message.body && <p className="whitespace-pre-wrap">{message.body}</p>}
-                                {message.attachment_url && <MessageAttachment path={message.attachment_url} isMine={isMine} />}
+                                {message.attachment_url && <MessageAttachment path={message.attachment_url} isMine={isMine} locale={locale} />}
                                 {isMine && (
                                   <span
                                     className="mt-0.5 flex justify-end"

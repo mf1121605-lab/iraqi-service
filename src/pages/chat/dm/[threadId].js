@@ -183,7 +183,7 @@ export default function DirectMessageThread() {
                     isSticker
                       ? 'text-7xl leading-none'
                       : `max-w-[75%] px-3 py-2 text-sm ${
-                          isMine ? 'bg-amber-600 text-white shadow-lg' : 'border border-gray-800 bg-[#161b22] text-gray-200'
+                          isMine ? 'bg-amber-600 text-white shadow-lg' : 'border border-white/[0.08] bg-[#161b22] text-gray-200'
                         }`
                   }
                   onDelete={() => handleDeleteMessage(message.id)}
@@ -194,7 +194,7 @@ export default function DirectMessageThread() {
                   ) : (
                     <>
                       {message.body && <p className="whitespace-pre-wrap">{message.body}</p>}
-                      {message.attachment_url && <MessageAttachment path={message.attachment_url} isMine={isMine} />}
+                      {message.attachment_url && <MessageAttachment path={message.attachment_url} isMine={isMine} locale={locale} />}
                     </>
                   )}
                 </MessageBubble>
@@ -217,7 +217,7 @@ export default function DirectMessageThread() {
           <button
             type="submit"
             disabled={sending}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl2 bg-amber-600 text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl2 bg-amber-600 text-white transition-colors hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50"
             aria-label={t('chat.sendCta')}
           >
             <Send className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />

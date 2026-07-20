@@ -42,7 +42,7 @@ function fileKindFor(mime, name) {
   return 'other';
 }
 
-export default function MessageAttachment({ path, name, size, mime, isMine }) {
+export default function MessageAttachment({ path, name, size, mime, isMine, locale }) {
   const [signedUrl, setSignedUrl] = useState(null);
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function MessageAttachment({ path, name, size, mime, isMine }) {
   const isAudio = mime ? mime.startsWith('audio/') : /\.(webm|m4a|ogg|mp3)$/i.test(path);
 
   if (isAudio) {
-    return <VoiceMessagePlayer src={signedUrl} isMine={isMine} />;
+    return <VoiceMessagePlayer src={signedUrl} isMine={isMine} locale={locale} />;
   }
 
   if (isImage) {

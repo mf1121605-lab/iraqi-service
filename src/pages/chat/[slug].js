@@ -477,6 +477,7 @@ export default function ChatRoom() {
                               size={message.attachment_size}
                               mime={message.attachment_mime}
                               isMine={isMine}
+                              locale={locale}
                             />
                           )}
                         </>

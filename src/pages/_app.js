@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { MotionConfig } from 'framer-motion';
 import { Cairo, Noto_Sans_Arabic } from 'next/font/google';
 import SplashScreen from '../components/UI/SplashScreen';
 import ErrorBoundary from '../components/UI/ErrorBoundary';
@@ -29,17 +30,19 @@ export default function App({ Component, pageProps }) {
 
   return (
     <div className={`${notoSansArabic.variable} ${cairo.variable} contents`}>
-      <ErrorBoundary>
-        <SplashScreen />
-        <SiteChrome onSettings={handleSettings} />
-        <Component {...pageProps} siteSettings={siteSettings} />
-        <div className="grain-overlay" aria-hidden="true" />
-        <div className="cinematic-frame" aria-hidden="true" />
-        <div className="cinematic-frame-corner top-left" aria-hidden="true" />
-        <div className="cinematic-frame-corner top-right" aria-hidden="true" />
-        <div className="cinematic-frame-corner bottom-left" aria-hidden="true" />
-        <div className="cinematic-frame-corner bottom-right" aria-hidden="true" />
-      </ErrorBoundary>
+      <MotionConfig reducedMotion="user">
+        <ErrorBoundary>
+          <SplashScreen />
+          <SiteChrome onSettings={handleSettings} />
+          <Component {...pageProps} siteSettings={siteSettings} />
+          <div className="grain-overlay" aria-hidden="true" />
+          <div className="cinematic-frame" aria-hidden="true" />
+          <div className="cinematic-frame-corner top-left" aria-hidden="true" />
+          <div className="cinematic-frame-corner top-right" aria-hidden="true" />
+          <div className="cinematic-frame-corner bottom-left" aria-hidden="true" />
+          <div className="cinematic-frame-corner bottom-right" aria-hidden="true" />
+        </ErrorBoundary>
+      </MotionConfig>
     </div>
   );
 }
