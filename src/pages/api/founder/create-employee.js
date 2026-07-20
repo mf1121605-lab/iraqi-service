@@ -30,6 +30,7 @@ export default async function handler(req, res) {
     grandfatherName,
     familyName,
     specialization,
+    avatarKey,
   } = req.body ?? {};
 
   const normalizedUsername = username ? String(username).trim().toLowerCase() : '';
@@ -74,6 +75,7 @@ export default async function handler(req, res) {
       family_name: familyName ?? null,
       specialization: specialization ?? null,
       username: normalizedUsername || null,
+      avatar_key: avatarKey || null,
     })
     .eq('id', created.user.id);
 

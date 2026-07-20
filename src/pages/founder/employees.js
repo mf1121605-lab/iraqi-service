@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BadgeCheck, CircleCheck as CheckCircle2, UserPlus, Users } from 'lucide-react';
+import { BadgeCheck, Camera, CircleCheck as CheckCircle2, UserPlus, Users } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import Avatar from '../../components/Chat/Avatar';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
 import { translate } from '../../utils/i18n';
+import { safeSlug } from '../../utils/safeStorageName';
+
+const ALLOWED_AVATAR_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 const emptyForm = {
   username: '',
@@ -18,6 +23,7 @@ const emptyForm = {
   grandfatherName: '',
   familyName: '',
   specialization: '',
+  avatarKey: '',
 };
 
 const EMPLOYEE_SELECT = 'id, given_name, father_name, grandfather_name, family_name, specialization, account_status, admin_level, is_verified, created_at';
@@ -32,6 +38,8 @@ export default function FounderEmployees() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
 
   function loadEmployees() {
     supabaseClient
@@ -56,6 +64,38 @@ export default function FounderEmployees() {
     return () => clearTimeout(timer);
   }, [toast]);
 
+  async function handleAvatarChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setAvatarError('');
+    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
+      setAvatarError(t('common.imageTypeInvalid'));
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      setAvatarError(t('common.imageTooLarge'));
+      return;
+    }
+
+    setAvatarUploading(true);
+    // The employee doesn't have an id yet at this point, so this uploads
+    // under a throwaway folder rather than the self-upload avatars/{uid}/
+    // path — the founder already has blanket write access to this bucket
+    // (site_assets_write_founder), so no extra RLS policy is needed here.
+    const path = `avatars/pending/${crypto.randomUUID()}-${safeSlug(file.name)}`;
+    const { error: uploadError } = await supabaseClient.storage.from('site-assets').upload(path, file);
+    if (uploadError) {
+      setAvatarUploading(false);
+      setAvatarError(uploadError.message || t('common.errorGeneric'));
+      return;
+    }
+    const { data } = supabaseClient.storage.from('site-assets').getPublicUrl(path);
+    setAvatarUploading(false);
+    setForm((current) => ({ ...current, avatarKey: data.publicUrl }));
+  }
+
   async function handleCreate(event) {
     event.preventDefault();
     setError('');
@@ -75,6 +115,7 @@ export default function FounderEmployees() {
       return;
     }
     setForm(emptyForm);
+    setAvatarError('');
     setToast(true);
     loadEmployees();
   }
@@ -108,6 +149,15 @@ export default function FounderEmployees() {
       <p className="mt-1 text-sm text-ink-muted dark:text-ink-dark-muted">{t('founderEmployees.hint')}</p>
 
       <form onSubmit={handleCreate} className="metal-panel mt-6 grid gap-3 p-6 text-white sm:grid-cols-2">
+        <div className="flex items-center gap-3 sm:col-span-2">
+          <Avatar avatarKey={form.avatarKey} name={form.givenName} seed="new-employee" className="h-14 w-14" />
+          <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-white/70 transition-colors hover:bg-white/10">
+            <Camera className="h-3.5 w-3.5" aria-hidden="true" />
+            {avatarUploading ? t('common.loading') : t('founderEmployees.avatarUploadCta')}
+            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleAvatarChange} disabled={avatarUploading} />
+          </label>
+          {avatarError && <p className="text-xs text-red-400">{avatarError}</p>}
+        </div>
         <div>
           <input
             value={form.username}
