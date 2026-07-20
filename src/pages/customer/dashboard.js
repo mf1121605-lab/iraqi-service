@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
-import { ArrowLeft, ClipboardList, ExternalLink, GraduationCap, LayoutGrid, MessageCircle, MessagesSquare, Newspaper, ShoppingBag, Tag, Wrench } from 'lucide-react';
+import { ArrowLeft, ClipboardList, GraduationCap, LayoutGrid, MessageCircle, MessagesSquare, Newspaper, ShoppingBag, Tag, Wrench } from 'lucide-react';
 import AppShell from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import SafeImage from '../../components/UI/SafeImage';
@@ -139,7 +139,7 @@ export default function CustomerDashboard() {
     function loadNewsLinks() {
       supabaseClient
         .from('news_links')
-        .select('id, title_ar, title_ckb, url, source')
+        .select('id, title_ar, title_ckb, source, deadline, requirements_ar, requirements_ckb, required_documents, image_url, video_url')
         .eq('is_published', true)
         .order('created_at', { ascending: false })
         .then(({ data }) => setNewsLinks(data ?? []));
@@ -220,19 +220,38 @@ export default function CustomerDashboard() {
             <Newspaper className="h-4 w-4 text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
             {t('customerHub.newsLinksTitle')}
           </h3>
-          <ul className="mt-3 space-y-2">
+          <ul className="mt-3 space-y-3">
             {newsLinks.map((item) => (
-              <li key={item.id}>
-                <a
-                  href={item.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 text-sm font-semibold text-gold-300 hover:underline"
-                >
-                  {bilingualText(item, 'title', locale)}
-                  <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                </a>
-                {item.source && <p className="text-xs text-white/50">{item.source}</p>}
+              <li key={item.id} className="flex gap-3 border-b border-white/5 pb-3 last:border-0 last:pb-0">
+                {(item.image_url || item.video_url) && (
+                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-black/30">
+                    {item.image_url ? (
+                      <SafeImage src={item.image_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      // eslint-disable-next-line jsx-a11y/media-has-caption
+                      <video src={item.video_url} className="h-full w-full object-cover" controls />
+                    )}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gold-300">{bilingualText(item, 'title', locale)}</p>
+                  {item.source && <p className="mt-0.5 text-xs text-white/50">{item.source}</p>}
+                  {item.deadline && (
+                    <p className="mt-0.5 text-xs text-white/50">
+                      {t('customerHub.newsDeadlineLabel')}: {item.deadline}
+                    </p>
+                  )}
+                  {bilingualText(item, 'requirements', locale) && (
+                    <p className="mt-1 whitespace-pre-wrap text-xs text-white/70">
+                      {t('customerHub.newsRequirementsLabel')}: {bilingualText(item, 'requirements', locale)}
+                    </p>
+                  )}
+                  {item.required_documents && (
+                    <p className="mt-1 whitespace-pre-wrap text-xs text-white/70">
+                      {t('customerHub.newsRequiredDocumentsLabel')}: {item.required_documents}
+                    </p>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

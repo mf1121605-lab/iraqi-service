@@ -15,13 +15,18 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const SYSTEM_PROMPT = `أنت خبير في استخلاص البيانات من إعلانات الخدمات الحكومية العراقية (مثل بوابة أور أو مظلتي).
+const SYSTEM_PROMPT = `أنت خبير في استخلاص البيانات من إعلانات الخدمات الحكومية العراقية (مثل بوابة أور أو مظلتي) وترجمتها.
 استخرج من النص المُعطى كائن JSON نظيف بدون أي نص إضافي أو تنسيق markdown، بالحقول التالية بالضبط:
-- title: عنوان الخدمة أو الوظيفة المعلن عنها.
+- title: عنوان الخدمة أو الوظيفة المعلن عنها بالعربية.
 - provider: الجهة المسؤولة (وزارة، مجلس، دائرة...).
-- link: رابط التقديم المباشر الموجود في النص كما هو، أو نص فارغ "" إذا لم يوجد.
-- deadline: تاريخ انتهاء التقديم إن وُجد، أو "غير محدد" إذا لم يُذكر.
-- requirements: ملخص نقطي مختصر لأهم شروط التقديم بلغة عربية احترافية.
+- link: رابط التقديم المباشر الموجود في النص كما هو.
+- deadline: تاريخ انتهاء التقديم إن وُجد.
+- requirements: ملخص نقطي مختصر لشروط الأهلية للتقديم بلغة عربية احترافية.
+- required_documents: قائمة نقطية مختصرة بالمستمسكات/الوثائق المطلوبة للتقديم، إن ذُكرت (منفصلة عن شروط الأهلية).
+- title_ckb: ترجمة احترافية عالية الجودة لحقل title إلى اللغة الكردية السورانية.
+- requirements_ckb: ترجمة احترافية عالية الجودة لحقل requirements إلى اللغة الكردية السورانية.
+
+قاعدة صارمة: أي حقل غير مذكور صراحة بالنص المُعطى، أعده كنص فارغ "" بالضبط. ممنوع كتابة "غير محدد" أو "غير متوفر" أو "لا يوجد" أو أي عبارة بديلة عن الفراغ — اتركه فارغاً تماماً بدون أي كلام.
 أعد فقط كائن JSON بهذا الشكل، بدون أي شرح أو نص قبله أو بعده.`;
 
 function extractJson(rawText) {
@@ -118,8 +123,11 @@ export default async function handler(req, res) {
       title: parsed.title ?? '',
       provider: parsed.provider ?? '',
       link: parsed.link ?? '',
-      deadline: parsed.deadline ?? 'غير محدد',
+      deadline: parsed.deadline ?? '',
       requirements: parsed.requirements ?? '',
+      requiredDocuments: parsed.required_documents ?? '',
+      titleCkb: parsed.title_ckb ?? '',
+      requirementsCkb: parsed.requirements_ckb ?? '',
     });
   } catch (err) {
     console.error('hq/parse-announcement: unexpected exception', err);

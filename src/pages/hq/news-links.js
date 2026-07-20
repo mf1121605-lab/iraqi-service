@@ -1,14 +1,41 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CircleCheck as CheckCircle2, ClipboardCheck, ExternalLink, Loader as Loader2, MessageCircle, Newspaper, Radio, Send, Sparkles, Trash2 } from 'lucide-react';
+import {
+  CircleCheck as CheckCircle2,
+  ClipboardCheck,
+  ExternalLink,
+  FileImage,
+  Loader as Loader2,
+  MessageCircle,
+  Newspaper,
+  Radio,
+  Send,
+  Sparkles,
+  Trash2,
+} from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useFounderNav } from '../../utils/founderNav';
 import { translate } from '../../utils/i18n';
+import { safeSlug } from '../../utils/safeStorageName';
 
-const emptyForm = { titleAr: '', titleCkb: '', url: '', source: '', deadline: '', requirements: '' };
+const ALLOWED_MEDIA_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'video/mp4'];
+const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
+
+const emptyForm = {
+  titleAr: '',
+  titleCkb: '',
+  url: '',
+  source: '',
+  deadline: '',
+  requirements: '',
+  requirementsCkb: '',
+  requiredDocuments: '',
+  mediaUrl: '',
+  mediaKind: '',
+};
 
 export default function HqNewsLinks() {
   const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder', 'employee']);
@@ -30,6 +57,8 @@ export default function HqNewsLinks() {
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState('');
   const [toast, setToast] = useState(false);
+  const [mediaUploading, setMediaUploading] = useState(false);
+  const [mediaError, setMediaError] = useState('');
 
   useEffect(() => {
     if (!profile) return undefined;
@@ -66,7 +95,11 @@ export default function HqNewsLinks() {
       url: form.url.trim(),
       source: form.source.trim() || null,
       deadline: form.deadline.trim() || null,
-      requirements: form.requirements.trim() || null,
+      requirements_ar: form.requirements.trim() || null,
+      requirements_ckb: form.requirementsCkb.trim() || null,
+      required_documents: form.requiredDocuments.trim() || null,
+      image_url: form.mediaKind === 'image' ? form.mediaUrl : null,
+      video_url: form.mediaKind === 'video' ? form.mediaUrl : null,
       created_by: profile.id,
     });
     if (insertError) {
@@ -96,19 +129,50 @@ export default function HqNewsLinks() {
         setParseError(result.error || t('common.errorGeneric'));
         return;
       }
-      setForm({
+      setForm((current) => ({
+        ...current,
         titleAr: result.title,
-        titleCkb: '',
+        titleCkb: result.titleCkb,
         url: result.link,
         source: result.provider,
         deadline: result.deadline,
         requirements: result.requirements,
-      });
+        requirementsCkb: result.requirementsCkb,
+        requiredDocuments: result.requiredDocuments,
+      }));
     } catch {
       setParseError(t('common.errorGeneric'));
     } finally {
       setParsing(false);
     }
+  }
+
+  async function handleMediaChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setMediaError('');
+    if (!ALLOWED_MEDIA_TYPES.includes(file.type)) {
+      setMediaError(t('common.imageTypeInvalid'));
+      return;
+    }
+    if (file.size > MAX_MEDIA_BYTES) {
+      setMediaError(t('common.imageTooLarge'));
+      return;
+    }
+
+    setMediaUploading(true);
+    const path = `news-media/${crypto.randomUUID()}-${safeSlug(file.name)}`;
+    const { error: uploadError } = await supabaseClient.storage.from('site-assets').upload(path, file);
+    if (uploadError) {
+      setMediaUploading(false);
+      setMediaError(uploadError.message || t('common.errorGeneric'));
+      return;
+    }
+    const { data } = supabaseClient.storage.from('site-assets').getPublicUrl(path);
+    setMediaUploading(false);
+    setForm((current) => ({ ...current, mediaUrl: data.publicUrl, mediaKind: file.type.startsWith('video/') ? 'video' : 'image' }));
   }
 
   async function togglePublish(item) {
@@ -201,6 +265,41 @@ export default function HqNewsLinks() {
           placeholder={t('hq.requirementsLabel')}
           className="input-cinematic text-sm sm:col-span-2"
         />
+        <textarea
+          value={form.requirementsCkb}
+          onChange={(event) => setForm({ ...form, requirementsCkb: event.target.value })}
+          rows={4}
+          placeholder={t('hq.requirementsCkbLabel')}
+          className="input-cinematic text-sm sm:col-span-2"
+        />
+        <textarea
+          value={form.requiredDocuments}
+          onChange={(event) => setForm({ ...form, requiredDocuments: event.target.value })}
+          rows={3}
+          placeholder={t('hq.requiredDocumentsLabel')}
+          className="input-cinematic text-sm sm:col-span-2"
+        />
+
+        <div className="sm:col-span-2">
+          <label className="flex w-fit cursor-pointer items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-white/70 transition-colors hover:bg-white/10">
+            <FileImage className="h-3.5 w-3.5" aria-hidden="true" />
+            {mediaUploading ? t('common.loading') : t('hq.mediaUploadCta')}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,video/mp4"
+              className="hidden"
+              onChange={handleMediaChange}
+              disabled={mediaUploading}
+            />
+          </label>
+          {mediaError && <p className="mt-1 text-xs text-red-400">{mediaError}</p>}
+          {form.mediaUrl && (
+            <p className="mt-1 truncate text-xs text-emerald-400" dir="ltr">
+              {form.mediaUrl}
+            </p>
+          )}
+        </div>
+
         <button type="submit" className="btn-cinematic-gold flex items-center justify-center gap-1.5 px-4 py-2 text-sm sm:col-span-2">
           <Send className="h-4 w-4" aria-hidden="true" />
           {t('hq.addCta')}
@@ -215,6 +314,17 @@ export default function HqNewsLinks() {
         <ul className="mt-6 space-y-2">
           {items.map((item) => (
             <li key={item.id} className="metal-panel flex flex-wrap items-center justify-between gap-3 p-4 text-white">
+              {(item.image_url || item.video_url) && (
+                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-black/30">
+                  {item.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={item.image_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    // eslint-disable-next-line jsx-a11y/media-has-caption
+                    <video src={item.video_url} className="h-full w-full object-cover" muted />
+                  )}
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <a
                   href={item.url}
@@ -227,6 +337,9 @@ export default function HqNewsLinks() {
                 </a>
                 {item.source && <p className="text-xs text-white/50">{item.source}</p>}
                 {item.deadline && <p className="text-xs text-white/50">{t('hq.deadlineLabel')}: {item.deadline}</p>}
+                {item.required_documents && (
+                  <p className="text-xs text-white/50">{t('hq.requiredDocumentsLabel')}: {item.required_documents}</p>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-1 text-xs text-white/80">
