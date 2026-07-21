@@ -50,7 +50,7 @@ const dictionaries = {
       welcomeSubtitle: 'اختر طريقة الدخول للمتابعة',
       newUserCta: 'مستخدم جديد',
       newUserDesc: 'إنشاء حساب جديد',
-      loginCta: 'لديه حساب',
+      loginCta: 'لدي حساب',
       loginDesc: 'تسجيل الدخول لحسابك',
       switchLanguage: 'تغيير اللغة',
     },
