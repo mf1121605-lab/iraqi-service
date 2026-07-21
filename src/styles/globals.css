@@ -218,7 +218,6 @@ body {
 
 .bubble-sparkle {
   position: relative;
-  overflow: hidden;
 }
 .bubble-sparkle::before {
   content: '✦';

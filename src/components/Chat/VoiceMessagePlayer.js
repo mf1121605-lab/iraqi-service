@@ -63,7 +63,10 @@ export default function VoiceMessagePlayer({ src, isMine, locale }) {
     if (!seekingDurationRef.current) return;
     seekingDurationRef.current = false;
     const audio = event.currentTarget;
-    if (Number.isFinite(audio.duration)) setDuration(audio.duration);
+    // audio.duration stays Infinity on mobile WebM; audio.currentTime is the
+    // actual end-of-file position the browser landed at after seeking to 1e9.
+    const dur = Number.isFinite(audio.duration) ? audio.duration : audio.currentTime;
+    if (dur > 0) setDuration(dur);
     audio.currentTime = 0;
   }
 

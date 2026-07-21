@@ -48,12 +48,6 @@ export default function MessageBubble({
       className={`flex ${avatar ? 'items-end gap-2' : ''} ${rowAlignment} ${bundled ? 'mt-0.5' : 'mt-3'}`}
     >
       {avatar}
-      {/* Gentle continuous float wrapper */}
-      <motion.span
-        animate={{ y: [0, -2, 0] }}
-        transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
-        style={{ display: 'block' }}
-      >
       <motion.div
         animate={{
           scale: isPressing ? 0.93 : 1,
@@ -91,7 +85,6 @@ export default function MessageBubble({
           />
         )}
       </motion.div>
-      </motion.span>
     </motion.div>
   );
 }
