@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   BarChart3,
   Database,
   Image as ImageIcon,
@@ -28,6 +29,7 @@ export function useFounderNav(locale, active) {
     { href: '/founder/settings', label: t('founderSettings.title'), active: active === 'settings', icon: Settings },
     { href: '/chat/hq', label: t('hq.chatNavCta'), icon: Radio },
     { href: '/hq/news-links', label: t('hq.newsLinksNavCta'), icon: Newspaper },
+    { href: '/hq/urgent-news', label: t('urgentNews.navCta'), active: active === 'urgent-news', icon: AlertTriangle },
     { href: '/chat', label: t('chat.roomsTitle'), icon: MessageCircle },
   ];
 }

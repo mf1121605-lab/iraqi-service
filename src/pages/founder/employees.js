@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BadgeCheck, Camera, CircleCheck as CheckCircle2, UserPlus, Users } from 'lucide-react';
+import { BadgeCheck, Camera, CircleCheck as CheckCircle2, Copy, Eye, EyeOff, UserPlus, Users, X } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Avatar from '../../components/Chat/Avatar';
@@ -38,6 +38,9 @@ export default function FounderEmployees() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(false);
+  const [newCredentials, setNewCredentials] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [credentialsCopied, setCredentialsCopied] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState('');
 
@@ -114,9 +117,12 @@ export default function FounderEmployees() {
       setError(result.error);
       return;
     }
+    const createdUsername = form.username.trim().toLowerCase();
+    const createdPassword = form.password;
     setForm(emptyForm);
     setAvatarError('');
     setToast(true);
+    setNewCredentials({ username: createdUsername, password: createdPassword, loginUrl: 'https://iraqi-service.vercel.app/login' });
     loadEmployees();
   }
 
@@ -321,6 +327,118 @@ export default function FounderEmployees() {
           >
             <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden="true" />
             {t('founderEmployees.createdToast')}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {newCredentials && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 p-4"
+            onClick={() => { setNewCredentials(null); setShowPassword(false); setCredentialsCopied(false); }}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="metal-panel w-full max-w-sm space-y-4 p-6 text-white"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="font-display text-base font-bold">{t('founderEmployees.credentialsModalTitle')}</h3>
+                <button
+                  type="button"
+                  onClick={() => { setNewCredentials(null); setShowPassword(false); setCredentialsCopied(false); }}
+                  className="rounded-lg p-1.5 text-white/60 hover:bg-white/10"
+                  aria-label={t('founderEmployees.credentialsDone')}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <p className="mb-1 text-xs text-white/50">{t('founderEmployees.credentialsUsername')}</p>
+                  <div className="flex items-center gap-2">
+                    <input readOnly value={newCredentials.username} dir="ltr" className="input-cinematic flex-1 text-sm" />
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard.writeText(newCredentials.username)}
+                      className="rounded-lg p-2 text-white/60 hover:bg-white/10"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-1 text-xs text-white/50">{t('founderEmployees.credentialsPassword')}</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      readOnly
+                      value={newCredentials.password}
+                      type={showPassword ? 'text' : 'password'}
+                      dir="ltr"
+                      className="input-cinematic flex-1 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="rounded-lg p-2 text-white/60 hover:bg-white/10"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard.writeText(newCredentials.password)}
+                      className="rounded-lg p-2 text-white/60 hover:bg-white/10"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-1 text-xs text-white/50">{t('founderEmployees.credentialsLoginUrl')}</p>
+                  <div className="flex items-center gap-2">
+                    <input readOnly value={newCredentials.loginUrl} dir="ltr" className="input-cinematic flex-1 text-sm" />
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard.writeText(newCredentials.loginUrl)}
+                      className="rounded-lg p-2 text-white/60 hover:bg-white/10"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const text = `${t('founderEmployees.credentialsUsername')}: ${newCredentials.username}\n${t('founderEmployees.credentialsPassword')}: ${newCredentials.password}\n${t('founderEmployees.credentialsLoginUrl')}: ${newCredentials.loginUrl}`;
+                    navigator.clipboard.writeText(text);
+                    setCredentialsCopied(true);
+                    setTimeout(() => setCredentialsCopied(false), 2000);
+                  }}
+                  className="btn-cinematic-gold flex flex-1 items-center justify-center gap-1.5 py-2 text-sm font-bold"
+                >
+                  <Copy className="h-4 w-4" />
+                  {credentialsCopied ? t('founderEmployees.credentialsCopied') : t('founderEmployees.credentialsCopyAll')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setNewCredentials(null); setShowPassword(false); setCredentialsCopied(false); }}
+                  className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white/70 hover:bg-white/10"
+                >
+                  {t('founderEmployees.credentialsDone')}
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

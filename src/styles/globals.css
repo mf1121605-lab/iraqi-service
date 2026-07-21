@@ -375,6 +375,11 @@ select:focus-visible {
   to { --border-angle: 360deg; }
 }
 
+@keyframes glow-red {
+  0%, 100% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+  50%       { box-shadow: 0 0 30px rgba(239, 68, 68, 0.7); }
+}
+
 .gold-border-spin {
   position: relative;
 }
