@@ -15,14 +15,15 @@ import { siteText } from '../utils/useSiteSettings';
 import { MotionLink } from '../components/UI/Motion';
 
 export default function Home({ siteSettings }) {
-  const [locale, setLocale] = useState(null);
-  const [step, setStep] = useState('language');
+  const [locale, setLocale] = useState(defaultLocale);
+  const [step, setStep] = useState('gateway');
 
   useEffect(() => {
     const stored = getStoredLocale();
     if (stored) {
       setLocale(stored);
-      setStep('gateway');
+    } else {
+      setStoredLocale(defaultLocale);
     }
   }, []);
 
