@@ -7,6 +7,8 @@ import { safeSlug } from '../../utils/safeStorageName';
 const ALLOWED_MIME_TYPES = [
   'image/png',
   'image/jpeg',
+  'image/gif',
+  'image/webp',
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -17,7 +19,7 @@ const ALLOWED_MIME_TYPES = [
 // Office documents instead of the exact MIME string (observed as a real
 // "can't send files" failure, not just a sandbox quirk) — the extension is
 // a reliable fallback since file.name is always present.
-const ALLOWED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.pdf', '.doc', '.docx', '.xls', '.xlsx'];
+const ALLOWED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx'];
 const MAX_BYTES = 5 * 1024 * 1024;
 
 function isAllowedFile(file) {

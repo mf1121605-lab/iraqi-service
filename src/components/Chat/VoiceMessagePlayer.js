@@ -14,6 +14,10 @@ function formatTime(seconds) {
 export default function VoiceMessagePlayer({ src, isMine, locale }) {
   const t = (path) => translate(locale, path);
   const audioRef = useRef(null);
+  // WebM files from MediaRecorder have no duration metadata — browsers report
+  // Infinity or a wrong large value. Seeking to a huge position forces the
+  // browser to scan the full file, at which point it corrects the duration.
+  const seekingDurationRef = useRef(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -37,6 +41,29 @@ export default function VoiceMessagePlayer({ src, isMine, locale }) {
     setCurrentTime(next);
   }
 
+  function handleLoadedMetadata(event) {
+    const audio = event.currentTarget;
+    if (!Number.isFinite(audio.duration) || audio.duration > 7200) {
+      seekingDurationRef.current = true;
+      audio.currentTime = 1e9;
+    } else {
+      setDuration(audio.duration);
+    }
+  }
+
+  function handleSeeked(event) {
+    if (!seekingDurationRef.current) return;
+    seekingDurationRef.current = false;
+    const audio = event.currentTarget;
+    setDuration(audio.duration);
+    audio.currentTime = 0;
+  }
+
+  function handleTimeUpdate(event) {
+    if (seekingDurationRef.current) return;
+    setCurrentTime(event.currentTarget.currentTime);
+  }
+
   return (
     <div
       className={`mt-2 flex w-full max-w-[280px] items-center gap-2 rounded-full px-3 py-2 ${
@@ -54,8 +81,9 @@ export default function VoiceMessagePlayer({ src, isMine, locale }) {
           setIsPlaying(false);
           setCurrentTime(0);
         }}
-        onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
-        onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
+        onLoadedMetadata={handleLoadedMetadata}
+        onSeeked={handleSeeked}
+        onTimeUpdate={handleTimeUpdate}
       />
       <button
         type="button"

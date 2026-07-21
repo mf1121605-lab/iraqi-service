@@ -63,7 +63,7 @@ export default function MessageAttachment({ path, name, size, mime, isMine, loca
   if (!signedUrl) return null;
 
   const fileName = name || displayName(path);
-  const isImage = mime ? mime.startsWith('image/') : /\.(png|jpe?g)$/i.test(path);
+  const isImage = mime ? mime.startsWith('image/') : /\.(png|jpe?g|gif|webp)$/i.test(path);
   const isAudio = mime ? mime.startsWith('audio/') : /\.(webm|m4a|ogg|mp3)$/i.test(path);
 
   if (isAudio) {

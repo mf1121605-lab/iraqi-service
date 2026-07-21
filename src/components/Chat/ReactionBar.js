@@ -15,15 +15,16 @@ function groupReactions(reactions) {
   return Array.from(groups.values());
 }
 
-// Hover (desktop) or tap (touch — the picker button is always visible on
-// small screens since there's no hover state to reveal it) to react.
-// Reactions are stored per (message, user, emoji) so toggling just
-// inserts/deletes that one row; this component only renders from
-// whatever `reactions` it's handed and calls back on click, no fetching.
-export default function ReactionBar({ reactions, currentUserId, onToggle, locale }) {
+// dark=true when the bubble background is light-colored — the icon needs
+// to use dark colors to stay visible. dark=false (default) = dark bubble.
+export default function ReactionBar({ reactions, currentUserId, onToggle, locale, dark }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const t = (path) => translate(locale, path);
   const grouped = groupReactions((reactions ?? []).map((r) => ({ ...r, currentUserId })));
+
+  const addBtnCls = dark
+    ? 'text-gray-500 hover:bg-black/10 hover:text-gray-700 focus:ring-gray-400'
+    : 'text-white/50 hover:bg-white/10 hover:text-white focus:ring-gold-300';
 
   return (
     <div className="relative mt-1 flex flex-wrap items-center gap-1">
@@ -47,7 +48,7 @@ export default function ReactionBar({ reactions, currentUserId, onToggle, locale
           onClick={() => setPickerOpen((open) => !open)}
           aria-label={t('chat.addReactionCta')}
           aria-expanded={pickerOpen}
-          className="flex h-6 w-6 items-center justify-center rounded-full text-white/50 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-gold-300"
+          className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors focus:outline-none focus:ring-2 ${addBtnCls}`}
         >
           <SmilePlus className="h-3.5 w-3.5" aria-hidden="true" />
         </button>

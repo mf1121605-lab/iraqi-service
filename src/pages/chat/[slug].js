@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
-import { ArrowRight, ChevronDown, Info, Pencil, Pin, Send, Volume2, VolumeX } from 'lucide-react';
+import { ArrowRight, ChevronDown, Info, Pencil, Send, Volume2, VolumeX } from 'lucide-react';
 import { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import AttachmentUploader from '../../components/Chat/AttachmentUploader';
@@ -16,7 +16,7 @@ import StickerPicker from '../../components/Chat/StickerPicker';
 import MessageBubble from '../../components/Chat/MessageBubble';
 import MemberProfileCard from '../../components/Chat/MemberProfileCard';
 import EditCardModal from '../../components/UI/EditCardModal';
-import { ChatBackgroundLayer, ChatBackgroundPicker, useChatBackgroundPreference } from '../../components/Chat/ChatBackground';
+import { ChatBackgroundLayer, useChatBackgroundPreference } from '../../components/Chat/ChatBackground';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { translate } from '../../utils/i18n';
@@ -25,6 +25,10 @@ import { getRank } from '../../utils/chatRanks';
 
 const TYPING_TIMEOUT_MS = 3000;
 const TYPING_BROADCAST_INTERVAL_MS = 2000;
+
+// Rank IDs whose bubble background is light-colored: the ReactionBar's SmilePlus
+// button must use dark colors to stay visible against those backgrounds.
+const LIGHT_BUBBLE_RANKS = new Set(['new', 'active']);
 
 function displayNameFor(profile) {
   if (!profile) return '';
@@ -46,7 +50,7 @@ export default function ChatRoom() {
   const [room, setRoom] = useState(null);
   const [messages, setMessages] = useState([]);
   const [reactions, setReactions] = useState([]);
-  const [allRooms, setAllRooms] = useState([]);
+  const [bans, setBans] = useState([]);
   const [body, setBody] = useState('');
   const [pendingAttachment, setPendingAttachment] = useState(null);
   const [ambientTrack, setAmbientTrack] = useState(null);
@@ -89,16 +93,10 @@ export default function ChatRoom() {
       if (!active || !roomRow) return;
       setRoom(roomRow);
 
-      const { data: roomsRow } = await supabaseClient
-        .from('chat_rooms')
-        .select('id, slug, name_ar, name_ckb')
-        .eq('is_active', true);
-      if (active) setAllRooms(roomsRow ?? []);
-
       const { data: messageRows } = await supabaseClient
         .from('chat_messages')
         .select(
-          'id, sender_id, sender_display_name, sender_avatar_key, sender_role, body, attachment_url, attachment_name, attachment_size, attachment_mime, is_hidden, message_type, created_at'
+          'id, sender_id, sender_display_name, sender_avatar_key, sender_role, body, attachment_url, attachment_name, attachment_size, attachment_mime, is_hidden, is_pinned, message_type, created_at'
         )
         .eq('room_id', roomRow.id)
         .order('created_at');
@@ -113,6 +111,12 @@ export default function ChatRoom() {
           .in('message_id', messageIds);
         if (active) setReactions(reactionRows ?? []);
       }
+
+      const { data: banRows } = await supabaseClient
+        .from('chat_room_bans')
+        .select('room_id, banned_user_id')
+        .eq('room_id', roomRow.id);
+      if (active) setBans(banRows ?? []);
 
       const { data: audioRow } = await supabaseClient
         .from('chat_ambient_audio')
@@ -158,6 +162,12 @@ export default function ChatRoom() {
           { event: 'INSERT', schema: 'public', table: 'chat_ambient_audio', filter: `room_id=eq.${roomRow.id}` },
           (payload) => setAmbientTrack(payload.new)
         )
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_room_bans', filter: `room_id=eq.${roomRow.id}` }, (payload) => {
+          setBans((current) => [...current, payload.new]);
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_room_bans', filter: `room_id=eq.${roomRow.id}` }, (payload) => {
+          setBans((current) => current.filter((b) => b.banned_user_id !== payload.old.banned_user_id));
+        })
         .on('broadcast', { event: 'typing' }, ({ payload }) => {
           setTypingUsers((current) => ({ ...current, [payload.userId]: { name: payload.name, ts: Date.now() } }));
         })
@@ -266,18 +276,10 @@ export default function ChatRoom() {
   }
 
   async function handleDeleteMessage(message) {
-    // Optimistic: remove from local state immediately so the sender sees it
-    // vanish at once. Then soft-hide via UPDATE (works with existing RLS for
-    // message senders) — other clients see the UPDATE realtime event and the
-    // message also disappears for them since it's filtered by !is_hidden.
     setMessages((current) => current.filter((m) => m.id !== message.id));
-    const { error } = await supabaseClient
-      .from('chat_messages')
-      .update({ is_hidden: true })
-      .eq('id', message.id);
+    const { error } = await supabaseClient.from('chat_messages').update({ is_hidden: true }).eq('id', message.id);
     if (error) {
       setSendError(error.message || t('common.errorGeneric'));
-      // Restore on failure
       setMessages((current) =>
         [...current, message].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
       );
@@ -295,37 +297,42 @@ export default function ChatRoom() {
     }
   }
 
+  async function handlePinMessage(message) {
+    const next = !message.is_pinned;
+    const { error } = await supabaseClient.from('chat_messages').update({ is_pinned: next }).eq('id', message.id);
+    if (error) setSendError(error.message || t('common.errorGeneric'));
+    // UPDATE realtime event will update local state
+  }
+
   async function handleAssignModerator(memberId) {
     const newModId = room.moderator_id === memberId ? null : memberId;
-    const { error } = await supabaseClient
-      .from('chat_rooms')
-      .update({ moderator_id: newModId })
-      .eq('id', room.id);
+    const { error } = await supabaseClient.from('chat_rooms').update({ moderator_id: newModId }).eq('id', room.id);
     if (error) setSendError(error.message || t('common.errorGeneric'));
-    // room.moderator_id will update via the existing UPDATE realtime listener
+  }
+
+  async function handleBanMember(userId) {
+    const isAlreadyBanned = bans.some((b) => b.banned_user_id === userId);
+    if (isAlreadyBanned) {
+      const { error } = await supabaseClient
+        .from('chat_room_bans')
+        .delete()
+        .eq('room_id', room.id)
+        .eq('banned_user_id', userId);
+      if (error) setSendError(error.message || t('common.errorGeneric'));
+    } else {
+      const { error } = await supabaseClient
+        .from('chat_room_bans')
+        .insert({ room_id: room.id, banned_user_id: userId, banned_by: profile.id });
+      if (error) setSendError(error.message || t('common.errorGeneric'));
+    }
   }
 
   async function toggleReaction(message, emoji) {
-    // No optimistic local update here: the INSERT/DELETE postgres_changes
-    // listeners above are the single source of truth for `reactions`, same
-    // as messages already work in this file — avoids double-adding our own
-    // reaction once the realtime echo of our own write arrives.
     const existing = reactions.find((r) => r.message_id === message.id && r.user_id === profile.id && r.emoji === emoji);
     const { error } = existing
       ? await supabaseClient.from('chat_message_reactions').delete().eq('id', existing.id)
       : await supabaseClient.from('chat_message_reactions').insert({ message_id: message.id, user_id: profile.id, emoji });
     if (error) setSendError(error.message || t('common.errorGeneric'));
-  }
-
-  async function togglePinnedRoom(roomId) {
-    const current = profile.pinned_room_ids ?? [];
-    const next = current.includes(roomId) ? current.filter((id) => id !== roomId) : [...current, roomId];
-    const { error } = await supabaseClient.from('profiles').update({ pinned_room_ids: next }).eq('id', profile.id);
-    if (error) {
-      setSendError(error.message || t('common.errorGeneric'));
-      return;
-    }
-    refreshProfile();
   }
 
   function loadPendingInvites() {
@@ -344,6 +351,16 @@ export default function ChatRoom() {
       return;
     }
     loadPendingInvites();
+  }
+
+  async function cancelInvite(receiverId) {
+    const { error } = await supabaseClient
+      .from('chat_room_invitations')
+      .delete()
+      .eq('sender_id', profile.id)
+      .eq('receiver_id', receiverId)
+      .eq('status', 'pending');
+    if (!error) loadPendingInvites();
   }
 
   function startRoomEdit() {
@@ -368,18 +385,10 @@ export default function ChatRoom() {
   }
 
   function toggleAmbientMute() {
-    // Browsers block unmuted audio autoplay without a user gesture, so the
-    // track always starts muted (silent autoplay is allowed) and this
-    // click — itself a user gesture — is what unlocks sound. There's no
-    // way to guarantee identical playback position across clients without
-    // a server-driven clock, but for a looping ambient track that's not
-    // perceptible; what matters is everyone hearing the same track.
     if (ambientAudioRef.current) ambientAudioRef.current.muted = !ambientMuted;
     setAmbientMuted((current) => !current);
   }
 
-  // Message count per sender — used to compute member rank for bubble styling.
-  // Counts visible (non-hidden) messages only. Falls back to 0 for unseen users.
   const messageCounts = useMemo(() => {
     const counts = {};
     messages.forEach((m) => {
@@ -406,7 +415,20 @@ export default function ChatRoom() {
     return Array.from(map.values()).map((member) => ({ ...member, online: onlineUserIds.has(member.id) }));
   }, [messages, profile, onlineUserIds]);
 
-  const sharedFiles = useMemo(() => messages.filter((m) => m.attachment_url), [messages]);
+  const sharedFiles = useMemo(
+    () => messages.filter((m) => m.attachment_url && !m.is_hidden && m.attachment_mime !== 'image/gif' && !/\.gif$/i.test(m.attachment_url ?? '')),
+    [messages]
+  );
+
+  const gifs = useMemo(
+    () => messages.filter((m) => m.attachment_url && !m.is_hidden && (m.attachment_mime === 'image/gif' || /\.gif$/i.test(m.attachment_url ?? ''))),
+    [messages]
+  );
+
+  const pinnedMessages = useMemo(
+    () => messages.filter((m) => m.is_pinned && !m.is_hidden),
+    [messages]
+  );
 
   const typingNames = useMemo(
     () => Object.entries(typingUsers).filter(([userId]) => userId !== profile?.id).map(([, entry]) => entry.name),
@@ -421,10 +443,13 @@ export default function ChatRoom() {
     );
   }
 
+  const isStaff = profile.role === 'founder' || profile.role === 'employee';
   const canModerate = (message) =>
     profile.role === 'founder' || profile.id === room.moderator_id || profile.id === message.sender_id;
-  const isPinned = (profile.pinned_room_ids ?? []).includes(room.id);
+  const canModerateContent = profile.role === 'founder' || profile.id === room.moderator_id;
+  const canPin = profile.role === 'founder' || profile.id === room.moderator_id;
   const canManageAudio = profile.role === 'founder' || profile.admin_level === 'co_admin' || profile.id === room.moderator_id;
+  const isBannedFromRoom = bans.some((b) => b.banned_user_id === profile.id);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-brand-950 via-brand-900 to-gold-900/40 text-white">
@@ -461,16 +486,6 @@ export default function ChatRoom() {
         <div className="flex shrink-0 items-center gap-1.5">
           <button
             type="button"
-            onClick={() => togglePinnedRoom(room.id)}
-            aria-label={t('chat.pinRoomCta')}
-            aria-pressed={isPinned}
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white/80 transition-colors hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gold-300"
-          >
-            <Pin className={`h-4 w-4 ${isPinned ? 'fill-gold-300 text-gold-300' : ''}`} aria-hidden="true" />
-          </button>
-          <ChatBackgroundPicker variant={chatBg} onSelect={setChatBg} locale={locale} />
-          <button
-            type="button"
             onClick={() => setSidebarOpen(true)}
             aria-label={t('chat.sidebarTitle')}
             className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white/80 transition-colors hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gold-300"
@@ -503,17 +518,23 @@ export default function ChatRoom() {
               const isFirst = !bundled;
               const isLast = !isBundled(visible[index + 1], message);
               const isSticker = message.message_type === 'sticker';
-              const senderName =
-                message.sender_display_name && message.sender_display_name !== 'مستخدم'
-                  ? message.sender_display_name
-                  : 'عضو';
+
+              // For isMine: use the current profile's live name.
+              // For others: use what's stored, falling back to a generic label.
+              const senderName = isMine
+                ? displayNameFor(profile)
+                : (() => {
+                    const stored = message.sender_display_name;
+                    return stored && stored !== 'عضو' && stored !== 'مستخدم' ? stored : 'عضو';
+                  })();
+
               const rank = !isMine ? getRank(messageCounts[message.sender_id] || 0) : null;
               const canDelete = isMine || canModerate(message);
+              const isDarkBubble = isMine || (rank && !LIGHT_BUBBLE_RANKS.has(rank.id));
 
-              // Bubble background: sender = dark brown + gold border, others = rank-based
               const bubbleCls = isSticker
                 ? 'text-7xl leading-none'
-                : `max-w-[75%] px-4 py-2 shadow-md ${
+                : `max-w-[75%] px-3 py-2 shadow-md ${
                     isMine
                       ? 'bg-amber-900 border border-amber-500/50 text-white'
                       : rank.bubbleClass
@@ -531,6 +552,7 @@ export default function ChatRoom() {
                       avatarKey: message.sender_avatar_key ?? null,
                       role: message.sender_role ?? null,
                       rank,
+                      online: onlineUserIds.has(message.sender_id),
                     })
                   }
                   className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-gold-300"
@@ -550,8 +572,11 @@ export default function ChatRoom() {
                   avatar={avatarNode}
                   timestamp={message.created_at}
                   canDelete={canDelete}
+                  canPin={canPin}
+                  isPinned={message.is_pinned}
                   bubbleClassName={bubbleCls}
                   onDelete={() => (isMine ? handleDeleteMessage(message) : handleModeratorDelete(message))}
+                  onPin={() => handlePinMessage(message)}
                   locale={locale}
                 >
                   {isSticker ? (
@@ -579,7 +604,13 @@ export default function ChatRoom() {
                           locale={locale}
                         />
                       )}
-                      <ReactionBar reactions={messageReactions} currentUserId={profile.id} onToggle={(emoji) => toggleReaction(message, emoji)} locale={locale} />
+                      <ReactionBar
+                        reactions={messageReactions}
+                        currentUserId={profile.id}
+                        onToggle={(emoji) => toggleReaction(message, emoji)}
+                        locale={locale}
+                        dark={!isDarkBubble}
+                      />
                     </>
                   )}
                 </MessageBubble>
@@ -606,24 +637,36 @@ export default function ChatRoom() {
           </p>
         )}
 
-        <form onSubmit={handleSend} className="mt-3 flex items-center gap-2 rounded-xl2 bg-white/10 p-2 shadow-inner-glass">
-          <input
-            value={body}
-            onChange={handleBodyChange}
-            placeholder={t('chat.messagePlaceholder')}
-            className="flex-1 bg-transparent px-2 py-2 text-sm text-white placeholder-white/50 focus:outline-none"
-          />
-          <AttachmentUploader pathPrefix={`chat/${room.id}`} locale={locale} onUploaded={setPendingAttachment} />
-          <VoiceRecorder pathPrefix={`chat/${room.id}`} locale={locale} onUploaded={setPendingAttachment} />
-          <StickerPicker onPick={handleSendSticker} locale={locale} />
-          <button
-            type="submit"
-            className="flex items-center gap-1.5 rounded-xl2 bg-gold-500 px-4 py-2 text-sm font-semibold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.03] hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-900"
-          >
-            <Send className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
-            <span className="hidden sm:inline">{t('chat.sendCta')}</span>
-          </button>
-        </form>
+        {isBannedFromRoom ? (
+          <p className="mt-3 rounded-xl2 bg-red-500/10 p-3 text-center text-sm text-red-400 border border-red-500/20">
+            {t('chat.blockedFromSending')}
+          </p>
+        ) : (
+          <form onSubmit={handleSend} className="mt-3 rounded-xl2 bg-white/10 p-2 shadow-inner-glass">
+            {/* Top row: input + send */}
+            <div className="flex items-center gap-2">
+              <input
+                value={body}
+                onChange={handleBodyChange}
+                placeholder={t('chat.messagePlaceholder')}
+                className="min-w-0 flex-1 bg-transparent px-2 py-2 text-sm text-white placeholder-white/50 focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="flex shrink-0 items-center gap-1.5 rounded-xl2 bg-gold-500 px-3 py-2 text-sm font-semibold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.03] hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-900"
+              >
+                <Send className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
+                <span className="hidden sm:inline">{t('chat.sendCta')}</span>
+              </button>
+            </div>
+            {/* Bottom row: attachment tools (always visible) */}
+            <div className="mt-1 flex items-center gap-1 border-t border-white/10 pt-1">
+              <AttachmentUploader pathPrefix={`chat/${room.id}`} locale={locale} onUploaded={setPendingAttachment} />
+              <VoiceRecorder pathPrefix={`chat/${room.id}`} locale={locale} onUploaded={setPendingAttachment} />
+              <StickerPicker onPick={handleSendSticker} locale={locale} />
+            </div>
+          </form>
+        )}
         {pendingAttachment && <p className="mt-1 text-xs text-white/60">{pendingAttachment.name}</p>}
       </main>
 
@@ -633,16 +676,25 @@ export default function ChatRoom() {
         locale={locale}
         members={members}
         sharedFiles={sharedFiles}
-        rooms={allRooms}
-        pinnedRoomIds={profile.pinned_room_ids ?? []}
-        onTogglePin={togglePinnedRoom}
+        pinnedMessages={pinnedMessages}
+        gifs={gifs}
         canManageAudio={canManageAudio}
+        canModerateContent={canModerateContent}
         roomId={room.id}
         currentTrack={ambientTrack}
         profileId={profile.id}
         currentUserId={profile.id}
         onInviteMember={inviteMember}
         pendingInviteIds={pendingInviteIds}
+        onUnpinMessage={handlePinMessage}
+        onDeleteGif={handleModeratorDelete}
+        isStaff={isStaff}
+        onLeaveGroup={() => {
+          setSidebarOpen(false);
+          router.replace('/chat');
+        }}
+        chatBg={chatBg}
+        onSelectBg={setChatBg}
       />
 
       <AnimatePresence>
@@ -652,11 +704,15 @@ export default function ChatRoom() {
             currentUserId={profile.id}
             isPending={pendingInviteIds.includes(selectedMember.id)}
             onInviteMember={inviteMember}
+            onCancelInvite={cancelInvite}
             onClose={() => setSelectedMember(null)}
             locale={locale}
             isFounder={profile.role === 'founder'}
+            isModerator={profile.id === room.moderator_id}
             moderatorId={room.moderator_id}
             onAssignModerator={handleAssignModerator}
+            onBanMember={handleBanMember}
+            isBanned={bans.some((b) => b.banned_user_id === selectedMember.id)}
           />
         )}
       </AnimatePresence>

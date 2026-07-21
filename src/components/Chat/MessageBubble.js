@@ -22,13 +22,17 @@ export default function MessageBubble({
   avatar,
   onDelete,
   canDelete,
+  onPin,
+  canPin,
+  isPinned,
   timestamp,
   locale,
   children,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const showMenu = canDelete ?? isMine;
   const { onTouchStart, onTouchEnd, onTouchMove, onContextMenu, isPressing } = useLongPress(() => {
-    if (canDelete ?? isMine) setMenuOpen(true);
+    if (showMenu) setMenuOpen(true);
   });
 
   const corners = isSticker ? '' : bubbleCorners(isMine, isFirst, isLast);
@@ -45,8 +49,6 @@ export default function MessageBubble({
     >
       {avatar}
       <motion.div
-        // Long-press feedback: bubble shrinks + gold ring glows while held.
-        // When the 500ms fires, isPressing resets and the menu opens.
         animate={{
           scale: isPressing ? 0.93 : 1,
           boxShadow: isPressing
@@ -70,12 +72,15 @@ export default function MessageBubble({
             {formatMsgTime(timestamp)}
           </time>
         )}
-        {(canDelete ?? isMine) && (
+        {showMenu && (
           <MessageUnsendMenu
             open={menuOpen}
             onClose={() => setMenuOpen(false)}
             onDelete={onDelete}
+            onPin={onPin}
             isMine={isMine}
+            canPin={canPin}
+            isPinned={isPinned}
             locale={locale}
           />
         )}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader as Loader2, MessageCirclePlus, Music, Paperclip, Pin, UploadCloud, Users, X } from 'lucide-react';
+import { Check, Image, Loader as Loader2, LogOut, MessageCirclePlus, Music, Palette, Paperclip, Pin, PinOff, Trash2, UploadCloud, Users, X } from 'lucide-react';
 import Avatar from './Avatar';
 import MessageAttachment from './MessageAttachment';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -8,6 +8,7 @@ import { safeSlug } from '../../utils/safeStorageName';
 
 const ALLOWED_AUDIO_TYPES = ['audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/wav'];
 const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
+const BG_VARIANTS = ['default', 'waves', 'library'];
 
 function AudioTab({ roomId, currentTrack, locale, profileId }) {
   const t = (path) => translate(locale, path);
@@ -85,32 +86,47 @@ function AudioTab({ roomId, currentTrack, locale, profileId }) {
   );
 }
 
-const BASE_TABS = ['members', 'files', 'pinned'];
-
 export default function ChatSettingsSidebar({
   open,
   onClose,
   locale,
   members,
   sharedFiles,
-  rooms,
-  pinnedRoomIds,
-  onTogglePin,
+  pinnedMessages,
+  gifs,
   canManageAudio,
+  canModerateContent,
   roomId,
   currentTrack,
   profileId,
   currentUserId,
   onInviteMember,
   pendingInviteIds,
+  onUnpinMessage,
+  onDeleteGif,
+  isStaff,
+  onLeaveGroup,
+  chatBg,
+  onSelectBg,
 }) {
   const [tab, setTab] = useState('members');
   const t = (path) => translate(locale, path);
-  const tabs = canManageAudio ? [...BASE_TABS, 'audio'] : BASE_TABS;
+
+  const tabs = [
+    { key: 'members', Icon: Users },
+    { key: 'files', Icon: Paperclip },
+    { key: 'pinned', Icon: Pin },
+    { key: 'gif', Icon: Image },
+    ...(canManageAudio ? [{ key: 'audio', Icon: Music }] : []),
+  ];
+
+  const bgOptions = [
+    { key: 'default', label: t('chat.backgroundDefault') },
+    { key: 'waves', label: t('chat.backgroundWaves') },
+    { key: 'library', label: t('chat.backgroundLibrary') },
+  ];
 
   if (!open) return null;
-
-  const TAB_ICONS = { members: Users, files: Paperclip, pinned: Pin, audio: Music };
 
   return (
     <>
@@ -129,22 +145,25 @@ export default function ChatSettingsSidebar({
         </div>
 
         <div className="flex border-b border-white/10">
-          {tabs.map((key) => {
-            const Icon = TAB_ICONS[key];
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setTab(key)}
-                className={`flex flex-1 items-center justify-center gap-1.5 px-2 py-3 text-xs font-semibold transition-colors ${
-                  tab === key ? 'border-b-2 border-gold-400 text-gold-300' : 'text-white/60 hover:text-white'
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                {key === 'audio' ? t('chat.ambientAudioLabel') : t(`chat.sidebarTab${key.charAt(0).toUpperCase()}${key.slice(1)}`)}
-              </button>
-            );
-          })}
+          {tabs.map(({ key, Icon }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={`flex flex-1 items-center justify-center gap-1 px-1 py-3 text-[11px] font-semibold transition-colors ${
+                tab === key ? 'border-b-2 border-gold-400 text-gold-300' : 'text-white/60 hover:text-white'
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+              <span className="hidden sm:inline">
+                {key === 'audio'
+                  ? t('chat.ambientAudioLabel')
+                  : key === 'gif'
+                    ? t('chat.sidebarTabGif')
+                    : t(`chat.sidebarTab${key.charAt(0).toUpperCase()}${key.slice(1)}`)}
+              </span>
+            </button>
+          ))}
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
@@ -200,27 +219,102 @@ export default function ChatSettingsSidebar({
           )}
 
           {tab === 'pinned' && (
-            <ul className="space-y-1.5">
-              {rooms.map((room) => {
-                const pinned = pinnedRoomIds.includes(room.id);
-                return (
-                  <li key={room.id}>
+            <ul className="space-y-2">
+              {(pinnedMessages ?? []).length === 0 && (
+                <p className="text-sm text-white/50">{t('chat.pinnedEmpty')}</p>
+              )}
+              {(pinnedMessages ?? []).map((message) => (
+                <li key={message.id} className="flex items-start gap-2 rounded-lg border border-white/10 bg-white/5 p-2.5">
+                  <Pin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gold-300" aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-white/60">{message.sender_display_name}</p>
+                    <p className="mt-0.5 truncate text-sm">{message.body || t('chat.attachmentLabel')}</p>
+                  </div>
+                  {canModerateContent && (
                     <button
                       type="button"
-                      onClick={() => onTogglePin(room.id)}
-                      className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-white/5"
+                      onClick={() => onUnpinMessage(message)}
+                      aria-label={t('chat.unpinMessageCta')}
+                      className="shrink-0 text-white/40 hover:text-white"
                     >
-                      <span className="truncate">{locale === 'ar' ? room.name_ar : room.name_ckb}</span>
-                      <Pin className={`h-4 w-4 shrink-0 ${pinned ? 'fill-gold-300 text-gold-300' : 'text-white/30'}`} aria-hidden="true" />
+                      <PinOff className="h-3.5 w-3.5" aria-hidden="true" />
                     </button>
-                  </li>
-                );
-              })}
+                  )}
+                </li>
+              ))}
             </ul>
+          )}
+
+          {tab === 'gif' && (
+            <div>
+              {(gifs ?? []).length === 0 && (
+                <p className="text-sm text-white/50">{t('chat.gifEmpty')}</p>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                {(gifs ?? []).map((message) => (
+                  <div key={message.id} className="relative overflow-hidden rounded-xl2">
+                    <MessageAttachment
+                      path={message.attachment_url}
+                      name={message.attachment_name}
+                      size={message.attachment_size}
+                      mime={message.attachment_mime}
+                    />
+                    {canModerateContent && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteGif(message)}
+                        aria-label={t('chat.removeMessageCta')}
+                        className="absolute end-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-red-400 hover:bg-red-500/30"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {tab === 'audio' && canManageAudio && (
             <AudioTab roomId={roomId} currentTrack={currentTrack} locale={locale} profileId={profileId} />
+          )}
+        </div>
+
+        {/* Theme picker + leave group at the bottom */}
+        <div className="border-t border-white/10 p-4 space-y-3">
+          <div>
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-white/60">
+              <Palette className="h-3.5 w-3.5" aria-hidden="true" />
+              {t('chat.backgroundPickerCta')}
+            </p>
+            <div className="flex gap-2">
+              {bgOptions.map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => onSelectBg(opt.key)}
+                  className={`flex flex-1 items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-[11px] font-semibold transition-colors ${
+                    chatBg === opt.key
+                      ? 'border-gold-400 bg-gold-400/15 text-gold-300'
+                      : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
+                  }`}
+                >
+                  {chatBg === opt.key && <Check className="h-3 w-3" aria-hidden="true" />}
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {!isStaff && (
+            <button
+              type="button"
+              onClick={onLeaveGroup}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl2 border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-400"
+            >
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              {t('chat.leaveGroup')}
+            </button>
           )}
         </div>
       </aside>
