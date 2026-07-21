@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
-import { ArrowRight, ChevronDown, MoreVertical, Phone, Send } from 'lucide-react';
+import { ArrowRight, ChevronDown, MoreVertical, Pencil, Phone, Save, Send, X } from 'lucide-react';
 import AppShell, { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import Avatar from '../../../components/Chat/Avatar';
@@ -40,6 +40,16 @@ export default function DirectMessageThread() {
   const [sending, setSending] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [showScrollDown, setShowScrollDown] = useState(false);
+
+  const DEFAULT_TEMPLATES = {
+    welcome:      { ar: 'أهلاً وسهلاً! أنا مستعد لمساعدتك. كيف يمكنني خدمتك؟', ckb: 'بەخێربێیت! ئامادەی یارمەتیدانتم. چۆن دەتوانم خزمەتت بکەم؟' },
+    requirements: { ar: 'لإتمام طلبك، نحتاج المستندات التالية:', ckb: 'بۆ تەواوکردنی داواکارییەکەت، پێویستمان بە ئەم بەڵگەنامانەیە:' },
+    payment:      { ar: 'رسوم الخدمة هي: [المبلغ]. يمكنك الدفع عبر:', ckb: 'کرێی خزمەتگوزارییەکە: [بڕ]. دەتوانی لە ڕێگەی ئەمەی خوارەوەوە بپارەدەیت:' },
+  };
+  const [templates, setTemplates] = useState(DEFAULT_TEMPLATES);
+  const [editingStage, setEditingStage] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const listEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
 
@@ -92,6 +102,39 @@ export default function DirectMessageThread() {
       if (channel) supabaseClient.removeChannel(channel);
     };
   }, [profile, threadId]);
+
+  useEffect(() => {
+    if (!profile || profile.role !== 'employee') return;
+    supabaseClient
+      .from('employee_chat_templates')
+      .select('stage, content')
+      .eq('employee_id', profile.id)
+      .then(({ data }) => {
+        if (!data || data.length === 0) return;
+        const loaded = { ...DEFAULT_TEMPLATES };
+        data.forEach(({ stage, content }) => {
+          if (loaded[stage]) loaded[stage] = { ...loaded[stage], custom: content };
+        });
+        setTemplates(loaded);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id]);
+
+  async function saveTemplate(stage) {
+    setSavingTemplate(true);
+    await supabaseClient
+      .from('employee_chat_templates')
+      .upsert({ employee_id: profile.id, stage, content: editText }, { onConflict: 'employee_id,stage' });
+    setTemplates((prev) => ({ ...prev, [stage]: { ...prev[stage], custom: editText } }));
+    setSavingTemplate(false);
+    setEditingStage(null);
+  }
+
+  function applyTemplate(stage) {
+    const tmpl = templates[stage];
+    const content = tmpl.custom ?? (locale === 'ar' ? tmpl.ar : tmpl.ckb);
+    setBody(content);
+  }
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -240,6 +283,66 @@ export default function DirectMessageThread() {
             </button>
           )}
         </div>
+
+        {profile?.role === 'employee' && (
+          <div className="mx-2 mb-1 space-y-1.5">
+            {editingStage ? (
+              <div className="flex items-center gap-1.5 rounded-xl border border-amber-400/30 bg-[#1a2028] p-2">
+                <textarea
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  rows={2}
+                  className="flex-1 resize-none rounded-lg bg-[#2a3942] px-2.5 py-1.5 text-xs text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                />
+                <div className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => saveTemplate(editingStage)}
+                    disabled={savingTemplate}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-50"
+                    aria-label={t('quickRequest.saveTemplateCta')}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingStage(null)}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white/60 hover:bg-white/20"
+                    aria-label={t('common.cancel')}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-1.5">
+                {['welcome', 'requirements', 'payment'].map((stage) => (
+                  <div key={stage} className="flex flex-1 overflow-hidden rounded-lg border border-amber-400/20">
+                    <button
+                      type="button"
+                      onClick={() => applyTemplate(stage)}
+                      className="flex-1 bg-amber-400/10 px-2 py-1.5 text-center text-[10px] font-semibold text-amber-300 hover:bg-amber-400/20 transition-colors"
+                    >
+                      {t(`quickRequest.template_${stage}`)}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const tmpl = templates[stage];
+                        setEditText(tmpl.custom ?? (locale === 'ar' ? tmpl.ar : tmpl.ckb));
+                        setEditingStage(stage);
+                      }}
+                      className="flex items-center justify-center bg-white/5 px-1.5 text-white/40 hover:bg-white/10 hover:text-white/70 transition-colors"
+                      aria-label={t('quickRequest.editTemplateCta')}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <form onSubmit={handleSend} className="mx-2 mb-2 flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-[#202c33] p-2">
           <AttachmentUploader pathPrefix={`dm/${threadId}`} onUploaded={setPendingAttachment} locale={locale} />

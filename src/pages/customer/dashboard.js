@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { AlertTriangle, ArrowLeft, ClipboardList, GraduationCap, LayoutGrid, MessageCircle, MessagesSquare, Newspaper, Search, ShoppingBag, Tag, Wrench } from 'lucide-react';
 import AppShell from '../../components/Layout/AppShell';
+import QuickRequestWidget from '../../components/UI/QuickRequestWidget';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import SafeImage from '../../components/UI/SafeImage';
 import AnnouncementSlider from '../../components/UI/AnnouncementSlider';
@@ -281,6 +282,10 @@ export default function CustomerDashboard() {
           ))}
         </section>
       )}
+
+      <div className="mt-6">
+        <QuickRequestWidget sectionName={t('customerHub.categoriesTitle')} locale={locale} profile={profile} />
+      </div>
 
       {newsLinkGroups.length > 0 && (
         <section className="metal-panel mt-6 p-4 text-ink-light dark:text-white sm:mt-10 sm:p-6">

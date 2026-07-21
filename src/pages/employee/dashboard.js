@@ -14,6 +14,7 @@ import {
   Radio,
   Send,
   UserRoundCog,
+  Zap,
 } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -43,7 +44,9 @@ export default function EmployeeDashboard() {
   const categories = useCategories();
   const [savingProfile, setSavingProfile] = useState(false);
 
+  const [queueTab, setQueueTab] = useState('requests');
   const [queue, setQueue] = useState(null);
+  const [quickRequests, setQuickRequests] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [customer, setCustomer] = useState(null);
   const [history, setHistory] = useState([]);
@@ -98,18 +101,40 @@ export default function EmployeeDashboard() {
     setQueue(nextQueue);
   }
 
+  async function loadQuickRequests() {
+    const { data } = await supabaseClient
+      .from('quick_requests')
+      .select('id, section_name, content, status, created_at, customer:profiles!customer_id(id, given_name, family_name, phone)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    setQuickRequests(data ?? []);
+  }
+
+  async function handleAcceptQuick(requestId) {
+    const { data, error } = await supabaseClient.rpc('accept_quick_request', { p_request_id: requestId });
+    if (!error && data) {
+      router.push(`/chat/dm/${data}`);
+    }
+  }
+
+  async function handleRejectQuick(requestId) {
+    await supabaseClient.rpc('reject_quick_request', { p_request_id: requestId });
+    loadQuickRequests();
+  }
+
   useEffect(() => {
     if (!profile) return undefined;
     const channel = supabaseClient
       .channel('employee-requests-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, loadQueue)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'quick_requests' }, loadQuickRequests)
       .subscribe();
     return () => supabaseClient.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
   useEffect(() => {
-    if (profile) loadQueue();
+    if (profile) { loadQueue(); loadQuickRequests(); }
   }, [profile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadDetail(requestId) {
@@ -331,47 +356,108 @@ export default function EmployeeDashboard() {
 
         <section className="grid gap-6 lg:grid-cols-[320px_1fr]">
           <div className="metal-panel p-4 text-white">
-            <h3 className="mb-3 flex items-center gap-2 font-semibold">
-              <Inbox className="h-4 w-4 text-gold-300" aria-hidden="true" />
-              {t('employeeDesk.queueTitle')}
-            </h3>
-            {queue === null ? (
+            <div className="mb-3 flex items-center gap-1 rounded-xl bg-white/5 p-1">
+              <button
+                type="button"
+                onClick={() => setQueueTab('requests')}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition-all ${
+                  queueTab === 'requests' ? 'bg-gold-400/20 text-gold-300' : 'text-white/60 hover:text-white/80'
+                }`}
+              >
+                <Inbox className="h-3.5 w-3.5" aria-hidden="true" />
+                {t('employeeDesk.queueTitle')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setQueueTab('quick')}
+                className={`relative flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition-all ${
+                  queueTab === 'quick' ? 'bg-amber-500/20 text-amber-300' : 'text-white/60 hover:text-white/80'
+                }`}
+              >
+                <Zap className="h-3.5 w-3.5" aria-hidden="true" />
+                {t('employeeDesk.quickRequestsTab')}
+                {quickRequests && quickRequests.length > 0 && (
+                  <span className="absolute -top-1 end-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                    {quickRequests.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {queueTab === 'requests' ? (
+              queue === null ? (
+                <LoadingSpinner inline locale={locale} />
+              ) : queue.length === 0 ? (
+                <p className="text-sm text-white/60">{t('employeeDesk.queueEmpty')}</p>
+              ) : (
+                <ul className="space-y-2">
+                  {queue.map((request) => (
+                    <li key={request.id}>
+                      <button
+                        type="button"
+                        onClick={() => loadDetail(request.id)}
+                        className={`w-full rounded-xl2 border p-3 text-start text-sm transition-all duration-200 ${
+                          selectedId === request.id
+                            ? 'border-gold-400/50 bg-gold-400/10 shadow-glass-sm'
+                            : 'border-white/10 hover:bg-white/5'
+                        }`}
+                      >
+                        <p className="font-semibold">{request.title}</p>
+                        <div className="mt-1 flex items-center justify-between">
+                          <StatusBadge status={request.status} locale={locale} />
+                          {!request.assigned_employee_id && (
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                claimRequest(request.id);
+                              }}
+                              className="text-xs font-semibold text-gold-300 underline"
+                            >
+                              {t('employeeDesk.assignToMeCta')}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )
+            ) : quickRequests === null ? (
               <LoadingSpinner inline locale={locale} />
-            ) : queue.length === 0 ? (
-              <p className="text-sm text-white/60">{t('employeeDesk.queueEmpty')}</p>
+            ) : quickRequests.length === 0 ? (
+              <p className="text-sm text-white/60">{t('employeeDesk.quickRequestsEmpty')}</p>
             ) : (
-              <ul className="space-y-2">
-                {queue.map((request) => (
-                  <li key={request.id}>
-                    <button
-                      type="button"
-                      onClick={() => loadDetail(request.id)}
-                      className={`w-full rounded-xl2 border p-3 text-start text-sm transition-all duration-200 ${
-                        selectedId === request.id
-                          ? 'border-gold-400/50 bg-gold-400/10 shadow-glass-sm'
-                          : 'border-white/10 hover:bg-white/5'
-                      }`}
-                    >
-                      <p className="font-semibold">{request.title}</p>
-                      <div className="mt-1 flex items-center justify-between">
-                        <StatusBadge status={request.status} locale={locale} />
-                        {!request.assigned_employee_id && (
-                          <span
-                            role="button"
-                            tabIndex={0}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              claimRequest(request.id);
-                            }}
-                            className="text-xs font-semibold text-gold-300 underline"
-                          >
-                            {t('employeeDesk.assignToMeCta')}
-                          </span>
-                        )}
+              <ul className="space-y-3">
+                {quickRequests.map((req) => {
+                  const name = [req.customer?.given_name, req.customer?.family_name].filter(Boolean).join(' ') || req.customer?.phone || '—';
+                  return (
+                    <li key={req.id} className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 space-y-2">
+                      <div>
+                        <p className="text-xs text-amber-300/80">{req.section_name}</p>
+                        <p className="font-semibold text-sm">{name}</p>
+                        <p className="mt-1 text-xs text-white/70 leading-relaxed">{req.content}</p>
                       </div>
-                    </button>
-                  </li>
-                ))}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleAcceptQuick(req.id)}
+                          className="flex-1 rounded-lg bg-emerald-500/20 py-1.5 text-xs font-bold text-emerald-300 transition-colors hover:bg-emerald-500/30"
+                        >
+                          {t('employeeDesk.acceptQuickCta')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRejectQuick(req.id)}
+                          className="flex-1 rounded-lg bg-red-500/20 py-1.5 text-xs font-bold text-red-300 transition-colors hover:bg-red-500/30"
+                        >
+                          {t('employeeDesk.rejectQuickCta')}
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
