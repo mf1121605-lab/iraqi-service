@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
-import { ArrowLeft, ClipboardList, GraduationCap, LayoutGrid, MessageCircle, MessagesSquare, Newspaper, Search, ShoppingBag, Tag, Wrench } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ClipboardList, GraduationCap, LayoutGrid, MessageCircle, MessagesSquare, Newspaper, Search, ShoppingBag, Tag, Wrench } from 'lucide-react';
 import AppShell from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import SafeImage from '../../components/UI/SafeImage';
@@ -108,6 +108,7 @@ export default function CustomerDashboard() {
   const [banners, setBanners] = useState([]);
   const [products, setProducts] = useState([]);
   const [newsLinks, setNewsLinks] = useState([]);
+  const [urgentItems, setUrgentItems] = useState([]);
   const [orderMessage, setOrderMessage] = useState('');
   const categories = useCategories();
 
@@ -169,15 +170,26 @@ export default function CustomerDashboard() {
         .then(({ data }) => setNewsLinks(data ?? []));
     }
 
+    function loadUrgentNews() {
+      supabaseClient
+        .from('urgent_news')
+        .select('id, title_ar, title_ckb, content_ar, content_ckb, image_url')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .then(({ data }) => setUrgentItems(data ?? []));
+    }
+
     loadBanners();
     loadProducts();
     loadNewsLinks();
+    loadUrgentNews();
 
     const channel = supabaseClient
       .channel('customer-hub-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, loadBanners)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, loadProducts)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'news_links' }, loadNewsLinks)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'urgent_news' }, loadUrgentNews)
       .subscribe();
 
     return () => supabaseClient.removeChannel(channel);
@@ -189,6 +201,7 @@ export default function CustomerDashboard() {
       { href: '/customer/search', label: t('search.navLabel'), icon: Search },
       { href: '/customer/requests', label: t('customerHub.myRequestsCta'), icon: ClipboardList },
       { href: '/customer/tutor', label: t('aiTutor.navCta'), icon: GraduationCap },
+      { href: '/customer/news', label: t('socialFeed.navCta'), icon: Newspaper },
       { href: '/chat', label: t('chat.roomsTitle'), icon: MessageCircle },
     ],
     [locale] // eslint-disable-line react-hooks/exhaustive-deps
@@ -236,6 +249,36 @@ export default function CustomerDashboard() {
             <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl md:text-2xl">{t('customerHub.heroFallbackTitle')}</h2>
             <p className="mt-2 text-sm text-ink-muted dark:text-white/70 sm:text-base">{t('customerHub.heroFallbackSubtitle')}</p>
           </div>
+        </section>
+      )}
+
+      {urgentItems.length > 0 && (
+        <section className="mt-6 space-y-3">
+          <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">
+            <AlertTriangle className="h-4 w-4 text-red-400 sm:h-5 sm:w-5" aria-hidden="true" />
+            {t('urgentNews.sectionTitle')}
+          </h3>
+          {urgentItems.map((item) => (
+            <div
+              key={item.id}
+              className="relative rounded-2xl border-2 border-red-500 p-4 text-ink-light animate-[glow-red_2s_ease-in-out_infinite] dark:text-white"
+            >
+              <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold text-white">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                {t('urgentNews.badge')}
+              </span>
+              <h4 className="font-bold">{locale === 'ar' ? item.title_ar : (item.title_ckb || item.title_ar)}</h4>
+              {(locale === 'ar' ? item.content_ar : item.content_ckb) && (
+                <p className="mt-1 text-sm text-ink-muted dark:text-white/70">
+                  {locale === 'ar' ? item.content_ar : item.content_ckb}
+                </p>
+              )}
+              {item.image_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={item.image_url} alt="" className="mt-2 w-full rounded-xl object-cover" />
+              )}
+            </div>
+          ))}
         </section>
       )}
 
