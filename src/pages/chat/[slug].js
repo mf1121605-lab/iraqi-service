@@ -275,6 +275,44 @@ export default function ChatRoom() {
     if (error) setSendError(error.message || t('common.errorGeneric'));
   }
 
+  async function handlePickGif(gifOrFile) {
+    // If it's a File (upload from picker), upload first then send
+    if (gifOrFile instanceof File) {
+      const { safeSlug } = await import('../../utils/safeStorageName');
+      const path = `chat/${room.id}/${crypto.randomUUID()}-${safeSlug(gifOrFile.name)}`;
+      const { error: uploadError } = await supabaseClient.storage.from('site-assets').upload(path, gifOrFile);
+      if (uploadError) { setSendError(uploadError.message); return; }
+      const { data } = supabaseClient.storage.from('site-assets').getPublicUrl(path);
+      const { error } = await supabaseClient.from('chat_messages').insert({
+        room_id: room.id,
+        sender_id: profile.id,
+        sender_display_name: displayNameFor(profile),
+        sender_avatar_key: profile.avatar_key ?? null,
+        sender_role: profile.role,
+        attachment_url: data.publicUrl,
+        attachment_name: gifOrFile.name,
+        attachment_size: gifOrFile.size,
+        attachment_mime: 'image/gif',
+      });
+      if (error) setSendError(error.message || t('common.errorGeneric'));
+      return;
+    }
+    // If it's an existing gif message object — resend it
+    const gif = gifOrFile;
+    const { error } = await supabaseClient.from('chat_messages').insert({
+      room_id: room.id,
+      sender_id: profile.id,
+      sender_display_name: displayNameFor(profile),
+      sender_avatar_key: profile.avatar_key ?? null,
+      sender_role: profile.role,
+      attachment_url: gif.attachment_url,
+      attachment_name: gif.attachment_name,
+      attachment_size: gif.attachment_size,
+      attachment_mime: 'image/gif',
+    });
+    if (error) setSendError(error.message || t('common.errorGeneric'));
+  }
+
   async function handleDeleteMessage(message) {
     setMessages((current) => current.filter((m) => m.id !== message.id));
     const { error } = await supabaseClient.from('chat_messages').update({ is_hidden: true }).eq('id', message.id);
@@ -452,7 +490,7 @@ export default function ChatRoom() {
   const isBannedFromRoom = bans.some((b) => b.banned_user_id === profile.id);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-brand-950 via-brand-900 to-gold-900/40 text-white">
+    <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-gradient-to-b from-brand-950 via-brand-900 to-gold-900/40 text-white">
       <ChatBackgroundLayer variant={chatBg} />
       {chatBg === 'default' && (
         <>
@@ -508,7 +546,7 @@ export default function ChatRoom() {
         </div>
       </header>
 
-      <main className="relative z-0 mx-auto flex h-[calc(100dvh-136px)] max-w-3xl flex-col p-4 sm:h-[calc(100dvh-130px)]">
+      <main className="relative z-0 mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col p-4">
         <div ref={scrollContainerRef} onScroll={handleScroll} className="relative flex-1 overflow-y-auto">
           <AnimatePresence initial={false}>
             {messages.filter((m) => !m.is_hidden).map((message, index, visible) => {
@@ -663,7 +701,7 @@ export default function ChatRoom() {
             <div className="mt-1 flex items-center gap-1 border-t border-white/10 pt-1">
               <AttachmentUploader pathPrefix={`chat/${room.id}`} locale={locale} onUploaded={setPendingAttachment} />
               <VoiceRecorder pathPrefix={`chat/${room.id}`} locale={locale} onUploaded={setPendingAttachment} />
-              <StickerPicker onPick={handleSendSticker} locale={locale} />
+              <StickerPicker onPick={handleSendSticker} locale={locale} roomGifs={gifs} onPickGif={handlePickGif} />
             </div>
           </form>
         )}

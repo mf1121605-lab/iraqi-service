@@ -51,11 +51,19 @@ export default function VoiceMessagePlayer({ src, isMine, locale }) {
     }
   }
 
+  function handleDurationChange(event) {
+    const audio = event.currentTarget;
+    if (Number.isFinite(audio.duration) && audio.duration > 0 && audio.duration < 86400) {
+      seekingDurationRef.current = false;
+      setDuration(audio.duration);
+    }
+  }
+
   function handleSeeked(event) {
     if (!seekingDurationRef.current) return;
     seekingDurationRef.current = false;
     const audio = event.currentTarget;
-    setDuration(audio.duration);
+    if (Number.isFinite(audio.duration)) setDuration(audio.duration);
     audio.currentTime = 0;
   }
 
@@ -74,7 +82,7 @@ export default function VoiceMessagePlayer({ src, isMine, locale }) {
       <audio
         ref={audioRef}
         src={src}
-        preload="metadata"
+        preload="auto"
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onEnded={() => {
@@ -82,6 +90,7 @@ export default function VoiceMessagePlayer({ src, isMine, locale }) {
           setCurrentTime(0);
         }}
         onLoadedMetadata={handleLoadedMetadata}
+        onDurationChange={handleDurationChange}
         onSeeked={handleSeeked}
         onTimeUpdate={handleTimeUpdate}
       />

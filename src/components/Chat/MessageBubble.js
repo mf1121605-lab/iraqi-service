@@ -48,6 +48,12 @@ export default function MessageBubble({
       className={`flex ${avatar ? 'items-end gap-2' : ''} ${rowAlignment} ${bundled ? 'mt-0.5' : 'mt-3'}`}
     >
       {avatar}
+      {/* Gentle continuous float wrapper */}
+      <motion.span
+        animate={{ y: [0, -2, 0] }}
+        transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
+        style={{ display: 'block' }}
+      >
       <motion.div
         animate={{
           scale: isPressing ? 0.93 : 1,
@@ -57,7 +63,7 @@ export default function MessageBubble({
         }}
         transition={{ type: 'spring', stiffness: 380, damping: 22 }}
         whileHover={!isPressing ? { scale: 1.01 } : undefined}
-        className={`group relative ${corners} ${bubbleClassName}`}
+        className={`group relative ${corners} ${bubbleClassName}${!isSticker ? ' bubble-sparkle' : ''}`}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onTouchMove={onTouchMove}
@@ -85,6 +91,7 @@ export default function MessageBubble({
           />
         )}
       </motion.div>
+      </motion.span>
     </motion.div>
   );
 }
