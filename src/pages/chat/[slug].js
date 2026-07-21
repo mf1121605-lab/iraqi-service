@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
@@ -29,6 +29,16 @@ const TYPING_BROADCAST_INTERVAL_MS = 2000;
 // Rank IDs whose bubble background is light-colored: the ReactionBar's SmilePlus
 // button must use dark colors to stay visible against those backgrounds.
 const LIGHT_BUBBLE_RANKS = new Set(['new', 'active']);
+
+function formatMsgDate(isoString, locale) {
+  if (!isoString) return '';
+  return new Date(isoString).toLocaleDateString(locale === 'ar' ? 'ar-IQ' : 'ku', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
 
 function displayNameFor(profile) {
   if (!profile) return '';
@@ -549,7 +559,7 @@ export default function ChatRoom() {
       <main className="relative z-0 mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col p-4">
         <div ref={scrollContainerRef} onScroll={handleScroll} className="relative flex-1 overflow-y-auto">
           <AnimatePresence initial={false}>
-            {messages.filter((m) => !m.is_hidden).map((message, index, visible) => {
+            {messages.filter((m) => !m.is_hidden).flatMap((message, index, visible) => {
               const messageReactions = reactions.filter((r) => r.message_id === message.id);
               const isMine = message.sender_id === profile.id;
               const bundled = isBundled(message, visible[index - 1]);
@@ -557,26 +567,34 @@ export default function ChatRoom() {
               const isLast = !isBundled(visible[index + 1], message);
               const isSticker = message.message_type === 'sticker';
 
-              // For isMine: use the current profile's live name.
-              // For others: use what's stored, falling back to a generic label.
-              const senderName = isMine
-                ? displayNameFor(profile)
-                : (() => {
-                    const stored = message.sender_display_name;
-                    return stored && stored !== 'عضو' && stored !== 'مستخدم' ? stored : 'عضو';
-                  })();
+              // Always use the snapshot name stored in the message row so that
+              // a later profile-name or avatar change doesn't rewrite old messages.
+              const stored = message.sender_display_name;
+              const senderName =
+                stored && stored !== 'عضو' && stored !== 'مستخدم'
+                  ? stored
+                  : isMine
+                  ? displayNameFor(profile)
+                  : 'عضو';
 
               const rank = !isMine ? getRank(messageCounts[message.sender_id] || 0) : null;
               const canDelete = isMine || canModerate(message);
               const isDarkBubble = isMine || (rank && !LIGHT_BUBBLE_RANKS.has(rank.id));
 
+              // Mine = warm amber, theirs = frosted dark — always readable on the dark background.
               const bubbleCls = isSticker
                 ? 'text-7xl leading-none'
                 : `max-w-[75%] px-3 py-2 shadow-md ${
                     isMine
-                      ? 'bg-amber-900 border border-amber-500/50 text-white'
-                      : rank.bubbleClass
+                      ? 'bg-amber-600/90 border border-amber-400/30 text-white'
+                      : 'bg-slate-800/90 border border-white/10 text-white'
                   }`;
+
+              // Date separator between messages from different days
+              const prevMessage = visible[index - 1];
+              const showDateSep =
+                !prevMessage ||
+                new Date(message.created_at).toDateString() !== new Date(prevMessage.created_at).toDateString();
 
               const avatarNode = bundled ? (
                 <div className="h-8 w-8 shrink-0" aria-hidden="true" />
@@ -599,7 +617,7 @@ export default function ChatRoom() {
                   <Avatar avatarKey={message.sender_avatar_key} name={senderName} seed={message.sender_id} className="h-8 w-8" />
                 </button>
               );
-              return (
+              const bubble = (
                 <MessageBubble
                   key={message.id}
                   isMine={isMine}
@@ -653,6 +671,21 @@ export default function ChatRoom() {
                   )}
                 </MessageBubble>
               );
+
+              const items = [];
+              if (showDateSep) {
+                items.push(
+                  <div key={`date-${message.id}`} className="my-3 flex items-center gap-3 px-2">
+                    <div className="h-px flex-1 bg-white/10" />
+                    <span className="shrink-0 rounded-full bg-white/10 px-3 py-0.5 text-[11px] text-white/40">
+                      {formatMsgDate(message.created_at, locale)}
+                    </span>
+                    <div className="h-px flex-1 bg-white/10" />
+                  </div>
+                );
+              }
+              items.push(bubble);
+              return items;
             })}
           </AnimatePresence>
           <div ref={listEndRef} />
@@ -680,7 +713,7 @@ export default function ChatRoom() {
             {t('chat.blockedFromSending')}
           </p>
         ) : (
-          <form onSubmit={handleSend} className="mt-3 rounded-xl2 bg-white/10 p-2 shadow-inner-glass">
+          <form onSubmit={handleSend} className="mt-3 rounded-xl2 bg-black/50 p-2 shadow-inner-glass backdrop-blur-md">
             {/* Top row: input + send */}
             <div className="flex items-center gap-2">
               <input

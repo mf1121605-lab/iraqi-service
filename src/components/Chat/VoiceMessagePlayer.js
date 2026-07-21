@@ -43,18 +43,12 @@ export default function VoiceMessagePlayer({ src, isMine, locale }) {
 
   function handleLoadedMetadata(event) {
     const audio = event.currentTarget;
-    if (!Number.isFinite(audio.duration) || audio.duration > 7200) {
+    // Some browsers report 0, others Infinity for MediaRecorder WebM files.
+    // Trigger the seek-to-end trick for any non-usable value.
+    if (!Number.isFinite(audio.duration) || audio.duration <= 0 || audio.duration > 7200) {
       seekingDurationRef.current = true;
       audio.currentTime = 1e9;
     } else {
-      setDuration(audio.duration);
-    }
-  }
-
-  function handleDurationChange(event) {
-    const audio = event.currentTarget;
-    if (Number.isFinite(audio.duration) && audio.duration > 0 && audio.duration < 86400) {
-      seekingDurationRef.current = false;
       setDuration(audio.duration);
     }
   }
@@ -63,9 +57,11 @@ export default function VoiceMessagePlayer({ src, isMine, locale }) {
     if (!seekingDurationRef.current) return;
     seekingDurationRef.current = false;
     const audio = event.currentTarget;
-    // audio.duration stays Infinity on mobile WebM; audio.currentTime is the
-    // actual end-of-file position the browser landed at after seeking to 1e9.
-    const dur = Number.isFinite(audio.duration) ? audio.duration : audio.currentTime;
+    // Try three sources: corrected duration, clamped seek position, buffered end.
+    let dur = 0;
+    if (Number.isFinite(audio.duration) && audio.duration > 0) dur = audio.duration;
+    else if (audio.currentTime > 0) dur = audio.currentTime;
+    else if (audio.buffered && audio.buffered.length > 0) dur = audio.buffered.end(audio.buffered.length - 1);
     if (dur > 0) setDuration(dur);
     audio.currentTime = 0;
   }
@@ -93,7 +89,6 @@ export default function VoiceMessagePlayer({ src, isMine, locale }) {
           setCurrentTime(0);
         }}
         onLoadedMetadata={handleLoadedMetadata}
-        onDurationChange={handleDurationChange}
         onSeeked={handleSeeked}
         onTimeUpdate={handleTimeUpdate}
       />

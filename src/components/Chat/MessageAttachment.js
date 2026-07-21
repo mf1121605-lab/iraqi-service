@@ -47,8 +47,13 @@ export default function MessageAttachment({ path, name, size, mime, isMine, loca
 
   useEffect(() => {
     let active = true;
-    // Private bucket, so links are generated on demand rather than stored —
-    // a signed URL saved at message-send time would just expire later.
+    // GIFs (and any future public-bucket files) are stored as full public URLs.
+    // Use them directly — creating a signed URL for a full URL would fail.
+    if (path && (path.startsWith('http://') || path.startsWith('https://'))) {
+      setSignedUrl(path);
+      return undefined;
+    }
+    // Private attachments bucket — generate a short-lived signed URL on demand.
     supabaseClient.storage
       .from('attachments')
       .createSignedUrl(path, 3600)
