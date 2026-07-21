@@ -12,6 +12,7 @@ import {
   Settings,
   Tags,
   Users,
+  Zap,
 } from 'lucide-react';
 import { translate } from './i18n';
 
@@ -30,6 +31,7 @@ export function useFounderNav(locale, active) {
     { href: '/chat/hq', label: t('hq.chatNavCta'), icon: Radio },
     { href: '/hq/news-links', label: t('hq.newsLinksNavCta'), icon: Newspaper },
     { href: '/hq/urgent-news', label: t('urgentNews.navCta'), active: active === 'urgent-news', icon: AlertTriangle },
+    { href: '/founder/quick-requests', label: t('founderPanel.navQuickRequests'), active: active === 'quick-requests', icon: Zap },
     { href: '/chat', label: t('chat.roomsTitle'), icon: MessageCircle },
   ];
 }

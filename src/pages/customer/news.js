@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ClipboardList, GraduationCap, Heart, Image as ImageIcon, LayoutGrid, MessageCircle, Newspaper, Search, Send, ThumbsUp, Trash2, TriangleAlert } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
+import QuickRequestWidget from '../../components/UI/QuickRequestWidget';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Avatar from '../../components/Chat/Avatar';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -280,6 +281,10 @@ export default function CustomerNews() {
         <Newspaper className="h-5 w-5 text-gold-600 dark:text-gold-300" aria-hidden="true" />
         {t('socialFeed.pageTitle')}
       </h2>
+
+      <div className="mt-5">
+        <QuickRequestWidget sectionName={t('socialFeed.pageTitle')} locale={locale} profile={profile} />
+      </div>
 
       {/* Post composer */}
       <form onSubmit={handlePost} className="metal-panel mt-5 p-4 text-ink-light dark:text-white">
