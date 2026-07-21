@@ -4,11 +4,16 @@ import { MotionConfig } from 'framer-motion';
 import { Cairo, Noto_Sans_Arabic } from 'next/font/google';
 import SplashScreen from '../components/UI/SplashScreen';
 import ErrorBoundary from '../components/UI/ErrorBoundary';
+import PermissionPrompt from '../components/UI/PermissionPrompt';
 import '../styles/globals.css';
 
 // Dynamically loaded (ssr:false) so the Supabase client it needs doesn't
 // end up in every page's synchronous shared bundle — see SiteChrome.js.
 const SiteChrome = dynamic(() => import('../components/Layout/SiteChrome'), { ssr: false });
+const InteractiveBackground3D = dynamic(
+  () => import('../components/UI/InteractiveBackground3D'),
+  { ssr: false }
+);
 
 const notoSansArabic = Noto_Sans_Arabic({
   subsets: ['arabic'],
@@ -32,6 +37,10 @@ export default function App({ Component, pageProps }) {
     <div className={`${notoSansArabic.variable} ${cairo.variable} contents`}>
       <MotionConfig reducedMotion="user">
         <ErrorBoundary>
+          <div className="fixed inset-0 -z-10 pointer-events-none">
+            <InteractiveBackground3D />
+          </div>
+          <PermissionPrompt />
           <SplashScreen />
           <SiteChrome onSettings={handleSettings} />
           <Component {...pageProps} siteSettings={siteSettings} />

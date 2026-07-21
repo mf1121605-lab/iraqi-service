@@ -52,6 +52,7 @@ const dictionaries = {
       newUserDesc: 'إنشاء حساب جديد',
       loginCta: 'لدي حساب',
       loginDesc: 'تسجيل الدخول لحسابك',
+      googleDesc: 'تسجيل الدخول السريع',
       switchLanguage: 'تغيير اللغة',
     },
     authLogin: {
@@ -689,6 +690,7 @@ const dictionaries = {
       newUserDesc: 'دروستکردنی هەژماری نوێ',
       loginCta: 'هەژمارم هەیە',
       loginDesc: 'چوونەژوورەوە بۆ هەژمارەکەت',
+      googleDesc: 'چوونەژوورەوەی خێرا',
       switchLanguage: 'گۆڕینی زمان',
     },
     authLogin: {

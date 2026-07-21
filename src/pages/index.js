@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeftRight, ArrowUpRight, ExternalLink, Mail, Phone, ShieldCheck, Activity, UserPlus, UserRound } from 'lucide-react';
-import dynamic from 'next/dynamic';
+import GoogleGlyph from '../components/UI/GoogleGlyph';
 import {
   LOCALE_META,
   defaultLocale,
@@ -12,12 +12,7 @@ import {
   translate,
 } from '../utils/i18n';
 import { siteText } from '../utils/useSiteSettings';
-import { MotionLink, buttonTap, cardLift } from '../components/UI/Motion';
-
-const InteractiveBackground3D = dynamic(
-  () => import('../components/UI/InteractiveBackground3D'),
-  { ssr: false }
-);
+import { MotionLink } from '../components/UI/Motion';
 
 export default function Home({ siteSettings }) {
   const [locale, setLocale] = useState(null);
@@ -34,7 +29,6 @@ export default function Home({ siteSettings }) {
   useEffect(() => {
     document.documentElement.dir = getDirection(locale ?? defaultLocale);
     document.documentElement.lang = locale ?? defaultLocale;
-    // Force dark class always on root
     document.documentElement.classList.add('dark');
   }, [locale]);
 
@@ -42,6 +36,14 @@ export default function Home({ siteSettings }) {
     setLocale(code);
     setStoredLocale(code);
     setStep('gateway');
+  }
+
+  async function handleGoogleLogin() {
+    const { supabaseClient } = await import('../lib/supabaseClient');
+    supabaseClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/customer/onboarding` },
+    });
   }
 
   const t = (path) => translate(locale ?? defaultLocale, path);
@@ -77,8 +79,7 @@ export default function Home({ siteSettings }) {
   };
 
   return (
-    <main className="dark relative flex min-h-screen items-center justify-center overflow-x-hidden bg-[#0d1117] p-6 font-display">
-      <InteractiveBackground3D />
+    <main className="dark relative flex min-h-screen items-center justify-center overflow-x-hidden bg-transparent p-6 font-display">
       <div className="pointer-events-none absolute inset-0 bg-radial-vignette opacity-40" />
 
       {step === 'language' && (
@@ -86,7 +87,7 @@ export default function Home({ siteSettings }) {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-          className="glass-premium relative z-10 w-full max-w-md rounded-2xl p-10 text-center text-white"
+          className="gold-border-spin glass-premium relative z-10 w-full max-w-md rounded-2xl p-10 text-center text-white"
         >
           <div className="relative mx-auto mb-6 h-24 w-24 rounded-full bg-gradient-to-tr from-gold-500/20 to-gold-300/40 p-1 shadow-glow animate-pulse-slow">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -125,11 +126,11 @@ export default function Home({ siteSettings }) {
           animate="show"
           className="relative z-10 grid w-full max-w-5xl gap-6 md:grid-cols-3"
         >
-          {/* Hero Banner — spans 2 cols × 2 rows */}
+          {/* Hero Banner — spans 2 cols × 3 rows */}
           <motion.div
             variants={itemVariants}
             onMouseMove={handleCardMouseMove}
-            className="glass-premium bento-card md:col-span-2 md:row-span-2 p-8 md:p-12 flex flex-col justify-between"
+            className="glass-premium bento-card md:col-span-2 md:row-span-3 p-8 md:p-12 flex flex-col justify-between"
           >
             <div className="bento-card-glow" />
             <div>
@@ -144,7 +145,7 @@ export default function Home({ siteSettings }) {
               <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
                 {heroTitle}
               </h1>
-              <p className="mt-4 text-lg md:text-xl text-white/70 max-w-xl font-light leading-relaxed">
+              <p className="mt-4 text-base md:text-xl text-white/70 max-w-xl font-light leading-relaxed line-clamp-4 md:line-clamp-none">
                 {heroSubtitle}
               </p>
             </div>
@@ -159,6 +160,37 @@ export default function Home({ siteSettings }) {
             </div>
           </motion.div>
 
+          {/* Google sign-in card — silver-gold style, first in col 3 */}
+          <motion.button
+            type="button"
+            variants={itemVariants}
+            onClick={handleGoogleLogin}
+            onMouseMove={handleCardMouseMove}
+            whileHover={{ y: -3, scale: 1.01 }}
+            whileTap={{ scale: 0.97 }}
+            className="gold-border-spin glass-premium bento-card relative overflow-hidden p-6 md:p-8 flex flex-col justify-center items-center gap-3 group bg-gradient-to-br from-slate-400/10 to-amber-300/15"
+          >
+            <div className="bento-card-glow" />
+            <motion.div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background: 'linear-gradient(105deg, transparent 35%, rgba(255,215,0,0.1) 50%, transparent 65%)',
+              }}
+              animate={{ x: ['-110%', '210%'] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'linear', repeatDelay: 3.5 }}
+            />
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-300/20 to-amber-200/20 border border-white/20 shadow-glow transition-transform duration-500 group-hover:scale-110">
+              <GoogleGlyph className="h-7 w-7" />
+            </span>
+            <div className="text-center">
+              <h2 className="text-base font-bold text-white group-hover:text-amber-200 transition-colors">
+                {t('authCustomer.continueWithGoogle')}
+              </h2>
+              <p className="mt-1 text-xs text-white/55">{t('gateway.googleDesc')}</p>
+            </div>
+          </motion.button>
+
           {/* Action Card: مستخدم جديد — whole card is clickable */}
           <MotionLink
             href="/customer"
@@ -166,10 +198,9 @@ export default function Home({ siteSettings }) {
             onMouseMove={handleCardMouseMove}
             whileHover={{ y: -3, scale: 1.01 }}
             whileTap={{ scale: 0.97 }}
-            className="glass-premium bento-card relative overflow-hidden p-6 md:p-8 flex flex-col justify-between group"
+            className="gold-border-spin glass-premium bento-card relative overflow-hidden p-6 md:p-8 flex flex-col justify-between group"
           >
             <div className="bento-card-glow" />
-            {/* Shimmer sweep */}
             <motion.div
               aria-hidden="true"
               className="pointer-events-none absolute inset-0"
@@ -204,10 +235,9 @@ export default function Home({ siteSettings }) {
             onMouseMove={handleCardMouseMove}
             whileHover={{ y: -3, scale: 1.01 }}
             whileTap={{ scale: 0.97 }}
-            className="glass-premium bento-card relative overflow-hidden p-6 md:p-8 flex flex-col justify-between group border border-gold-400/30 bg-gradient-to-b from-gold-400/5 to-transparent"
+            className="gold-border-spin glass-premium bento-card relative overflow-hidden p-6 md:p-8 flex flex-col justify-between group bg-gradient-to-b from-gold-400/5 to-transparent"
           >
             <div className="bento-card-glow" />
-            {/* Gold shimmer sweep */}
             <motion.div
               aria-hidden="true"
               className="pointer-events-none absolute inset-0"

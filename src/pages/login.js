@@ -126,12 +126,12 @@ export default function UnifiedLogin() {
   }
 
   return (
-    <main className="dark relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0d1117] p-6 font-display text-white">
+    <main className="dark relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0d1117]/80 p-6 font-display text-white">
       <div className="pointer-events-none absolute left-1/2 top-0 h-[36rem] w-[36rem] -translate-x-1/2 animate-spotlight-sweep rounded-full bg-gold-400/10 blur-[100px]" />
       <div className="pointer-events-none absolute -left-24 bottom-10 h-72 w-72 animate-float rounded-full bg-brand-500/15 blur-3xl" />
       <div className="pointer-events-none absolute -right-16 bottom-0 h-80 w-80 animate-float rounded-full bg-gold-400/10 blur-3xl [animation-delay:1.5s]" />
 
-      <div className="cinematic-card relative z-10 w-full max-w-md animate-scale-in p-10">
+      <div className="gold-border-spin cinematic-card relative z-10 w-full max-w-md animate-scale-in p-10">
         <span className="cinematic-emblem mx-auto h-16 w-16">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/brand/logo-icon-512.png" alt="" className="h-10 w-10 rounded-full object-contain" aria-hidden="true" />

@@ -6,6 +6,11 @@ html {
   scroll-behavior: smooth;
 }
 
+body {
+  background-color: #0d1117;
+  min-height: 100svh;
+}
+
 .scrollbar-none {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -329,4 +334,45 @@ select:focus-visible {
 
 .animate-scale-in {
   animation: scaleIn 0.15s ease-out both;
+}
+
+/* =============================================
+   ANIMATED GOLD BORDER — shimmer travels around perimeter
+   ============================================= */
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes border-spin {
+  to { --border-angle: 360deg; }
+}
+
+.gold-border-spin {
+  position: relative;
+}
+
+.gold-border-spin::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--border-angle),
+    rgba(230, 171, 44, 0.08) 0%,
+    rgba(255, 215, 0, 0) 45%,
+    rgba(255, 215, 0, 0.85) 72%,
+    rgba(255, 255, 255, 0.95) 78%,
+    rgba(255, 215, 0, 0.85) 84%,
+    rgba(230, 171, 44, 0.08) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: border-spin 4s linear infinite;
+  pointer-events: none;
+  z-index: 1;
 }
