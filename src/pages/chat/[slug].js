@@ -515,7 +515,7 @@ export default function ChatRoom() {
                 ? 'text-7xl leading-none'
                 : `max-w-[75%] px-4 py-2 shadow-md ${
                     isMine
-                      ? 'bg-amber-950 border border-amber-500/50 text-white'
+                      ? 'bg-amber-900 border border-amber-500/50 text-white'
                       : rank.bubbleClass
                   }`;
 
