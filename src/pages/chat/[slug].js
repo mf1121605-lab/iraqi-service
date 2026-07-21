@@ -500,7 +500,7 @@ export default function ChatRoom() {
   const isBannedFromRoom = bans.some((b) => b.banned_user_id === profile.id);
 
   return (
-    <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-gradient-to-b from-brand-950 via-brand-900 to-gold-900/40 text-white">
+    <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-[#0b141a] text-white">
       <ChatBackgroundLayer variant={chatBg} />
       {chatBg === 'default' && (
         <>
@@ -510,16 +510,17 @@ export default function ChatRoom() {
         </>
       )}
 
-      <header className="relative z-20 flex items-center justify-between gap-2 border-b border-white/10 bg-black/10 px-4 py-4 backdrop-blur sm:px-6">
+      <header className="relative z-20 flex items-center justify-between gap-2 border-b border-white/10 bg-[#202c33]/95 px-3 py-2.5 shadow-lg backdrop-blur sm:px-6">
         <Link
           href="/chat"
-          className="flex shrink-0 items-center gap-1.5 text-sm text-white/70 underline underline-offset-4 transition-colors hover:text-white"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white"
         >
           <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
-          <span className="hidden sm:inline">{t('chat.backToRooms')}</span>
+          <span className="sr-only">{t('chat.backToRooms')}</span>
         </Link>
-        <h1 className="flex min-w-0 flex-1 items-center justify-center gap-1.5 truncate text-center font-display text-lg font-bold">
-          {locale === 'ar' ? room.name_ar : room.name_ckb}
+        <div className="min-w-0 flex-1">
+          <h1 className="flex min-w-0 items-center gap-1.5 truncate font-display text-base font-bold sm:text-lg">
+            {locale === 'ar' ? room.name_ar : room.name_ckb}
           {profile.role === 'founder' && (
             <button
               type="button"
@@ -530,13 +531,15 @@ export default function ChatRoom() {
               <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           )}
-        </h1>
+          </h1>
+          <p className="truncate text-[11px] text-emerald-300/90">{onlineUserIds.size > 0 ? `${onlineUserIds.size} متصل الآن` : 'المحادثة الجماعية'}</p>
+        </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
             aria-label={t('chat.sidebarTitle')}
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white/80 transition-colors hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gold-300"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400"
           >
             <Info className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -547,7 +550,7 @@ export default function ChatRoom() {
                 type="button"
                 onClick={toggleAmbientMute}
                 aria-label={ambientMuted ? t('chat.ambientAudioUnmute') : t('chat.ambientAudioMute')}
-                className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white/80 transition-colors hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gold-300"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400"
               >
                 {ambientMuted ? <VolumeX className="h-4 w-4" aria-hidden="true" /> : <Volume2 className="h-4 w-4" aria-hidden="true" />}
               </button>
@@ -556,8 +559,8 @@ export default function ChatRoom() {
         </div>
       </header>
 
-      <main className="relative z-0 mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col p-4">
-        <div ref={scrollContainerRef} onScroll={handleScroll} className="relative flex-1 overflow-y-auto">
+      <main className="relative z-0 mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-3 py-3 sm:px-5">
+        <div ref={scrollContainerRef} onScroll={handleScroll} className="relative flex-1 overflow-y-auto rounded-2xl px-1" style={{ backgroundImage: 'radial-gradient(rgba(170, 205, 197, 0.055) 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
           <AnimatePresence initial={false}>
             {messages.filter((m) => !m.is_hidden).flatMap((message, index, visible) => {
               const messageReactions = reactions.filter((r) => r.message_id === message.id);
@@ -586,8 +589,8 @@ export default function ChatRoom() {
                 ? 'text-7xl leading-none'
                 : `max-w-[75%] px-3 py-2 shadow-md ${
                     isMine
-                      ? 'bg-amber-600/90 border border-amber-400/30 text-white'
-                      : 'bg-slate-800/90 border border-white/10 text-white'
+                      ? 'bg-[#005c4b] text-white'
+                      : 'bg-[#202c33] text-white'
                   }`;
 
               // Date separator between messages from different days
@@ -713,25 +716,25 @@ export default function ChatRoom() {
             {t('chat.blockedFromSending')}
           </p>
         ) : (
-          <form onSubmit={handleSend} className="mt-3 rounded-xl2 bg-black/50 p-2 shadow-inner-glass backdrop-blur-md">
+          <form onSubmit={handleSend} className="mt-3 rounded-2xl border border-white/[0.06] bg-[#202c33] p-2 shadow-xl">
             {/* Top row: input + send */}
             <div className="flex items-center gap-2">
               <input
                 value={body}
                 onChange={handleBodyChange}
                 placeholder={t('chat.messagePlaceholder')}
-                className="min-w-0 flex-1 bg-transparent px-2 py-2 text-sm text-white placeholder-white/50 focus:outline-none"
+                className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-sm text-white placeholder-white/50 focus:outline-none"
               />
               <button
                 type="submit"
-                className="flex shrink-0 items-center gap-1.5 rounded-xl2 bg-gold-500 px-3 py-2 text-sm font-semibold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.03] hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-900"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#00a884] text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:bg-[#06cf9c] focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#202c33]"
               >
                 <Send className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
-                <span className="hidden sm:inline">{t('chat.sendCta')}</span>
+                <span className="sr-only">{t('chat.sendCta')}</span>
               </button>
             </div>
             {/* Bottom row: attachment tools (always visible) */}
-            <div className="mt-1 flex items-center gap-1 border-t border-white/10 pt-1">
+            <div className="mt-1 flex items-center gap-1 border-t border-white/10 pt-1 text-white/70">
               <AttachmentUploader pathPrefix={`chat/${room.id}`} locale={locale} onUploaded={setPendingAttachment} />
               <VoiceRecorder pathPrefix={`chat/${room.id}`} locale={locale} onUploaded={setPendingAttachment} />
               <StickerPicker onPick={handleSendSticker} locale={locale} roomGifs={gifs} onPickGif={handlePickGif} />

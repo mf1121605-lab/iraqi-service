@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
-import { ArrowRight, ChevronDown, Send } from 'lucide-react';
+import { ArrowRight, ChevronDown, MoreVertical, Phone, Send } from 'lucide-react';
 import AppShell, { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import Avatar from '../../../components/Chat/Avatar';
@@ -157,19 +157,24 @@ export default function DirectMessageThread() {
 
   return (
     <AppShell onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
-      <div className="mx-auto flex h-[calc(100dvh-8rem)] max-w-2xl flex-col">
-        <div className="flex items-center gap-3 border-b border-black/5 pb-4 dark:border-white/10">
+      <div className="mx-auto flex h-[calc(100dvh-8rem)] max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0b141a] shadow-2xl">
+        <div className="flex items-center gap-3 border-b border-white/10 bg-[#202c33] px-3 py-2.5">
           <Link
             href="/chat"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-black/5 dark:text-ink-dark-muted dark:hover:bg-white/10"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10"
           >
             <ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
           </Link>
-          <Avatar avatarKey={otherUser.avatar_key} name={otherUser.given_name} seed={otherUser.id} className="h-9 w-9" />
-          <p className="truncate font-display text-base font-bold">{displayNameFor(otherUser)}</p>
+          <Avatar avatarKey={otherUser.avatar_key} name={otherUser.given_name} seed={otherUser.id} className="h-10 w-10" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-display text-base font-bold text-white">{displayNameFor(otherUser)}</p>
+            <p className="text-xs text-emerald-300">محادثة خاصة</p>
+          </div>
+          <Phone className="h-5 w-5 text-white/65" aria-hidden="true" />
+          <MoreVertical className="h-5 w-5 text-white/65" aria-hidden="true" />
         </div>
 
-        <div className="pt-3">
+        <div className="bg-[#0b141a] px-3 pt-2">
           <VoiceCallWidget
             locale={locale}
             recipientName={otherUser.given_name}
@@ -181,8 +186,8 @@ export default function DirectMessageThread() {
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="relative mt-3 max-h-[calc(100dvh-22rem)] flex-1 overflow-y-auto rounded-2xl bg-[#0d1117] p-3"
-          style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '18px 18px' }}
+          className="relative mt-2 max-h-[calc(100dvh-22rem)] flex-1 overflow-y-auto px-3 py-2"
+          style={{ backgroundImage: 'radial-gradient(rgba(170, 205, 197, 0.055) 1px, transparent 1px)', backgroundSize: '20px 20px' }}
         >
           {messages.length === 0 && <p className="text-center text-sm text-white/50">{t('common.noResults')}</p>}
           <AnimatePresence initial={false}>
@@ -205,7 +210,7 @@ export default function DirectMessageThread() {
                     isSticker
                       ? 'text-7xl leading-none'
                       : `max-w-[75%] px-3 py-2 text-sm ${
-                          isMine ? 'bg-amber-600 text-white shadow-lg' : 'border border-white/[0.08] bg-[#161b22] text-gray-200'
+                          isMine ? 'bg-[#005c4b] text-white shadow-lg' : 'bg-[#202c33] text-gray-100'
                         }`
                   }
                   onDelete={() => handleDeleteMessage(message.id)}
@@ -236,7 +241,7 @@ export default function DirectMessageThread() {
           )}
         </div>
 
-        <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-white/10 pt-3">
+        <form onSubmit={handleSend} className="mx-2 mb-2 flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-[#202c33] p-2">
           <AttachmentUploader pathPrefix={`dm/${threadId}`} onUploaded={setPendingAttachment} locale={locale} />
           <VoiceRecorder pathPrefix={`dm/${threadId}`} onUploaded={setPendingAttachment} locale={locale} />
           <StickerPicker onPick={handleSendSticker} locale={locale} />
@@ -244,12 +249,12 @@ export default function DirectMessageThread() {
             value={body}
             onChange={(event) => setBody(event.target.value)}
             placeholder={t('chat.messagePlaceholder')}
-            className="flex-1 rounded-xl2 border border-white/10 bg-[#161b22] px-3 py-2 text-sm text-white transition-all placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="flex-1 rounded-xl bg-[#2a3942] px-3 py-2.5 text-sm text-white transition-all placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-400"
           />
           <button
             type="submit"
             disabled={sending}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl2 bg-amber-600 text-white transition-colors hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#00a884] text-white transition-colors hover:bg-[#06cf9c] focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:opacity-50"
             aria-label={t('chat.sendCta')}
           >
             <Send className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
