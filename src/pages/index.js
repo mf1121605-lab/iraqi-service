@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
 import { ArrowLeftRight, ArrowUpRight, ExternalLink, Mail, Phone, ShieldCheck, Activity, UserPlus, UserRound } from 'lucide-react';
 import GoogleGlyph from '../components/UI/GoogleGlyph';
@@ -13,8 +14,11 @@ import {
 } from '../utils/i18n';
 import { siteText } from '../utils/useSiteSettings';
 import { MotionLink } from '../components/UI/Motion';
+import { dashboardPathForRole, useSession } from '../utils/useSession';
 
 export default function Home({ siteSettings }) {
+  const router = useRouter();
+  const { session, profile, loading: authLoading } = useSession();
   const [locale, setLocale] = useState(defaultLocale);
   const [step, setStep] = useState('gateway');
 
@@ -32,6 +36,11 @@ export default function Home({ siteSettings }) {
     document.documentElement.lang = locale ?? defaultLocale;
     document.documentElement.classList.add('dark');
   }, [locale]);
+
+  useEffect(() => {
+    if (authLoading || !session || !profile) return;
+    router.replace(dashboardPathForRole(profile.role));
+  }, [authLoading, session, profile, router]);
 
   function selectLanguage(code) {
     setLocale(code);
