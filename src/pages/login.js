@@ -126,14 +126,15 @@ export default function UnifiedLogin() {
   }
 
   return (
-    <main className="dark relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0d1117] p-6 font-display text-white">
+    <main className="dark relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0d1117]/80 p-6 font-display text-white">
       <div className="pointer-events-none absolute left-1/2 top-0 h-[36rem] w-[36rem] -translate-x-1/2 animate-spotlight-sweep rounded-full bg-gold-400/10 blur-[100px]" />
-      <div className="pointer-events-none absolute -left-24 bottom-10 h-72 w-72 animate-float rounded-full bg-brand-500/15 blur-3xl" />
-      <div className="pointer-events-none absolute -right-16 bottom-0 h-80 w-80 animate-float rounded-full bg-gold-400/10 blur-3xl [animation-delay:1.5s]" />
+      <div className="pointer-events-none absolute -left-24 bottom-10 h-72 w-72 animate-float rounded-full bg-brand-500/15 blur-xl [will-change:transform]" />
+      <div className="pointer-events-none absolute -right-16 bottom-0 h-80 w-80 animate-float rounded-full bg-gold-400/10 blur-xl [will-change:transform] [animation-delay:1.5s]" />
 
       <div className="cinematic-card relative z-10 w-full max-w-md animate-scale-in p-10">
         <span className="cinematic-emblem mx-auto h-16 w-16">
-          <Lock className="h-7 w-7 text-gold-300" strokeWidth={2} aria-hidden="true" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/logo-icon-512.png" alt="" className="h-10 w-10 rounded-full object-contain" aria-hidden="true" />
         </span>
         <h1 className="mt-5 text-center font-display text-3xl font-bold tracking-tight">{t('authLogin.title')}</h1>
 
@@ -201,14 +202,23 @@ export default function UnifiedLogin() {
           </motion.button>
         </form>
 
-        <MotionLink
-          href="/"
-          whileTap={{ scale: 0.96 }}
-          className="mt-6 flex items-center justify-center gap-1.5 text-center text-sm text-white/70 underline underline-offset-4 transition-colors hover:text-white"
-        >
-          <ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
-          {t('authCustomer.backCta')}
-        </MotionLink>
+        <div className="mt-6 flex items-center justify-between gap-4 border-t border-white/10 pt-5">
+          <MotionLink
+            href="/"
+            whileTap={{ scale: 0.96 }}
+            className="flex items-center gap-1 text-sm text-white/50 underline underline-offset-4 transition-colors hover:text-white"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
+            {t('authCustomer.backCta')}
+          </MotionLink>
+          <MotionLink
+            href="/customer"
+            whileTap={{ scale: 0.96 }}
+            className="text-sm text-gold-400 underline underline-offset-4 transition-colors hover:text-gold-300"
+          >
+            {t('gateway.newUserCta')} →
+          </MotionLink>
+        </div>
       </div>
     </main>
   );

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
-import { ArrowLeft, ClipboardList, GraduationCap, LayoutGrid, MessageCircle, MessagesSquare, Newspaper, ShoppingBag, Tag, Wrench } from 'lucide-react';
+import { ArrowLeft, ClipboardList, GraduationCap, LayoutGrid, MessageCircle, MessagesSquare, Newspaper, Search, ShoppingBag, Tag, Wrench } from 'lucide-react';
 import AppShell from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import SafeImage from '../../components/UI/SafeImage';
@@ -186,6 +186,7 @@ export default function CustomerDashboard() {
   const navItems = useMemo(
     () => [
       { href: '/customer/dashboard', label: t('customerHub.categoriesTitle'), active: true, icon: LayoutGrid },
+      { href: '/customer/search', label: t('search.navLabel'), icon: Search },
       { href: '/customer/requests', label: t('customerHub.myRequestsCta'), icon: ClipboardList },
       { href: '/customer/tutor', label: t('aiTutor.navCta'), icon: GraduationCap },
       { href: '/chat', label: t('chat.roomsTitle'), icon: MessageCircle },
@@ -230,7 +231,7 @@ export default function CustomerDashboard() {
       ) : (
         <section className="cinematic-card relative overflow-hidden p-5 text-ink-light dark:text-white sm:p-8 md:p-10">
           <div className="iraq-flag-watermark pointer-events-none absolute inset-y-0 start-0 w-1/2 opacity-[0.05]" />
-          <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-3xl" />
+          <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-xl [will-change:transform]" />
           <div className="relative">
             <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl md:text-2xl">{t('customerHub.heroFallbackTitle')}</h2>
             <p className="mt-2 text-sm text-ink-muted dark:text-white/70 sm:text-base">{t('customerHub.heroFallbackSubtitle')}</p>
@@ -323,7 +324,7 @@ export default function CustomerDashboard() {
           {...cardLift}
           className="cinematic-card group relative mt-4 flex items-center gap-3 overflow-hidden p-4 text-ink-light dark:text-white sm:mt-5 sm:gap-4 sm:p-6 md:p-8"
         >
-          <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 animate-float rounded-full bg-gold-300/10 blur-3xl" />
+          <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 animate-float rounded-full bg-gold-300/10 blur-xl [will-change:transform]" />
           <span className="icon-medallion relative h-12 w-12 shrink-0 sm:h-16 sm:w-16 md:h-20 md:w-20" style={{ '--medallion-glow': 'rgba(230,171,44,0.5)' }}>
             <MessagesSquare className="h-6 w-6 sm:h-8 sm:w-8 md:h-9 md:w-9" strokeWidth={2} aria-hidden="true" />
           </span>

@@ -5,9 +5,14 @@ import { bubbleCorners } from '../../utils/chatBundling';
 import { useLongPress } from '../../utils/useLongPress';
 import MessageUnsendMenu from './MessageUnsendMenu';
 
-function formatMsgTime(isoString) {
+function formatMsgTime(isoString, locale) {
   if (!isoString) return '';
-  return new Date(isoString).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit', hour12: true });
+  return new Date(isoString).toLocaleTimeString(locale ?? 'ar', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Baghdad',
+  });
 }
 
 // canDelete: true for the message sender AND for moderators (passed from call
@@ -67,7 +72,7 @@ export default function MessageBubble({
         {children}
         {timestamp && !isSticker && (
           <div className="mt-1 flex items-center justify-end gap-1 text-[10px] leading-none opacity-55 transition-opacity group-hover:opacity-90">
-            <time dateTime={timestamp}>{formatMsgTime(timestamp)}</time>
+            <time dateTime={timestamp}>{formatMsgTime(timestamp, locale)}</time>
             {isMine && <CheckCheck className="h-3.5 w-3.5 text-sky-200" aria-label="تم الإرسال" />}
           </div>
         )}

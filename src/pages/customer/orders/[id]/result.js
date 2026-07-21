@@ -23,8 +23,8 @@ export default function PaymentResult() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-hero p-6 text-white">
-      <div className="pointer-events-none absolute -left-16 top-16 h-56 w-56 animate-float rounded-full bg-white/10 blur-3xl" />
-      <div className="pointer-events-none absolute -right-10 bottom-16 h-72 w-72 animate-float rounded-full bg-gold-400/20 blur-3xl [animation-delay:1.5s]" />
+      <div className="pointer-events-none absolute -left-16 top-16 h-56 w-56 animate-float rounded-full bg-white/10 blur-xl [will-change:transform]" />
+      <div className="pointer-events-none absolute -right-10 bottom-16 h-72 w-72 animate-float rounded-full bg-gold-400/20 blur-xl [will-change:transform] [animation-delay:1.5s]" />
 
       <div className="glass-panel relative w-full max-w-md animate-scale-in rounded-4xl p-10 text-center shadow-elevate-lg">
         <span

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ChevronDown, Lock, Phone, ShieldCheck, User } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Lock, Phone, ShieldCheck } from 'lucide-react';
 import GoogleGlyph from '../../components/UI/GoogleGlyph';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { dashboardPathForRole, useSession } from '../../utils/useSession';
@@ -144,14 +144,15 @@ export default function CustomerAuth() {
   }
 
   return (
-    <main className="dark relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0d1117] p-6 font-display text-white">
+    <main className="dark relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0d1117]/80 p-6 font-display text-white">
       <div className="pointer-events-none absolute left-1/2 top-0 h-[36rem] w-[36rem] -translate-x-1/2 animate-spotlight-sweep rounded-full bg-gold-400/10 blur-[100px]" />
-      <div className="pointer-events-none absolute -left-24 bottom-10 h-72 w-72 animate-float rounded-full bg-brand-500/15 blur-3xl" />
-      <div className="pointer-events-none absolute -right-16 bottom-0 h-80 w-80 animate-float rounded-full bg-gold-400/10 blur-3xl [animation-delay:1.5s]" />
+      <div className="pointer-events-none absolute -left-24 bottom-10 h-72 w-72 animate-float rounded-full bg-brand-500/15 blur-xl [will-change:transform]" />
+      <div className="pointer-events-none absolute -right-16 bottom-0 h-80 w-80 animate-float rounded-full bg-gold-400/10 blur-xl [will-change:transform] [animation-delay:1.5s]" />
 
       <div className="cinematic-card relative z-10 w-full max-w-md animate-scale-in p-10">
         <span className="cinematic-emblem mx-auto h-16 w-16">
-          <User className="h-7 w-7 text-gold-300" strokeWidth={2} aria-hidden="true" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/logo-icon-512.png" alt="" className="h-10 w-10 rounded-full object-contain" aria-hidden="true" />
         </span>
         <div className="mt-5 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-gold-300/80">
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />

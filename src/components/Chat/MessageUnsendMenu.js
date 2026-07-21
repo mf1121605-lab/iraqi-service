@@ -1,10 +1,11 @@
-import { Pin, PinOff, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { translate } from '../../utils/i18n';
 
 // Renders as an absolutely-positioned panel to the SIDE of the bubble (not below
 // it) so it never overlaps the message below. A fixed backdrop covers the rest
 // of the screen so a tap anywhere outside dismisses the menu on mobile.
-export default function MessageUnsendMenu({ open, onClose, onDelete, onPin, isMine, canPin, isPinned, locale }) {
+// Note: onPin/canPin/isPinned props are intentionally removed — pin feature removed.
+export default function MessageUnsendMenu({ open, onClose, onDelete, isMine, locale }) {
   const t = (path) => translate(locale, path);
   if (!open) return null;
 
@@ -26,19 +27,6 @@ export default function MessageUnsendMenu({ open, onClose, onDelete, onPin, isMi
           isMine ? 'end-full me-1' : 'start-full ms-1'
         }`}
       >
-        {canPin && (
-          <button
-            type="button"
-            onClick={() => { onPin(); onClose(); }}
-            className="flex min-h-[44px] w-full items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm text-blue-300 transition-colors hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          >
-            {isPinned ? (
-              <><PinOff className="h-4 w-4" aria-hidden="true" />{t('chat.unpinMessageCta')}</>
-            ) : (
-              <><Pin className="h-4 w-4" aria-hidden="true" />{t('chat.pinMessageCta')}</>
-            )}
-          </button>
-        )}
         <button
           type="button"
           onClick={() => { onDelete(); onClose(); }}

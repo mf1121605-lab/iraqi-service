@@ -117,7 +117,7 @@ export default function AnnouncementSlider({ banners, locale, canEdit, onEdit })
           )}
 
           <div className="iraq-flag-watermark pointer-events-none absolute inset-y-0 start-0 w-1/2 opacity-[0.05]" />
-          <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-3xl" />
+          <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-xl [will-change:transform]" />
 
           {canEdit && onEdit && (
             <button

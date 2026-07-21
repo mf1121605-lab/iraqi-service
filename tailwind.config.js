@@ -236,6 +236,21 @@ module.exports = {
           backgroundImage:
             'linear-gradient(90deg, transparent 0%, rgba(244,217,141,0.9) 50%, transparent 100%)',
         },
+        '.cinematic-card::after': {
+          content: '""',
+          position: 'absolute',
+          inset: 0,
+          borderRadius: 'inherit',
+          padding: '1.5px',
+          background: 'conic-gradient(from var(--border-angle), rgba(230,171,44,0.06) 0%, rgba(255,215,0,0) 45%, rgba(255,215,0,0.80) 72%, rgba(255,255,255,0.90) 78%, rgba(255,215,0,0.80) 84%, rgba(230,171,44,0.06) 100%)',
+          WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+          mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+          WebkitMaskComposite: 'xor',
+          maskComposite: 'exclude',
+          animation: 'border-spin 4s linear infinite',
+          pointerEvents: 'none',
+          zIndex: 1,
+        },
         '.cinematic-emblem': {
           position: 'relative',
           display: 'flex',
@@ -375,13 +390,15 @@ module.exports = {
           position: 'absolute',
           inset: 0,
           borderRadius: 'inherit',
+          padding: '1.5px',
+          background: 'conic-gradient(from var(--border-angle), rgba(230,171,44,0.06) 0%, rgba(255,215,0,0) 45%, rgba(255,215,0,0.80) 72%, rgba(255,255,255,0.90) 78%, rgba(255,215,0,0.80) 84%, rgba(230,171,44,0.06) 100%)',
+          WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+          mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+          WebkitMaskComposite: 'xor',
+          maskComposite: 'exclude',
+          animation: 'border-spin 4s linear infinite',
           pointerEvents: 'none',
-          backgroundRepeat: 'no-repeat',
-          backgroundSize: '9px 9px',
-          backgroundImage: Array(4)
-            .fill('radial-gradient(circle at 3px 3px, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.08) 55%, transparent 70%)')
-            .join(', '),
-          backgroundPosition: '14px 14px, calc(100% - 14px) 14px, 14px calc(100% - 14px), calc(100% - 14px) calc(100% - 14px)',
+          zIndex: 1,
         },
         '.metal-panel:hover': {
           transform: 'translateY(-2px)',

@@ -1,4 +1,4 @@
-import { BookOpen, Calculator, ClipboardList, FlaskConical, GraduationCap, Languages, LayoutGrid, Moon, Sparkles } from 'lucide-react';
+import { BookOpen, Calculator, ClipboardList, FlaskConical, GraduationCap, Languages, LayoutGrid, Moon, Search, Sparkles } from 'lucide-react';
 import AppShell, { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { MotionLink, cardLift } from '../../../components/UI/Motion';
@@ -30,6 +30,7 @@ export default function TutorSubjects() {
 
   const navItems = [
     { href: '/customer/dashboard', label: t('customerHub.categoriesTitle'), icon: LayoutGrid },
+    { href: '/customer/search', label: t('search.navLabel'), icon: Search },
     { href: '/customer/requests', label: t('customerHub.myRequestsCta'), icon: ClipboardList },
     { href: '/customer/tutor', label: t('aiTutor.navCta'), active: true, icon: GraduationCap },
   ];
