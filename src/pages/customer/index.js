@@ -144,7 +144,7 @@ export default function CustomerAuth() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-6 font-display text-white">
+    <main className="dark relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0d1117] p-6 font-display text-white">
       <div className="pointer-events-none absolute left-1/2 top-0 h-[36rem] w-[36rem] -translate-x-1/2 animate-spotlight-sweep rounded-full bg-gold-400/10 blur-[100px]" />
       <div className="pointer-events-none absolute -left-24 bottom-10 h-72 w-72 animate-float rounded-full bg-brand-500/15 blur-3xl" />
       <div className="pointer-events-none absolute -right-16 bottom-0 h-80 w-80 animate-float rounded-full bg-gold-400/10 blur-3xl [animation-delay:1.5s]" />
@@ -305,7 +305,7 @@ export default function CustomerAuth() {
             type="button"
             onClick={() => handleOAuthLogin('google')}
             {...buttonTap}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 font-semibold text-brand-950 shadow-[0_8px_24px_-8px_rgba(255,255,255,0.4)] transition-shadow duration-300 hover:shadow-[0_12px_30px_-8px_rgba(255,255,255,0.55)] focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-brand-900"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-500/30 bg-[#161b22] px-4 py-3 font-semibold text-white transition-all duration-300 hover:border-amber-400/50 hover:bg-[#21262d] focus:outline-none focus:ring-2 focus:ring-amber-500/50"
           >
             <GoogleGlyph className="h-4 w-4" />
             {t('authCustomer.continueWithGoogle')}
