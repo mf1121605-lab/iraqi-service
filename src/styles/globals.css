@@ -259,3 +259,28 @@ select:focus-visible {
   0%, 100% { box-shadow: 0 0 12px rgba(245, 158, 11, 0.15); }
   50% { box-shadow: 0 0 24px rgba(245, 158, 11, 0.35); }
 }
+
+/* =============================================
+   LEGENDARY MEMBER — animated fire gradient bubble
+   ============================================= */
+@keyframes fieryShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.bubble-legendary {
+  background: linear-gradient(135deg, #7c2d12, #b91c1c, #c2410c, #d97706, #b91c1c, #7c2d12);
+  background-size: 300% 300%;
+  animation: fieryShift 3s ease infinite;
+  border: 1px solid rgba(251, 146, 60, 0.55);
+  box-shadow: 0 0 18px rgba(234, 88, 12, 0.35), 0 0 6px rgba(251, 146, 60, 0.2);
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.15s ease-out both;
+}

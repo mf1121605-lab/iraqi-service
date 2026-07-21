@@ -21,6 +21,7 @@ import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { translate } from '../../utils/i18n';
 import { isBundled } from '../../utils/chatBundling';
+import { getRank } from '../../utils/chatRanks';
 
 const TYPING_TIMEOUT_MS = 3000;
 const TYPING_BROADCAST_INTERVAL_MS = 2000;
@@ -265,16 +266,43 @@ export default function ChatRoom() {
   }
 
   async function handleDeleteMessage(message) {
-    const { error } = await supabaseClient.from('chat_messages').delete().eq('id', message.id);
-    if (error) setSendError(error.message || t('common.errorGeneric'));
+    // Optimistic: remove from local state immediately so the sender sees it
+    // vanish at once. Then soft-hide via UPDATE (works with existing RLS for
+    // message senders) — other clients see the UPDATE realtime event and the
+    // message also disappears for them since it's filtered by !is_hidden.
+    setMessages((current) => current.filter((m) => m.id !== message.id));
+    const { error } = await supabaseClient
+      .from('chat_messages')
+      .update({ is_hidden: true })
+      .eq('id', message.id);
+    if (error) {
+      setSendError(error.message || t('common.errorGeneric'));
+      // Restore on failure
+      setMessages((current) =>
+        [...current, message].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      );
+    }
   }
 
-  // Moderator path: soft-hide so other clients see the message disappear via
-  // the UPDATE realtime event. The caller filters is_hidden from the view so
-  // from every user's perspective the message is simply gone — no placeholder.
   async function handleModeratorDelete(message) {
+    setMessages((current) => current.filter((m) => m.id !== message.id));
     const { error } = await supabaseClient.from('chat_messages').update({ is_hidden: true }).eq('id', message.id);
+    if (error) {
+      setSendError(error.message || t('common.errorGeneric'));
+      setMessages((current) =>
+        [...current, message].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      );
+    }
+  }
+
+  async function handleAssignModerator(memberId) {
+    const newModId = room.moderator_id === memberId ? null : memberId;
+    const { error } = await supabaseClient
+      .from('chat_rooms')
+      .update({ moderator_id: newModId })
+      .eq('id', room.id);
     if (error) setSendError(error.message || t('common.errorGeneric'));
+    // room.moderator_id will update via the existing UPDATE realtime listener
   }
 
   async function toggleReaction(message, emoji) {
@@ -349,6 +377,16 @@ export default function ChatRoom() {
     if (ambientAudioRef.current) ambientAudioRef.current.muted = !ambientMuted;
     setAmbientMuted((current) => !current);
   }
+
+  // Message count per sender — used to compute member rank for bubble styling.
+  // Counts visible (non-hidden) messages only. Falls back to 0 for unseen users.
+  const messageCounts = useMemo(() => {
+    const counts = {};
+    messages.forEach((m) => {
+      if (!m.is_hidden) counts[m.sender_id] = (counts[m.sender_id] || 0) + 1;
+    });
+    return counts;
+  }, [messages]);
 
   const members = useMemo(() => {
     const map = new Map();
@@ -465,12 +503,22 @@ export default function ChatRoom() {
               const isFirst = !bundled;
               const isLast = !isBundled(visible[index + 1], message);
               const isSticker = message.message_type === 'sticker';
-              // Resolve sender display name — never show bare 'مستخدم'
               const senderName =
                 message.sender_display_name && message.sender_display_name !== 'مستخدم'
                   ? message.sender_display_name
                   : 'عضو';
+              const rank = !isMine ? getRank(messageCounts[message.sender_id] || 0) : null;
               const canDelete = isMine || canModerate(message);
+
+              // Bubble background: sender = dark brown + gold border, others = rank-based
+              const bubbleCls = isSticker
+                ? 'text-7xl leading-none'
+                : `max-w-[75%] px-4 py-2 shadow-md ${
+                    isMine
+                      ? 'bg-amber-950 border border-amber-500/50 text-white'
+                      : rank.bubbleClass
+                  }`;
+
               const avatarNode = bundled ? (
                 <div className="h-8 w-8 shrink-0" aria-hidden="true" />
               ) : (
@@ -482,6 +530,7 @@ export default function ChatRoom() {
                       name: senderName,
                       avatarKey: message.sender_avatar_key ?? null,
                       role: message.sender_role ?? null,
+                      rank,
                     })
                   }
                   className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-gold-300"
@@ -501,9 +550,7 @@ export default function ChatRoom() {
                   avatar={avatarNode}
                   timestamp={message.created_at}
                   canDelete={canDelete}
-                  bubbleClassName={
-                    isSticker ? 'text-7xl leading-none' : `max-w-[75%] px-4 py-2 shadow-glass-sm ${isMine ? 'bg-brand-600' : 'bg-white/10'}`
-                  }
+                  bubbleClassName={bubbleCls}
                   onDelete={() => (isMine ? handleDeleteMessage(message) : handleModeratorDelete(message))}
                   locale={locale}
                 >
@@ -511,7 +558,16 @@ export default function ChatRoom() {
                     message.body
                   ) : (
                     <>
-                      {!bundled && <p className="text-xs font-semibold text-white/70">{senderName}</p>}
+                      {!bundled && (
+                        <p className={`flex flex-wrap items-center gap-1.5 text-xs font-semibold ${isMine ? 'text-amber-300/80' : rank.nameClass}`}>
+                          {senderName}
+                          {!isMine && rank.id !== 'new' && (
+                            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${rank.badgeClass}`}>
+                              {rank.emoji} {rank.label[locale] || rank.label.ar}
+                            </span>
+                          )}
+                        </p>
+                      )}
                       {message.body && <p className="text-sm">{message.body}</p>}
                       {message.attachment_url && (
                         <MessageAttachment
@@ -598,6 +654,9 @@ export default function ChatRoom() {
             onInviteMember={inviteMember}
             onClose={() => setSelectedMember(null)}
             locale={locale}
+            isFounder={profile.role === 'founder'}
+            moderatorId={room.moderator_id}
+            onAssignModerator={handleAssignModerator}
           />
         )}
       </AnimatePresence>
