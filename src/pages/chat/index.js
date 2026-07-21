@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MessageCircle, MessageCircleMore, MessagesSquare, Pin } from 'lucide-react';
+import { MessageCircle, MessageCircleMore, MessagesSquare, Pin, Search } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Avatar from '../../components/Chat/Avatar';
@@ -20,6 +20,7 @@ export default function ChatRooms() {
   const t = (path) => translate(locale, path);
   const [rooms, setRooms] = useState(null);
   const [dmThreads, setDmThreads] = useState([]);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     if (!profile) return undefined;
@@ -80,14 +81,21 @@ export default function ChatRooms() {
   }, [profile]);
 
   const pinnedRoomIds = profile?.pinned_room_ids ?? [];
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const matchesQuery = (name) => !normalizedQuery || name?.toLocaleLowerCase().includes(normalizedQuery);
   const { pinnedRooms, otherRooms } = useMemo(() => {
-    const all = rooms ?? [];
+    const all = (rooms ?? []).filter((room) => matchesQuery(locale === 'ar' ? room.name_ar : room.name_ckb));
     return {
       pinnedRooms: all.filter((room) => pinnedRoomIds.includes(room.id)),
       otherRooms: all.filter((room) => !pinnedRoomIds.includes(room.id)),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rooms, pinnedRoomIds.join(',')]);
+  }, [rooms, pinnedRoomIds.join(','), normalizedQuery, locale]);
+
+  const visibleDmThreads = useMemo(
+    () => dmThreads.filter((thread) => matchesQuery(displayNameFor(thread.otherUser))),
+    [dmThreads, normalizedQuery]
+  );
 
   async function togglePin(event, roomId) {
     event.preventDefault();
@@ -112,12 +120,15 @@ export default function ChatRooms() {
         href={`/chat/${room.slug}`}
         style={{ animationDelay: `${index * 60}ms` }}
         {...cardLift}
-        className="glass-panel-dark group relative flex animate-slide-up items-center gap-3 rounded-2xl p-6 font-semibold text-white shadow-soft transition-colors duration-300 hover:border-gold-400/30 hover:shadow-elevate"
+        className="group relative flex animate-slide-up items-center gap-3 rounded-2xl border border-white/[0.08] bg-[#202c33] p-3.5 text-white shadow-soft transition-all duration-300 hover:bg-[#2a3942] hover:shadow-elevate"
       >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold-400/10 text-gold-300 ring-1 ring-inset ring-gold-400/25 transition-transform duration-300 group-hover:scale-110">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#005c4b] text-emerald-100 ring-1 ring-inset ring-emerald-300/20 transition-transform duration-300 group-hover:scale-105">
           <MessageCircle className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
         </span>
-        <span className="min-w-0 flex-1 truncate">{locale === 'ar' ? room.name_ar : room.name_ckb}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-bold">{locale === 'ar' ? room.name_ar : room.name_ckb}</span>
+          <span className="mt-0.5 block truncate text-xs font-normal text-white/50">مجموعة خدمات العراق</span>
+        </span>
         <button
           type="button"
           onClick={(event) => togglePin(event, room.id)}
@@ -133,10 +144,18 @@ export default function ChatRooms() {
 
   return (
     <AppShell onSignOut={signOut} userId={profile.id}>
-      <h2 className="section-title-cinematic font-display text-xl font-bold">
-        <MessagesSquare className="h-5 w-5 text-gold-400" aria-hidden="true" />
-        {t('chat.roomsTitle')}
-      </h2>
+      <section className="mx-auto max-w-4xl rounded-3xl border border-white/[0.08] bg-[#111b21] p-4 text-white shadow-2xl sm:p-6">
+      <div className="flex items-center gap-3">
+        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#00a884] text-white"><MessagesSquare className="h-5 w-5" aria-hidden="true" /></span>
+        <div>
+          <h2 className="font-display text-xl font-bold">{t('chat.roomsTitle')}</h2>
+          <p className="text-xs text-white/55">ابدأ محادثة أو تابع آخر الرسائل</p>
+        </div>
+      </div>
+      <label className="mt-5 flex items-center gap-2 rounded-xl bg-[#202c33] px-3 py-2.5 text-white/55 focus-within:ring-2 focus-within:ring-emerald-400">
+        <Search className="h-4 w-4" aria-hidden="true" />
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث في المحادثات" className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/45 focus:outline-none" />
+      </label>
       {rooms === null ? (
         <LoadingSpinner inline locale={locale} className="mt-4" />
       ) : (
@@ -147,14 +166,14 @@ export default function ChatRooms() {
                 <Pin className="h-3.5 w-3.5 fill-gold-300 text-gold-300" aria-hidden="true" />
                 {t('chat.pinnedRoomsTitle')}
               </h3>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 {pinnedRooms.map((room, index) => (
                   <RoomCard key={room.id} room={room} index={index} />
                 ))}
               </div>
             </div>
           )}
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {otherRooms.map((room, index) => (
               <RoomCard key={room.id} room={room} index={index} />
             ))}
@@ -166,16 +185,16 @@ export default function ChatRooms() {
                 <MessageCircleMore className="h-3.5 w-3.5 text-gold-300" aria-hidden="true" />
                 {t('chat.dmThreadsTitle')}
               </h3>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {dmThreads.map((thread) => (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {visibleDmThreads.map((thread) => (
                   <MotionLink
                     key={thread.id}
                     href={`/chat/dm/${thread.id}`}
                     {...cardLift}
-                    className="glass-panel-dark flex items-center gap-3 rounded-2xl p-6 font-semibold text-white shadow-soft transition-colors duration-300 hover:border-gold-400/30 hover:shadow-elevate"
+                    className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-[#202c33] p-3.5 text-white shadow-soft transition-colors duration-300 hover:bg-[#2a3942] hover:shadow-elevate"
                   >
                     <Avatar avatarKey={thread.otherUser?.avatar_key} name={thread.otherUser?.given_name} seed={thread.otherUser?.id} className="h-10 w-10" />
-                    <span className="min-w-0 flex-1 truncate">{displayNameFor(thread.otherUser)}</span>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold">{displayNameFor(thread.otherUser)}</span><span className="block truncate text-xs font-normal text-white/50">محادثة خاصة</span></span>
                   </MotionLink>
                 ))}
               </div>
@@ -183,6 +202,7 @@ export default function ChatRooms() {
           )}
         </>
       )}
+      </section>
     </AppShell>
   );
 }

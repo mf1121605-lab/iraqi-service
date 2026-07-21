@@ -43,7 +43,9 @@ export default function VoiceMessagePlayer({ src, isMine, locale }) {
 
   function handleLoadedMetadata(event) {
     const audio = event.currentTarget;
-    if (!Number.isFinite(audio.duration) || audio.duration > 7200) {
+    // Some browsers report 0, others Infinity for MediaRecorder WebM files.
+    // Trigger the seek-to-end trick for any non-usable value.
+    if (!Number.isFinite(audio.duration) || audio.duration <= 0 || audio.duration > 7200) {
       seekingDurationRef.current = true;
       audio.currentTime = 1e9;
     } else {
@@ -55,7 +57,12 @@ export default function VoiceMessagePlayer({ src, isMine, locale }) {
     if (!seekingDurationRef.current) return;
     seekingDurationRef.current = false;
     const audio = event.currentTarget;
-    setDuration(audio.duration);
+    // Try three sources: corrected duration, clamped seek position, buffered end.
+    let dur = 0;
+    if (Number.isFinite(audio.duration) && audio.duration > 0) dur = audio.duration;
+    else if (audio.currentTime > 0) dur = audio.currentTime;
+    else if (audio.buffered && audio.buffered.length > 0) dur = audio.buffered.end(audio.buffered.length - 1);
+    if (dur > 0) setDuration(dur);
     audio.currentTime = 0;
   }
 
@@ -74,7 +81,7 @@ export default function VoiceMessagePlayer({ src, isMine, locale }) {
       <audio
         ref={audioRef}
         src={src}
-        preload="metadata"
+        preload="auto"
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onEnded={() => {

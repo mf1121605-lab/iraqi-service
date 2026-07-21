@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
@@ -29,6 +29,16 @@ const TYPING_BROADCAST_INTERVAL_MS = 2000;
 // Rank IDs whose bubble background is light-colored: the ReactionBar's SmilePlus
 // button must use dark colors to stay visible against those backgrounds.
 const LIGHT_BUBBLE_RANKS = new Set(['new', 'active']);
+
+function formatMsgDate(isoString, locale) {
+  if (!isoString) return '';
+  return new Date(isoString).toLocaleDateString(locale === 'ar' ? 'ar-IQ' : 'ku', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
 
 function displayNameFor(profile) {
   if (!profile) return '';
@@ -275,6 +285,44 @@ export default function ChatRoom() {
     if (error) setSendError(error.message || t('common.errorGeneric'));
   }
 
+  async function handlePickGif(gifOrFile) {
+    // If it's a File (upload from picker), upload first then send
+    if (gifOrFile instanceof File) {
+      const { safeSlug } = await import('../../utils/safeStorageName');
+      const path = `chat/${room.id}/${crypto.randomUUID()}-${safeSlug(gifOrFile.name)}`;
+      const { error: uploadError } = await supabaseClient.storage.from('site-assets').upload(path, gifOrFile);
+      if (uploadError) { setSendError(uploadError.message); return; }
+      const { data } = supabaseClient.storage.from('site-assets').getPublicUrl(path);
+      const { error } = await supabaseClient.from('chat_messages').insert({
+        room_id: room.id,
+        sender_id: profile.id,
+        sender_display_name: displayNameFor(profile),
+        sender_avatar_key: profile.avatar_key ?? null,
+        sender_role: profile.role,
+        attachment_url: data.publicUrl,
+        attachment_name: gifOrFile.name,
+        attachment_size: gifOrFile.size,
+        attachment_mime: 'image/gif',
+      });
+      if (error) setSendError(error.message || t('common.errorGeneric'));
+      return;
+    }
+    // If it's an existing gif message object — resend it
+    const gif = gifOrFile;
+    const { error } = await supabaseClient.from('chat_messages').insert({
+      room_id: room.id,
+      sender_id: profile.id,
+      sender_display_name: displayNameFor(profile),
+      sender_avatar_key: profile.avatar_key ?? null,
+      sender_role: profile.role,
+      attachment_url: gif.attachment_url,
+      attachment_name: gif.attachment_name,
+      attachment_size: gif.attachment_size,
+      attachment_mime: 'image/gif',
+    });
+    if (error) setSendError(error.message || t('common.errorGeneric'));
+  }
+
   async function handleDeleteMessage(message) {
     setMessages((current) => current.filter((m) => m.id !== message.id));
     const { error } = await supabaseClient.from('chat_messages').update({ is_hidden: true }).eq('id', message.id);
@@ -452,7 +500,7 @@ export default function ChatRoom() {
   const isBannedFromRoom = bans.some((b) => b.banned_user_id === profile.id);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-brand-950 via-brand-900 to-gold-900/40 text-white">
+    <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-[#0b141a] text-white">
       <ChatBackgroundLayer variant={chatBg} />
       {chatBg === 'default' && (
         <>
@@ -462,16 +510,17 @@ export default function ChatRoom() {
         </>
       )}
 
-      <header className="relative z-20 flex items-center justify-between gap-2 border-b border-white/10 bg-black/10 px-4 py-4 backdrop-blur sm:px-6">
+      <header className="relative z-20 flex items-center justify-between gap-2 border-b border-white/10 bg-[#202c33]/95 px-3 py-2.5 shadow-lg backdrop-blur sm:px-6">
         <Link
           href="/chat"
-          className="flex shrink-0 items-center gap-1.5 text-sm text-white/70 underline underline-offset-4 transition-colors hover:text-white"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white"
         >
           <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
-          <span className="hidden sm:inline">{t('chat.backToRooms')}</span>
+          <span className="sr-only">{t('chat.backToRooms')}</span>
         </Link>
-        <h1 className="flex min-w-0 flex-1 items-center justify-center gap-1.5 truncate text-center font-display text-lg font-bold">
-          {locale === 'ar' ? room.name_ar : room.name_ckb}
+        <div className="min-w-0 flex-1">
+          <h1 className="flex min-w-0 items-center gap-1.5 truncate font-display text-base font-bold sm:text-lg">
+            {locale === 'ar' ? room.name_ar : room.name_ckb}
           {profile.role === 'founder' && (
             <button
               type="button"
@@ -482,13 +531,15 @@ export default function ChatRoom() {
               <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           )}
-        </h1>
+          </h1>
+          <p className="truncate text-[11px] text-emerald-300/90">{onlineUserIds.size > 0 ? `${onlineUserIds.size} متصل الآن` : 'المحادثة الجماعية'}</p>
+        </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
             aria-label={t('chat.sidebarTitle')}
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white/80 transition-colors hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gold-300"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400"
           >
             <Info className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -499,7 +550,7 @@ export default function ChatRoom() {
                 type="button"
                 onClick={toggleAmbientMute}
                 aria-label={ambientMuted ? t('chat.ambientAudioUnmute') : t('chat.ambientAudioMute')}
-                className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white/80 transition-colors hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gold-300"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400"
               >
                 {ambientMuted ? <VolumeX className="h-4 w-4" aria-hidden="true" /> : <Volume2 className="h-4 w-4" aria-hidden="true" />}
               </button>
@@ -508,10 +559,10 @@ export default function ChatRoom() {
         </div>
       </header>
 
-      <main className="relative z-0 mx-auto flex h-[calc(100dvh-136px)] max-w-3xl flex-col p-4 sm:h-[calc(100dvh-130px)]">
-        <div ref={scrollContainerRef} onScroll={handleScroll} className="relative flex-1 overflow-y-auto">
+      <main className="relative z-0 mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-3 py-3 sm:px-5">
+        <div ref={scrollContainerRef} onScroll={handleScroll} className="relative flex-1 overflow-y-auto rounded-2xl px-1" style={{ backgroundImage: 'radial-gradient(rgba(170, 205, 197, 0.055) 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
           <AnimatePresence initial={false}>
-            {messages.filter((m) => !m.is_hidden).map((message, index, visible) => {
+            {messages.filter((m) => !m.is_hidden).flatMap((message, index, visible) => {
               const messageReactions = reactions.filter((r) => r.message_id === message.id);
               const isMine = message.sender_id === profile.id;
               const bundled = isBundled(message, visible[index - 1]);
@@ -519,26 +570,34 @@ export default function ChatRoom() {
               const isLast = !isBundled(visible[index + 1], message);
               const isSticker = message.message_type === 'sticker';
 
-              // For isMine: use the current profile's live name.
-              // For others: use what's stored, falling back to a generic label.
-              const senderName = isMine
-                ? displayNameFor(profile)
-                : (() => {
-                    const stored = message.sender_display_name;
-                    return stored && stored !== 'عضو' && stored !== 'مستخدم' ? stored : 'عضو';
-                  })();
+              // Always use the snapshot name stored in the message row so that
+              // a later profile-name or avatar change doesn't rewrite old messages.
+              const stored = message.sender_display_name;
+              const senderName =
+                stored && stored !== 'عضو' && stored !== 'مستخدم'
+                  ? stored
+                  : isMine
+                  ? displayNameFor(profile)
+                  : 'عضو';
 
               const rank = !isMine ? getRank(messageCounts[message.sender_id] || 0) : null;
               const canDelete = isMine || canModerate(message);
               const isDarkBubble = isMine || (rank && !LIGHT_BUBBLE_RANKS.has(rank.id));
 
+              // Mine = warm amber, theirs = frosted dark — always readable on the dark background.
               const bubbleCls = isSticker
                 ? 'text-7xl leading-none'
                 : `max-w-[75%] px-3 py-2 shadow-md ${
                     isMine
-                      ? 'bg-amber-900 border border-amber-500/50 text-white'
-                      : rank.bubbleClass
+                      ? 'bg-[#005c4b] text-white'
+                      : 'bg-[#202c33] text-white'
                   }`;
+
+              // Date separator between messages from different days
+              const prevMessage = visible[index - 1];
+              const showDateSep =
+                !prevMessage ||
+                new Date(message.created_at).toDateString() !== new Date(prevMessage.created_at).toDateString();
 
               const avatarNode = bundled ? (
                 <div className="h-8 w-8 shrink-0" aria-hidden="true" />
@@ -561,7 +620,7 @@ export default function ChatRoom() {
                   <Avatar avatarKey={message.sender_avatar_key} name={senderName} seed={message.sender_id} className="h-8 w-8" />
                 </button>
               );
-              return (
+              const bubble = (
                 <MessageBubble
                   key={message.id}
                   isMine={isMine}
@@ -615,6 +674,21 @@ export default function ChatRoom() {
                   )}
                 </MessageBubble>
               );
+
+              const items = [];
+              if (showDateSep) {
+                items.push(
+                  <div key={`date-${message.id}`} className="my-3 flex items-center gap-3 px-2">
+                    <div className="h-px flex-1 bg-white/10" />
+                    <span className="shrink-0 rounded-full bg-white/10 px-3 py-0.5 text-[11px] text-white/40">
+                      {formatMsgDate(message.created_at, locale)}
+                    </span>
+                    <div className="h-px flex-1 bg-white/10" />
+                  </div>
+                );
+              }
+              items.push(bubble);
+              return items;
             })}
           </AnimatePresence>
           <div ref={listEndRef} />
@@ -642,28 +716,28 @@ export default function ChatRoom() {
             {t('chat.blockedFromSending')}
           </p>
         ) : (
-          <form onSubmit={handleSend} className="mt-3 rounded-xl2 bg-white/10 p-2 shadow-inner-glass">
+          <form onSubmit={handleSend} className="mt-3 rounded-2xl border border-white/[0.06] bg-[#202c33] p-2 shadow-xl">
             {/* Top row: input + send */}
             <div className="flex items-center gap-2">
               <input
                 value={body}
                 onChange={handleBodyChange}
                 placeholder={t('chat.messagePlaceholder')}
-                className="min-w-0 flex-1 bg-transparent px-2 py-2 text-sm text-white placeholder-white/50 focus:outline-none"
+                className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-sm text-white placeholder-white/50 focus:outline-none"
               />
               <button
                 type="submit"
-                className="flex shrink-0 items-center gap-1.5 rounded-xl2 bg-gold-500 px-3 py-2 text-sm font-semibold text-brand-950 shadow-glow transition-all duration-300 hover:scale-[1.03] hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-900"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#00a884] text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:bg-[#06cf9c] focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#202c33]"
               >
                 <Send className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
-                <span className="hidden sm:inline">{t('chat.sendCta')}</span>
+                <span className="sr-only">{t('chat.sendCta')}</span>
               </button>
             </div>
             {/* Bottom row: attachment tools (always visible) */}
-            <div className="mt-1 flex items-center gap-1 border-t border-white/10 pt-1">
+            <div className="mt-1 flex items-center gap-1 border-t border-white/10 pt-1 text-white/70">
               <AttachmentUploader pathPrefix={`chat/${room.id}`} locale={locale} onUploaded={setPendingAttachment} />
               <VoiceRecorder pathPrefix={`chat/${room.id}`} locale={locale} onUploaded={setPendingAttachment} />
-              <StickerPicker onPick={handleSendSticker} locale={locale} />
+              <StickerPicker onPick={handleSendSticker} locale={locale} roomGifs={gifs} onPickGif={handlePickGif} />
             </div>
           </form>
         )}
