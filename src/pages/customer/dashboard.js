@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
-import { ArrowLeft, ClipboardList, GraduationCap, LayoutGrid, MessageCircle, MessagesSquare, Newspaper, ShoppingBag, Tag, Wrench } from 'lucide-react';
+import { ArrowLeft, ClipboardList, GraduationCap, LayoutGrid, MessageCircle, MessagesSquare, Newspaper, Search, ShoppingBag, Tag, Wrench } from 'lucide-react';
 import AppShell from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import SafeImage from '../../components/UI/SafeImage';
@@ -186,6 +186,7 @@ export default function CustomerDashboard() {
   const navItems = useMemo(
     () => [
       { href: '/customer/dashboard', label: t('customerHub.categoriesTitle'), active: true, icon: LayoutGrid },
+      { href: '/customer/search', label: t('search.navLabel'), icon: Search },
       { href: '/customer/requests', label: t('customerHub.myRequestsCta'), icon: ClipboardList },
       { href: '/customer/tutor', label: t('aiTutor.navCta'), icon: GraduationCap },
       { href: '/chat', label: t('chat.roomsTitle'), icon: MessageCircle },

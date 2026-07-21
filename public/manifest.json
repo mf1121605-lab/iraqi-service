@@ -1,0 +1,40 @@
+{
+  "name": "منصة الخدمات العراقية",
+  "short_name": "خدماتي",
+  "description": "بوابتك لتسهيل معاملاتك مع الجهات العراقية",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1117",
+  "theme_color": "#e6ab2c",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/brand/logo-icon-512.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/brand/logo-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "طلب جديد",
+      "short_name": "طلب",
+      "url": "/customer/requests/new",
+      "icons": [{ "src": "/brand/logo-icon-512.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "طلباتي",
+      "short_name": "طلباتي",
+      "url": "/customer/requests",
+      "icons": [{ "src": "/brand/logo-icon-512.png", "sizes": "96x96" }]
+    }
+  ]
+}

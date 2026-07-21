@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, CheckCheck, ClipboardList, GraduationCap, Inbox, LayoutGrid, Send, Star } from 'lucide-react';
+import { AlertTriangle, Check, CheckCheck, CheckCircle2, Circle, ClipboardList, GraduationCap, Inbox, LayoutGrid, Search, Send, Star } from 'lucide-react';
 import AppShell, { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import StatusBadge from '../../../components/UI/StatusBadge';
@@ -98,6 +99,11 @@ export default function CustomerRequestDetail() {
   const [employee, setEmployee] = useState(null);
   const [messages, setMessages] = useState([]);
   const [rating, setRating] = useState(null);
+  const [statusHistory, setStatusHistory] = useState([]);
+  const [disputeOpen, setDisputeOpen] = useState(false);
+  const [disputeReason, setDisputeReason] = useState('');
+  const [disputeSaving, setDisputeSaving] = useState(false);
+  const [disputeError, setDisputeError] = useState('');
   const [messageBody, setMessageBody] = useState('');
   const [pendingAttachment, setPendingAttachment] = useState(null);
   const [sending, setSending] = useState(false);
@@ -109,7 +115,7 @@ export default function CustomerRequestDetail() {
     supabaseClient.rpc('expire_stale_claims').then(() => {});
     const { data: requestRow } = await supabaseClient
       .from('requests')
-      .select('id, title, description, category, status, assigned_employee_id, created_at')
+      .select('id, title, description, category, status, assigned_employee_id, created_at, is_disputed')
       .eq('id', id)
       .maybeSingle();
     if (!requestRow) return;
@@ -148,6 +154,30 @@ export default function CustomerRequestDetail() {
       .eq('request_id', id)
       .maybeSingle()
       .then(({ data }) => setRating(data ?? null));
+
+    supabaseClient
+      .from('request_status_history')
+      .select('id, old_status, new_status, created_at, note')
+      .eq('request_id', id)
+      .order('created_at')
+      .then(({ data }) => setStatusHistory(data ?? []));
+  }
+
+  async function handleFileDispute(event) {
+    event.preventDefault();
+    const trimmed = disputeReason.trim();
+    if (!trimmed) return;
+    setDisputeSaving(true);
+    setDisputeError('');
+    const { error } = await supabaseClient.rpc('file_dispute', { p_request_id: id, p_reason: trimmed });
+    setDisputeSaving(false);
+    if (error) {
+      setDisputeError(t('common.errorGeneric'));
+      return;
+    }
+    setDisputeOpen(false);
+    setDisputeReason('');
+    loadAll();
   }
 
   useEffect(() => {
@@ -205,6 +235,7 @@ export default function CustomerRequestDetail() {
 
   const navItems = [
     { href: '/customer/dashboard', label: t('customerHub.categoriesTitle'), icon: LayoutGrid },
+    { href: '/customer/search', label: t('search.navLabel'), icon: Search },
     { href: '/customer/requests', label: t('customerHub.myRequestsCta'), active: true, icon: ClipboardList },
     { href: '/customer/tutor', label: t('aiTutor.navCta'), icon: GraduationCap },
   ];
@@ -225,15 +256,19 @@ export default function CustomerRequestDetail() {
         </div>
 
         {employee ? (
-          <div className="mt-4 flex items-center gap-3 rounded-2xl border border-gold-400/20 bg-gold-400/5 p-4">
+          <Link
+            href={`/customer/employee/${employee.id}`}
+            className="mt-4 flex items-center gap-3 rounded-2xl border border-gold-400/20 bg-gold-400/5 p-4 transition-all hover:-translate-y-0.5 hover:shadow-elevate"
+          >
             <Avatar avatarKey={employee.avatar_key} name={employee.given_name} seed={employee.id} className="h-11 w-11" />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{[employee.given_name, employee.family_name].filter(Boolean).join(' ')}</p>
               <p className="truncate text-xs text-ink-muted dark:text-ink-dark-muted">
                 {employee.specialization || t('requestMatching.matchedTitle')}
               </p>
             </div>
-          </div>
+            <span className="shrink-0 text-xs text-gold-500 underline underline-offset-2">{t('employeeProfile.viewProfile')}</span>
+          </Link>
         ) : (
           <div className="mt-4 flex items-center gap-3 rounded-2xl border border-dashed border-black/10 p-4 text-sm text-ink-muted dark:border-white/10 dark:text-ink-dark-muted">
             <Inbox className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -345,6 +380,90 @@ export default function CustomerRequestDetail() {
             </div>
           ) : (
             <RatingForm requestId={id} employeeId={employee.id} locale={locale} t={t} onRated={setRating} />
+          )
+        )}
+
+        {/* Status timeline */}
+        {statusHistory.length > 0 && (
+          <div className="mt-6">
+            <h3 className="font-display text-sm font-bold">{t('requestTimeline.title')}</h3>
+            <ol className="mt-3 space-y-0 border-s border-black/10 ps-4 dark:border-white/10">
+              <li className="relative pb-4">
+                <span className="absolute -start-[1.15rem] flex h-5 w-5 items-center justify-center rounded-full bg-brand-100 ring-4 ring-white dark:bg-brand-900/40 dark:ring-surface-dark">
+                  <Circle className="h-2.5 w-2.5 fill-brand-500 text-brand-500" aria-hidden="true" />
+                </span>
+                <p className="text-xs font-semibold">{t('requestTimeline.created')}</p>
+                <p className="mt-0.5 text-[11px] text-ink-muted dark:text-ink-dark-muted">
+                  {new Date(request.created_at).toLocaleString(locale === 'ar' ? 'ar-IQ' : 'ckb', { timeZone: 'Asia/Baghdad' })}
+                </p>
+              </li>
+              {statusHistory.map((row, i) => {
+                const isLast = i === statusHistory.length - 1;
+                return (
+                  <li key={row.id} className="relative pb-4">
+                    <span className={`absolute -start-[1.15rem] flex h-5 w-5 items-center justify-center rounded-full ring-4 ring-white dark:ring-surface-dark ${isLast ? 'bg-gold-100 dark:bg-gold-900/30' : 'bg-black/5 dark:bg-white/5'}`}>
+                      {isLast ? (
+                        <CheckCircle2 className="h-3 w-3 text-gold-500" aria-hidden="true" />
+                      ) : (
+                        <Check className="h-3 w-3 text-ink-muted dark:text-ink-dark-muted" aria-hidden="true" />
+                      )}
+                    </span>
+                    <p className="text-xs font-semibold">
+                      <StatusBadge status={row.new_status} locale={locale} />
+                    </p>
+                    {row.note && <p className="mt-0.5 text-xs text-ink-muted dark:text-ink-dark-muted">{row.note}</p>}
+                    <p className="mt-0.5 text-[11px] text-ink-muted dark:text-ink-dark-muted">
+                      {new Date(row.created_at).toLocaleString(locale === 'ar' ? 'ar-IQ' : 'ckb', { timeZone: 'Asia/Baghdad' })}
+                    </p>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        )}
+
+        {/* Dispute section */}
+        {isFinished && (
+          request.is_disputed ? (
+            <div className="mt-4 flex items-center gap-2 rounded-2xl border border-orange-400/20 bg-orange-400/5 p-4 text-sm">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-orange-500" aria-hidden="true" />
+              <p className="text-orange-700 dark:text-orange-300">{t('dispute.filedLabel')}</p>
+            </div>
+          ) : (
+            <div className="mt-4">
+              {disputeOpen ? (
+                <form onSubmit={handleFileDispute} className="rounded-2xl border border-red-400/20 bg-red-400/5 p-5">
+                  <h3 className="font-display text-sm font-bold text-red-700 dark:text-red-400">{t('dispute.title')}</h3>
+                  <p className="mt-1 text-xs text-ink-muted dark:text-ink-dark-muted">{t('dispute.description')}</p>
+                  <textarea
+                    value={disputeReason}
+                    onChange={(e) => setDisputeReason(e.target.value)}
+                    rows={3}
+                    required
+                    placeholder={t('dispute.reasonPlaceholder')}
+                    className="mt-3 w-full rounded-xl2 border border-black/10 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-red-400 dark:border-white/10 dark:bg-surface-dark"
+                  />
+                  {disputeError && <p className="mt-1 text-xs text-red-500">{disputeError}</p>}
+                  <div className="mt-3 flex gap-2">
+                    <button type="submit" disabled={disputeSaving} className="flex-1 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50">
+                      {disputeSaving ? '...' : t('dispute.submitCta')}
+                    </button>
+                    <button type="button" onClick={() => setDisputeOpen(false)} className="rounded-xl border border-black/10 px-4 py-2 text-sm dark:border-white/10">
+                      {t('common.cancel')}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setDisputeOpen(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-400/20 p-3 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/10"
+                >
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                  {t('dispute.openCta')}
+                </button>
+              )}
+            </div>
           )
         )}
       </div>
