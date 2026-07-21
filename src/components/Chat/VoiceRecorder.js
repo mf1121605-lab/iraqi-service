@@ -1,26 +1,44 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader as Loader2, Mic, Square } from 'lucide-react';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { translate } from '../../utils/i18n';
 
-// Safety cap so a forgotten open mic doesn't record indefinitely or
-// produce a file large enough to blow the bucket's 5MB limit.
 const MAX_RECORD_MS = 2 * 60 * 1000;
+
+function formatElapsed(secs) {
+  const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+  const ss = String(secs % 60).padStart(2, '0');
+  return `${mm}:${ss}`;
+}
 
 export default function VoiceRecorder({ pathPrefix, onUploaded, locale }) {
   const t = (path) => translate(locale, path);
   const [recording, setRecording] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState('');
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
   const stopTimerRef = useRef(null);
+  const intervalRef = useRef(null);
+
+  useEffect(() => {
+    if (recording) {
+      setElapsed(0);
+      intervalRef.current = setInterval(() => setElapsed((prev) => prev + 1), 1000);
+    } else {
+      clearInterval(intervalRef.current);
+    }
+    return () => clearInterval(intervalRef.current);
+  }, [recording]);
 
   async function uploadRecording(blob) {
     setUploading(true);
     const extension = blob.type.includes('mp4') ? 'm4a' : blob.type.includes('ogg') ? 'ogg' : 'webm';
     const path = `${pathPrefix}/${crypto.randomUUID()}-voice.${extension}`;
-    const { error: uploadError } = await supabaseClient.storage.from('attachments').upload(path, blob, { contentType: blob.type });
+    const { error: uploadError } = await supabaseClient.storage
+      .from('attachments')
+      .upload(path, blob, { contentType: blob.type });
     setUploading(false);
     if (uploadError) {
       setError(uploadError.message || t('common.errorGeneric'));
@@ -58,14 +76,24 @@ export default function VoiceRecorder({ pathPrefix, onUploaded, locale }) {
   }
 
   return (
-    <span className="relative">
+    <span className="relative inline-flex items-center gap-2">
+      {recording && (
+        <span className="flex items-center gap-1.5 select-none" dir="ltr">
+          <span className="inline-block h-2 w-2 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
+          <span className="text-xs font-mono tabular-nums text-red-400 font-bold">
+            {formatElapsed(elapsed)}
+          </span>
+        </span>
+      )}
       <button
         type="button"
         onClick={recording ? stopRecording : startRecording}
         disabled={uploading}
         aria-label={recording ? t('chat.voiceStopCta') : t('chat.voiceRecordCta')}
         className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
-          recording ? 'animate-pulse bg-red-500/15 text-red-500' : 'text-brand-700 hover:bg-brand-500/10 dark:text-brand-300'
+          recording
+            ? 'bg-red-500/15 text-red-500 ring-1 ring-red-500/40'
+            : 'text-brand-700 hover:bg-brand-500/10 dark:text-brand-300'
         }`}
       >
         {uploading ? (
@@ -77,7 +105,10 @@ export default function VoiceRecorder({ pathPrefix, onUploaded, locale }) {
         )}
       </button>
       {error && (
-        <span className="absolute top-full mt-1 whitespace-nowrap text-xs font-normal text-red-600 dark:text-red-300" dir="ltr">
+        <span
+          className="absolute top-full mt-1 whitespace-nowrap text-xs font-normal text-red-600 dark:text-red-300"
+          dir="ltr"
+        >
           {error}
         </span>
       )}

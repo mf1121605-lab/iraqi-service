@@ -112,7 +112,9 @@ export default function VoiceMessagePlayer({ src, isMine, locale }) {
         aria-label={t('chat.voiceSeekLabel')}
       />
       <span className="shrink-0 text-xs tabular-nums text-white/70" dir="ltr">
-        {formatTime(currentTime)} / {formatTime(duration)}
+        {(isPlaying || currentTime > 0)
+          ? `${formatTime(currentTime)} / ${formatTime(duration)}`
+          : formatTime(duration)}
       </span>
     </div>
   );

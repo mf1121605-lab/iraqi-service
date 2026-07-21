@@ -202,14 +202,23 @@ export default function UnifiedLogin() {
           </motion.button>
         </form>
 
-        <MotionLink
-          href="/"
-          whileTap={{ scale: 0.96 }}
-          className="mt-6 flex items-center justify-center gap-1.5 text-center text-sm text-white/70 underline underline-offset-4 transition-colors hover:text-white"
-        >
-          <ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
-          {t('authCustomer.backCta')}
-        </MotionLink>
+        <div className="mt-6 flex items-center justify-between gap-4 border-t border-white/10 pt-5">
+          <MotionLink
+            href="/"
+            whileTap={{ scale: 0.96 }}
+            className="flex items-center gap-1 text-sm text-white/50 underline underline-offset-4 transition-colors hover:text-white"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
+            {t('authCustomer.backCta')}
+          </MotionLink>
+          <MotionLink
+            href="/customer"
+            whileTap={{ scale: 0.96 }}
+            className="text-sm text-gold-400 underline underline-offset-4 transition-colors hover:text-gold-300"
+          >
+            {t('gateway.newUserCta')} →
+          </MotionLink>
+        </div>
       </div>
     </main>
   );

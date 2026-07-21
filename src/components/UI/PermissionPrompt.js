@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Volume2, X } from 'lucide-react';
+import { supabaseClient } from '../../lib/supabaseClient';
+import { subscribeToPush } from '../../utils/pushNotifications';
 
 const STORAGE_KEY = 'iraqi-services:permissions-asked';
 
 export default function PermissionPrompt() {
   const [visible, setVisible] = useState(false);
+  const [allowing, setAllowing] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -21,18 +24,43 @@ export default function PermissionPrompt() {
   }
 
   async function allow() {
-    if ('Notification' in window && Notification.permission === 'default') {
-      await Notification.requestPermission();
+    setAllowing(true);
+    try {
+      // 1. Request notification permission
+      if ('Notification' in window && Notification.permission === 'default') {
+        await Notification.requestPermission();
+      }
+
+      // 2. Subscribe to push if granted + VAPID key available
+      if (
+        Notification.permission === 'granted' &&
+        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      ) {
+        try {
+          const {
+            data: { session },
+          } = await supabaseClient.auth.getSession();
+          if (session?.user?.id) {
+            await subscribeToPush(session.user.id);
+          }
+        } catch (_) {
+          // Non-critical: push subscription failure doesn't block UX
+        }
+      }
+
+      // 3. Unlock AudioContext (unblocks autoplay on mobile)
+      if ('AudioContext' in window || 'webkitAudioContext' in window) {
+        try {
+          const Ctx = window.AudioContext ?? window.webkitAudioContext;
+          const ctx = new Ctx();
+          await ctx.resume();
+          ctx.close();
+        } catch (_) {}
+      }
+    } finally {
+      setAllowing(false);
+      dismiss();
     }
-    if ('AudioContext' in window || 'webkitAudioContext' in window) {
-      try {
-        const Ctx = window.AudioContext ?? window.webkitAudioContext;
-        const ctx = new Ctx();
-        await ctx.resume();
-        ctx.close();
-      } catch (_) {}
-    }
-    dismiss();
   }
 
   return (
@@ -67,10 +95,11 @@ export default function PermissionPrompt() {
             <button
               type="button"
               onClick={allow}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 px-4 py-2.5 text-sm font-bold text-black transition-opacity hover:opacity-90"
+              disabled={allowing}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 px-4 py-2.5 text-sm font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
             >
               <Volume2 className="h-3.5 w-3.5" />
-              السماح
+              {allowing ? '...' : 'السماح'}
             </button>
             <button
               type="button"
