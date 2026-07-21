@@ -87,7 +87,7 @@ export default function Home({ siteSettings }) {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-          className="gold-border-spin glass-premium relative z-10 w-full max-w-md rounded-2xl p-10 text-center text-white"
+          className="glass-premium relative z-10 w-full max-w-md rounded-2xl p-10 text-center text-white"
         >
           <div className="relative mx-auto mb-6 h-24 w-24 rounded-full bg-gradient-to-tr from-gold-500/20 to-gold-300/40 p-1 shadow-glow animate-pulse-slow">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -168,7 +168,7 @@ export default function Home({ siteSettings }) {
             onMouseMove={handleCardMouseMove}
             whileHover={{ y: -3, scale: 1.01 }}
             whileTap={{ scale: 0.97 }}
-            className="gold-border-spin glass-premium bento-card relative overflow-hidden p-6 md:p-8 flex flex-col justify-center items-center gap-3 group bg-gradient-to-br from-slate-400/10 to-amber-300/15"
+            className="glass-premium bento-card relative overflow-hidden p-6 md:p-8 flex flex-col justify-center items-center gap-3 group bg-gradient-to-br from-slate-400/10 to-amber-300/15"
           >
             <div className="bento-card-glow" />
             <motion.div
@@ -198,7 +198,7 @@ export default function Home({ siteSettings }) {
             onMouseMove={handleCardMouseMove}
             whileHover={{ y: -3, scale: 1.01 }}
             whileTap={{ scale: 0.97 }}
-            className="gold-border-spin glass-premium bento-card relative overflow-hidden p-6 md:p-8 flex flex-col justify-between group"
+            className="glass-premium bento-card relative overflow-hidden p-6 md:p-8 flex flex-col justify-between group"
           >
             <div className="bento-card-glow" />
             <motion.div
@@ -235,7 +235,7 @@ export default function Home({ siteSettings }) {
             onMouseMove={handleCardMouseMove}
             whileHover={{ y: -3, scale: 1.01 }}
             whileTap={{ scale: 0.97 }}
-            className="gold-border-spin glass-premium bento-card relative overflow-hidden p-6 md:p-8 flex flex-col justify-between group bg-gradient-to-b from-gold-400/5 to-transparent"
+            className="glass-premium bento-card relative overflow-hidden p-6 md:p-8 flex flex-col justify-between group bg-gradient-to-b from-gold-400/5 to-transparent"
           >
             <div className="bento-card-glow" />
             <motion.div
@@ -297,8 +297,8 @@ export default function Home({ siteSettings }) {
             )}
           </div>
         )}
-        <div className="flex items-center justify-center gap-4">
-          <p className="text-center text-[10px] leading-relaxed text-white/40">{footerLegal}</p>
+        <div className="flex flex-col items-center gap-1.5">
+          <p className="max-w-sm text-center text-[11px] leading-relaxed text-white/35">{footerLegal}</p>
           {step === 'gateway' && (
             <button
               type="button"

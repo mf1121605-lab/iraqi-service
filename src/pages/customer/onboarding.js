@@ -44,8 +44,8 @@ export default function CustomerOnboarding() {
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-6 text-white">
       <div className="pointer-events-none absolute left-1/2 top-0 h-[36rem] w-[36rem] -translate-x-1/2 animate-spotlight-sweep rounded-full bg-gold-400/10 blur-[100px]" />
-      <div className="pointer-events-none absolute -left-16 top-16 h-56 w-56 animate-float rounded-full bg-white/5 blur-3xl" />
-      <div className="pointer-events-none absolute -right-10 bottom-16 h-72 w-72 animate-float rounded-full bg-gold-400/15 blur-3xl [animation-delay:1.5s]" />
+      <div className="pointer-events-none absolute -left-16 top-16 h-56 w-56 animate-float rounded-full bg-white/5 blur-xl [will-change:transform]" />
+      <div className="pointer-events-none absolute -right-10 bottom-16 h-72 w-72 animate-float rounded-full bg-gold-400/15 blur-xl [will-change:transform] [animation-delay:1.5s]" />
 
       <div className="cinematic-card relative z-10 w-full max-w-lg animate-scale-in p-10 text-center">
         <span className="cinematic-emblem mx-auto h-16 w-16">
