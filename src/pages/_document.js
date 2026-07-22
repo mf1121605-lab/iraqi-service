@@ -22,7 +22,7 @@ export default function Document() {
         <meta name="twitter:title" content="خدماتي — منصة الخدمات العراقية" />
         <meta name="twitter:description" content="منصة متكاملة لتقديم وطلب الخدمات المتنوعة بكل سهولة ويسر" />
         <meta name="twitter:image" content="/brand/logo-icon-512.png" />
-        <meta name="google-site-verification" content="d924cbea18085820" />
+        <meta name="google-site-verification" content="WmqmC8Qa6jOEJiuio1CKV8rrUsFnl_Qznw0CbR56sbw" />
         <meta name="description" content="منصة متكاملة لتقديم وطلب الخدمات المتنوعة في العراق بكل سهولة ويسر" />
       </Head>
       <body>
