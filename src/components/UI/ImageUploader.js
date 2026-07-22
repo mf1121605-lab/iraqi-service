@@ -3,6 +3,7 @@ import { ImagePlus, Loader as Loader2, X } from 'lucide-react';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { translate } from '../../utils/i18n';
 import { safeSlug } from '../../utils/safeStorageName';
+import { validateFileMagicBytes } from '../../lib/validateFileMagicBytes';
 
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -21,12 +22,13 @@ export default function ImageUploader({ pathPrefix, value, onUploaded, onClear, 
     if (!file) return;
 
     setError('');
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      setError(t('common.imageTypeInvalid'));
-      return;
-    }
     if (file.size > MAX_BYTES) {
       setError(t('common.imageTooLarge'));
+      return;
+    }
+    const confirmedMime = await validateFileMagicBytes(file, ALLOWED_TYPES);
+    if (!confirmedMime) {
+      setError(t('common.imageTypeInvalid'));
       return;
     }
 

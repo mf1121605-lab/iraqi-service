@@ -3,6 +3,7 @@ import { Loader as Loader2, Paperclip } from 'lucide-react';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { translate } from '../../utils/i18n';
 import { safeSlug } from '../../utils/safeStorageName';
+import { validateFileMagicBytes } from '../../lib/validateFileMagicBytes';
 
 const ALLOWED_MIME_TYPES = [
   'image/png',
@@ -39,12 +40,17 @@ export default function AttachmentUploader({ pathPrefix, onUploaded, locale }) {
     if (!file) return;
 
     setError('');
-    if (!isAllowedFile(file)) {
-      setError(t('chat.attachmentTypeInvalid'));
-      return;
-    }
     if (file.size > MAX_BYTES) {
       setError(t('chat.attachmentTooLarge'));
+      return;
+    }
+    // Magic-bytes check: confirms the real file type from the binary header,
+    // not the OS-reported MIME or extension (both trivially spoofable).
+    // Falls back to extension check for Office docs on mobile where file.type
+    // is sometimes blank — in that case we trust the bytes (OLE2 / ZIP header).
+    const confirmedMime = await validateFileMagicBytes(file, ALLOWED_MIME_TYPES);
+    if (!confirmedMime && !isAllowedFile(file)) {
+      setError(t('chat.attachmentTypeInvalid'));
       return;
     }
 
