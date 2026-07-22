@@ -4,7 +4,7 @@ import { supabaseClient } from '../../lib/supabaseClient';
 import { translate } from '../../utils/i18n';
 import { safeSlug } from '../../utils/safeStorageName';
 
-const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
+const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const MAX_BYTES = 5 * 1024 * 1024;
 
 // Uploads into the public 'site-assets' bucket and hands back a public URL

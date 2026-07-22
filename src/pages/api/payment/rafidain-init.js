@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { requireOrderOwner } from '../../../lib/orderAuth';
 import { buildRafidainAuthHeader, buildCheckoutSessionPayload } from '../../../lib/paymentGateways/rafidainMastercard';
@@ -21,10 +22,15 @@ export default async function handler(req, res) {
 
   const baseUrl = process.env.RAFIDAIN_API_BASE_URL;
   const merchantId = process.env.RAFIDAIN_MERCHANT_ID;
+  const callbackSecret = process.env.RAFIDAIN_CALLBACK_SECRET;
+  if (!callbackSecret) {
+    return res.status(500).json({ error: 'Payment callback secret not configured' });
+  }
+  const callbackSig = createHmac('sha256', callbackSecret).update(order.id).digest('hex');
   const payload = buildCheckoutSessionPayload({
     orderId: order.id,
     amount: order.total_price,
-    returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/rafidain-callback?orderId=${order.id}`,
+    returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/rafidain-callback?orderId=${order.id}&sig=${callbackSig}`,
   });
 
   let session;

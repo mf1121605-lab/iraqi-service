@@ -1,4 +1,6 @@
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { getClientIp } from '../../../lib/getClientIp';
+import { checkRateLimit } from '../../../lib/rateLimit';
 
 const USERNAME_PATTERN = /^[a-z][a-z0-9_]{2,}$/;
 
@@ -6,6 +8,12 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ error: 'method not allowed' });
+  }
+
+  const ip = getClientIp(req) ?? 'unknown';
+  const rl = await checkRateLimit(`recovery-q:${ip}`, 10, 60);
+  if (rl.limited) {
+    return res.status(429).json({ questionId: null });
   }
 
   const username = String(req.query.username ?? '').trim().toLowerCase();

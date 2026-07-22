@@ -1,11 +1,32 @@
+import { createHmac, timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { buildRafidainAuthHeader, isOrderCaptured } from '../../../lib/paymentGateways/rafidainMastercard';
 import { resolvePaymentOutcome } from '../../../lib/paymentGateways/resolvePayment';
 
 export default async function handler(req, res) {
-  const { orderId } = req.query;
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
+    return res.status(405).send('Method not allowed');
+  }
+
+  const { orderId, sig } = req.query;
   if (!orderId || Array.isArray(orderId)) {
     return res.status(400).send('Missing orderId');
+  }
+
+  // Verify the HMAC signature embedded in the returnUrl by rafidain-init.
+  // Without this, any caller who knows a valid orderId UUID can forge a callback.
+  const callbackSecret = process.env.RAFIDAIN_CALLBACK_SECRET;
+  if (!callbackSecret) {
+    return res.status(500).send('Payment callback not configured');
+  }
+  const expectedSig = createHmac('sha256', callbackSecret).update(orderId).digest('hex');
+  const providedSig = String(sig ?? '');
+  const sigValid =
+    providedSig.length === expectedSig.length &&
+    timingSafeEqual(Buffer.from(providedSig), Buffer.from(expectedSig));
+  if (!sigValid) {
+    return res.status(403).send('Invalid callback signature');
   }
 
   const { data: order } = await supabaseAdmin
