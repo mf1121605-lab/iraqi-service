@@ -53,7 +53,7 @@ export default function UnifiedLogin() {
       router.replace('/customer/onboarding');
       return;
     }
-    router.replace(dashboardPathForRole(profile.role));
+    router.replace(dashboardPathForRole(profile));
   }, [loading, session, profile, router]);
 
   const t = (path) => translate(locale, path);

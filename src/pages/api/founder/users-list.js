@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { requireFounderOrCoAdmin } from '../../../lib/founderAuth';
 
@@ -22,7 +23,12 @@ export default async function handler(req, res) {
   if (!expectedPasscode) {
     return res.status(500).json({ error: 'FOUNDER_USERS_PASSCODE is not configured' });
   }
-  if (req.body?.passcode !== expectedPasscode) {
+  const provided = String(req.body?.passcode ?? '');
+  const expected = String(expectedPasscode);
+  const match =
+    provided.length === expected.length &&
+    timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+  if (!match) {
     return res.status(401).json({ error: 'invalid_passcode' });
   }
 

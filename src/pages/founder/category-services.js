@@ -11,7 +11,7 @@ import { translate } from '../../utils/i18n';
 const emptyForm = { categoryKey: '', labelAr: '', labelCkb: '' };
 
 export default function FounderCategoryServices() {
-  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder', 'co_admin']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'category-services');

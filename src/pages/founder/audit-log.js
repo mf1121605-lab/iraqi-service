@@ -8,7 +8,7 @@ import { useFounderNav } from '../../utils/founderNav';
 import { translate } from '../../utils/i18n';
 
 export default function FounderAuditLog() {
-  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder', 'co_admin']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'audit-log');

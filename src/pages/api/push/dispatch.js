@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto';
 import webpush from 'web-push';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 
@@ -7,9 +8,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method not allowed' });
   }
 
-  const providedSecret = req.headers['x-push-secret'];
   const expectedSecret = process.env.PUSH_DISPATCH_SECRET;
-  if (!expectedSecret || providedSecret !== expectedSecret) {
+  const providedSecret = String(req.headers['x-push-secret'] ?? '');
+  const expected = String(expectedSecret ?? '');
+  const secretMatch =
+    !!expectedSecret &&
+    providedSecret.length === expected.length &&
+    timingSafeEqual(Buffer.from(providedSecret), Buffer.from(expected));
+  if (!secretMatch) {
     return res.status(401).json({ error: 'invalid dispatch secret' });
   }
 

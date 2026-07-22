@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { checkRateLimit } from '../../../lib/rateLimit';
 
 const MIN_PASSWORD_LENGTH = 8;
 const USERNAME_PATTERN = /^[a-z][a-z0-9_]{2,}$/;
@@ -17,6 +18,13 @@ export default async function handler(req, res) {
   if (!USERNAME_PATTERN.test(normalizedUsername)) {
     return res.status(400).json({ error: 'invalid username format' });
   }
+
+  // Rate-limit per username to prevent answer brute-force (5 attempts / hour)
+  const rl = await checkRateLimit(`recover:${normalizedUsername}`, 5, 3600);
+  if (rl.limited) {
+    return res.status(429).json({ error: GENERIC_ERROR });
+  }
+
   if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
     return res.status(400).json({ error: 'password too short' });
   }

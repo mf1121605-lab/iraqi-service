@@ -10,7 +10,7 @@ import { translate } from '../../utils/i18n';
 const emptyForm = { titleAr: '', titleCkb: '', descAr: '', descCkb: '', price: '', discount: '', imagePath: '' };
 
 export default function FounderProducts() {
-  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder', 'co_admin']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'products');

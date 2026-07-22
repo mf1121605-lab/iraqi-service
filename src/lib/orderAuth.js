@@ -22,7 +22,7 @@ export async function requireOrderOwner(req, orderId) {
     .from('orders')
     .select('id, customer_id, product_id, quantity, unit_price, total_price, payment_status')
     .eq('id', orderId)
-    .single();
+    .maybeSingle();
 
   if (!order || order.customer_id !== userData.user.id) {
     return { error: 'order not found', status: 404 };

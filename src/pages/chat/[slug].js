@@ -288,6 +288,10 @@ export default function ChatRoom() {
   async function handlePickGif(gifOrFile) {
     // If it's a File (upload from picker), upload first then send
     if (gifOrFile instanceof File) {
+      const ALLOWED_GIF_TYPES = ['image/gif', 'image/webp', 'image/png', 'image/jpeg'];
+      const MAX_GIF_BYTES = 5 * 1024 * 1024;
+      if (!ALLOWED_GIF_TYPES.includes(gifOrFile.type)) { setSendError(t('common.imageTypeInvalid')); return; }
+      if (gifOrFile.size > MAX_GIF_BYTES) { setSendError(t('common.imageTooLarge')); return; }
       const { safeSlug } = await import('../../utils/safeStorageName');
       const path = `chat/${room.id}/${crypto.randomUUID()}-${safeSlug(gifOrFile.name)}`;
       const { error: uploadError } = await supabaseClient.storage.from('site-assets').upload(path, gifOrFile);

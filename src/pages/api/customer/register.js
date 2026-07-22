@@ -1,6 +1,8 @@
 import bcrypt from 'bcryptjs';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { isValidIraqiPhone, toLocalFormat } from '../../../utils/phoneHelper';
+import { getClientIp } from '../../../lib/getClientIp';
+import { checkRateLimit } from '../../../lib/rateLimit';
 
 const MIN_PASSWORD_LENGTH = 8;
 const USERNAME_PATTERN = /^[a-z][a-z0-9_]{2,}$/;
@@ -11,6 +13,12 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'method not allowed' });
+  }
+
+  const ip = getClientIp(req) ?? 'unknown';
+  const rl = await checkRateLimit(`register:${ip}`, 5, 3600);
+  if (rl.limited) {
+    return res.status(429).json({ error: 'يرجى الانتظار قبل المحاولة مرة أخرى' });
   }
 
   const { phone, password, fullName, surname, username, recoveryQuestionId, recoveryAnswer } = req.body ?? {};

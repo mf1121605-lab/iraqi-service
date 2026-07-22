@@ -34,7 +34,7 @@ function emptyFields() {
 }
 
 export default function FounderSettings() {
-  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder', 'co_admin']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'settings');
@@ -46,7 +46,7 @@ export default function FounderSettings() {
 
   useEffect(() => {
     if (!profile) return;
-    supabaseClient.from('founder_settings').select('*').single().then(({ data }) => {
+    supabaseClient.from('founder_settings').select('*').maybeSingle().then(({ data }) => {
       if (!data) return;
       setSettingsId(data.id);
       setFields((current) => {

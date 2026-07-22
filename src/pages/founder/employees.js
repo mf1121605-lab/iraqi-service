@@ -29,7 +29,7 @@ const emptyForm = {
 const EMPLOYEE_SELECT = 'id, given_name, father_name, grandfather_name, family_name, specialization, account_status, admin_level, is_verified, created_at';
 
 export default function FounderEmployees() {
-  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder', 'co_admin']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'employees');
@@ -106,12 +106,19 @@ export default function FounderEmployees() {
     const {
       data: { session },
     } = await supabaseClient.auth.getSession();
-    const response = await fetch('/api/founder/create-employee', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-      body: JSON.stringify({ ...form, username: form.username.trim().toLowerCase() }),
-    });
-    const result = await response.json();
+    let result;
+    try {
+      const response = await fetch('/api/founder/create-employee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ ...form, username: form.username.trim().toLowerCase() }),
+      });
+      result = await response.json().catch(() => ({ error: t('common.errorGeneric') }));
+    } catch {
+      setSubmitting(false);
+      setError(t('common.errorGeneric'));
+      return;
+    }
     setSubmitting(false);
     if (result.error) {
       setError(result.error);
@@ -130,11 +137,15 @@ export default function FounderEmployees() {
     const {
       data: { session },
     } = await supabaseClient.auth.getSession();
-    await fetch('/api/founder/manage-account', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-      body: JSON.stringify({ targetUserId, action }),
-    });
+    try {
+      await fetch('/api/founder/manage-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ targetUserId, action }),
+      });
+    } catch {
+      // network error — reload anyway so state reflects the actual DB value
+    }
     loadEmployees();
   }
 

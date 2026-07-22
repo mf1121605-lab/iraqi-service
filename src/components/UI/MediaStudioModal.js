@@ -48,7 +48,7 @@ function readVideoDuration(file) {
 export default function MediaStudioModal({ open, onClose, onSelect, locale, maxVideoSeconds = DEFAULT_MAX_VIDEO_SECONDS, filterType }) {
   const t = (path) => translate(locale, path);
   const maxWithGrace = maxVideoSeconds + GRACE_SECONDS;
-  const acceptAttr = filterType === 'image' ? 'image/png,image/jpeg,image/webp,image/svg+xml' : filterType === 'video' ? 'video/mp4,video/webm' : 'image/png,image/jpeg,image/webp,image/svg+xml,video/mp4,video/webm';
+  const acceptAttr = filterType === 'image' ? 'image/png,image/jpeg,image/webp,image/svg+xml' : filterType === 'video' ? 'video/mp4,video/webm' : 'image/png,image/jpeg,image/webp,video/mp4,video/webm';
   const [items, setItems] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [compressProgress, setCompressProgress] = useState(null);
