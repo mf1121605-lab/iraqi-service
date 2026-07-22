@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { checkRateLimit } from '../../../lib/rateLimit';
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -21,6 +22,12 @@ export default async function handler(req, res) {
   const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
   if (userError || !userData?.user) {
     return res.status(401).json({ error: 'invalid session' });
+  }
+
+  // 5 attempts per user per 15 minutes — prevents brute-forcing the current password
+  const rl = await checkRateLimit(`change-pw:${userData.user.id}`, 5, 900);
+  if (rl.limited) {
+    return res.status(429).json({ error: 'عدد كبير من المحاولات، يرجى الانتظار قليلاً' });
   }
 
   const { currentPassword, newPassword } = req.body ?? {};
