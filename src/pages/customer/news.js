@@ -173,6 +173,7 @@ export default function CustomerNews() {
   const [postImageUrl, setPostImageUrl] = useState('');
   const [imageUploading, setImageUploading] = useState(false);
   const [imageError, setImageError] = useState('');
+  const [postError, setPostError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const navItems = [
@@ -228,14 +229,19 @@ export default function CustomerNews() {
     event.preventDefault();
     if (!postText.trim() && !postImageUrl) return;
     setSubmitting(true);
-    await supabaseClient.from('social_posts').insert({
+    setPostError('');
+    const { error } = await supabaseClient.from('social_posts').insert({
       author_id: profile.id,
       content: postText.trim() || null,
       image_url: postImageUrl || null,
     });
+    setSubmitting(false);
+    if (error) {
+      setPostError(error.message);
+      return;
+    }
     setPostText('');
     setPostImageUrl('');
-    setSubmitting(false);
     load();
   }
 
@@ -307,6 +313,7 @@ export default function CustomerNews() {
           </div>
         )}
         {imageError && <p className="mt-2 text-xs text-red-400">{imageError}</p>}
+        {postError && <p className="mt-2 text-xs text-red-400">{postError}</p>}
         <div className="mt-3 flex items-center justify-between">
           <label className="flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-ink-muted transition-colors hover:bg-black/5 dark:text-white/50 dark:hover:bg-white/5">
             <ImageIcon className="h-4 w-4" aria-hidden="true" />
