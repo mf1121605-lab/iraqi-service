@@ -380,6 +380,21 @@ select:focus-visible {
   50%       { box-shadow: 0 0 30px rgba(239, 68, 68, 0.7); }
 }
 
+/* 2-bounce notification jump: bounces in first 32%, pauses rest of cycle */
+@keyframes icon-bounce-notify {
+  0%   { transform: translateY(0)    scale(1);    }
+  8%   { transform: translateY(-9px) scale(1.15); }
+  16%  { transform: translateY(0)    scale(0.94); }
+  24%  { transform: translateY(-5px) scale(1.07); }
+  32%  { transform: translateY(0)    scale(1);    }
+  100% { transform: translateY(0)    scale(1);    }
+}
+
+.animate-icon-bounce {
+  animation: icon-bounce-notify 3s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
+  transform-origin: center bottom;
+}
+
 .gold-border-spin {
   position: relative;
 }
