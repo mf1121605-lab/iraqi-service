@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /customer/
+Disallow: /employee/
+Disallow: /founder/
+Disallow: /hq/
+Disallow: /chat/
+
+Sitemap: https://iraqi-service.vercel.app/sitemap.xml
