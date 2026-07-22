@@ -41,12 +41,12 @@ export default function FounderUsers() {
   }
 
   async function loadCustomers() {
-    const { data } = await supabaseClient
+    const { data, error } = await supabaseClient
       .from('profiles')
-      .select('id, given_name, family_name, phone, account_status, last_active_at')
+      .select('id, given_name, family_name, phone, account_status')
       .eq('role', 'customer')
-      .order('created_at');
-    setCustomers(data ?? []);
+      .order('created_at', { ascending: false });
+    if (!error) setCustomers(data ?? []);
   }
 
   useEffect(() => {
