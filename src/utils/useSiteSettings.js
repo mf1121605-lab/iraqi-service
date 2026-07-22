@@ -31,7 +31,7 @@ function load() {
   supabaseClient
     .from('founder_settings')
     .select(SELECT_COLUMNS)
-    .single()
+    .maybeSingle()
     .then(({ data }) => notify(data ?? null));
 }
 

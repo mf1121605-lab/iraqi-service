@@ -39,7 +39,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'اسم المستخدم يجب أن يبدأ بحرف ويتكوّن من أحرف/أرقام/شرطة سفلية فقط (3 أحرف على الأقل)' });
   }
 
-  const { data: callerProfile } = await supabaseAdmin.from('profiles').select('role, username').eq('id', userId).single();
+  const { data: callerProfile } = await supabaseAdmin.from('profiles').select('role, username').eq('id', userId).maybeSingle();
   if (!callerProfile || callerProfile.role !== 'customer') {
     return res.status(403).json({ error: 'customer accounts only' });
   }

@@ -9,7 +9,7 @@ import { translate } from '../../utils/i18n';
 import { categoryLabel, useCategories } from '../../utils/useCategories';
 
 export default function FounderStats() {
-  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder', 'co_admin']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'stats');

@@ -43,19 +43,23 @@ async function callFounderApi(path, body) {
   const {
     data: { session },
   } = await supabaseClient.auth.getSession();
-  const response = await fetch(path, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session?.access_token}`,
-    },
-    body: JSON.stringify(body),
-  });
-  return { ok: response.ok, payload: await response.json().catch(() => ({})) };
+  try {
+    const response = await fetch(path, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify(body),
+    });
+    return { ok: response.ok, payload: await response.json().catch(() => ({})) };
+  } catch {
+    return { ok: false, payload: {} };
+  }
 }
 
 export default function FounderUsersData() {
-  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder', 'co_admin']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'users-data');

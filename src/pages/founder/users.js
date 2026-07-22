@@ -46,15 +46,19 @@ export default function FounderUsers() {
     const {
       data: { session },
     } = await supabaseClient.auth.getSession();
-    const response = await fetch(path, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.access_token}`,
-      },
-      body: JSON.stringify(body),
-    });
-    return response.json();
+    try {
+      const response = await fetch(path, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify(body),
+      });
+      return response.json().catch(() => ({ error: true }));
+    } catch {
+      return { error: true };
+    }
   }
 
   async function handleCreateEmployee(event) {

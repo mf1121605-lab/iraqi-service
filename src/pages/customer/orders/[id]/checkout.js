@@ -11,15 +11,19 @@ async function callPaymentApi(path, body) {
   const {
     data: { session },
   } = await supabaseClient.auth.getSession();
-  const response = await fetch(path, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session?.access_token}`,
-    },
-    body: JSON.stringify(body),
-  });
-  return response.json();
+  try {
+    const response = await fetch(path, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify(body),
+    });
+    return response.json().catch(() => ({ error: true }));
+  } catch {
+    return { error: true };
+  }
 }
 
 function loadScriptOnce(src) {
@@ -50,8 +54,15 @@ export default function Checkout() {
       .from('orders')
       .select('id, quantity, unit_price, total_price, payment_status, products(title_ar, title_ckb)')
       .eq('id', orderId)
-      .single()
-      .then(({ data }) => setOrder(data));
+      .maybeSingle()
+      .then(({ data, error: fetchError }) => {
+        if (fetchError || !data) {
+          router.replace('/customer/dashboard');
+        } else {
+          setOrder(data);
+        }
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, orderId]);
 
   async function handleZainCash() {

@@ -10,7 +10,7 @@ import { translate } from '../../utils/i18n';
 const emptyForm = { slug: '', nameAr: '', nameCkb: '' };
 
 export default function FounderChatRooms() {
-  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder', 'co_admin']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'chat-rooms');
