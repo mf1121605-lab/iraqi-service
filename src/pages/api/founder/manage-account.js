@@ -1,7 +1,7 @@
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { requireFounderOrCoAdmin } from '../../../lib/founderAuth';
 
-const ACTIONS = ['suspend', 'activate', 'assign_co_admin', 'remove_co_admin', 'verify', 'unverify'];
+const ACTIONS = ['suspend', 'activate', 'assign_co_admin', 'remove_co_admin', 'verify', 'unverify', 'promote_employee', 'demote_customer'];
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -40,6 +40,8 @@ export default async function handler(req, res) {
     remove_co_admin: { admin_level: null },
     verify: { is_verified: true },
     unverify: { is_verified: false },
+    promote_employee: { role: 'employee' },
+    demote_customer: { role: 'customer' },
   }[action];
 
   const { error } = await supabaseAdmin.from('profiles').update(updates).eq('id', targetUserId);

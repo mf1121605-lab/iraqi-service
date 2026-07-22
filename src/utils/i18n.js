@@ -303,6 +303,11 @@ const dictionaries = {
       activateCta: 'تفعيل الحساب',
       assignCoAdminCta: 'تعيين كمشرف مساعد',
       removeCoAdminCta: 'إزالة صلاحية المشرف المساعد',
+      employeesTab: 'الموظفون',
+      membersTab: 'الأعضاء',
+      promoteEmployeeCta: 'ترقية إلى موظف',
+      demoteCustomerCta: 'تحويل إلى عضو',
+      noCustomersYet: 'لا يوجد أعضاء مسجلون بعد',
     },
     founderUsersData: {
       title: 'بيانات المستخدمين',
@@ -1017,6 +1022,11 @@ const dictionaries = {
       activateCta: 'چالاککردنی هەژمار',
       assignCoAdminCta: 'کردن بە یاریدەدەری بەڕێوەبەر',
       removeCoAdminCta: 'لابردنی دەسەڵاتی یاریدەدەری بەڕێوەبەر',
+      employeesTab: 'کارمەندەکان',
+      membersTab: 'ئەندامەکان',
+      promoteEmployeeCta: 'بەرزکردنەوە بۆ کارمەند',
+      demoteCustomerCta: 'گەڕاندنەوە بۆ ئەندام',
+      noCustomersYet: 'هێشتا هیچ ئەندامێک تۆمارنەکراوە',
     },
     founderUsersData: {
       title: 'زانیاری بەکارهێنەران',

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Crown, ShieldOff, UserCheck, UserPlus, UserX } from 'lucide-react';
+import { Crown, ShieldOff, UserCheck, UserMinus, UserPlus, UserX } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -24,7 +24,9 @@ export default function FounderUsers() {
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'users');
 
+  const [activeTab, setActiveTab] = useState('employees');
   const [employees, setEmployees] = useState(null);
+  const [customers, setCustomers] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
@@ -38,8 +40,20 @@ export default function FounderUsers() {
     setEmployees(data ?? []);
   }
 
+  async function loadCustomers() {
+    const { data } = await supabaseClient
+      .from('profiles')
+      .select('id, given_name, family_name, phone, account_status, last_active_at')
+      .eq('role', 'customer')
+      .order('created_at');
+    setCustomers(data ?? []);
+  }
+
   useEffect(() => {
-    if (profile) loadEmployees();
+    if (profile) {
+      loadEmployees();
+      loadCustomers();
+    }
   }, [profile]);
 
   async function callFounderApi(path, body) {
@@ -78,6 +92,7 @@ export default function FounderUsers() {
   async function handleAccountAction(targetUserId, action) {
     await callFounderApi('/api/founder/manage-account', { targetUserId, action });
     loadEmployees();
+    loadCustomers();
   }
 
   if (loading || !profile) {
@@ -95,77 +110,156 @@ export default function FounderUsers() {
         {t('founderUsers.title')}
       </h2>
 
-      {employees === null ? (
-        <LoadingSpinner inline locale={locale} className="mt-4" />
-      ) : (
-        <ul className="mt-4 space-y-2">
-          {employees.map((employee) => (
-            <li
-              key={employee.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-xl2 border border-black/5 p-3 text-sm transition-all duration-200 hover:shadow-soft dark:border-white/10"
-            >
-              <div>
-                <p className="flex items-center font-semibold">
-                  {[employee.given_name, employee.father_name, employee.grandfather_name, employee.family_name]
-                    .filter(Boolean)
-                    .join(' ') || '—'}
-                  {employee.admin_level === 'co_admin' && (
-                    <span className="ms-2 flex items-center gap-1 rounded-full bg-gold-500/10 px-2 py-0.5 text-xs text-gold-700 dark:text-gold-300">
-                      <Crown className="h-3 w-3" aria-hidden="true" />
-                      co_admin
+      {/* Tab switcher */}
+      <div className="mt-4 flex gap-2 border-b border-black/10 dark:border-white/10 pb-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab('employees')}
+          className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 ${
+            activeTab === 'employees'
+              ? 'bg-brand-600 text-white'
+              : 'hover:bg-black/5 dark:hover:bg-white/10'
+          }`}
+        >
+          {t('founderUsers.employeesTab')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('customers')}
+          className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 ${
+            activeTab === 'customers'
+              ? 'bg-brand-600 text-white'
+              : 'hover:bg-black/5 dark:hover:bg-white/10'
+          }`}
+        >
+          {t('founderUsers.membersTab')}
+        </button>
+      </div>
+
+      {/* Employees tab */}
+      {activeTab === 'employees' && (
+        employees === null ? (
+          <LoadingSpinner inline locale={locale} className="mt-4" />
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {employees.map((employee) => (
+              <li
+                key={employee.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl2 border border-black/5 p-3 text-sm transition-all duration-200 hover:shadow-soft dark:border-white/10"
+              >
+                <div>
+                  <p className="flex items-center font-semibold">
+                    {[employee.given_name, employee.father_name, employee.grandfather_name, employee.family_name]
+                      .filter(Boolean)
+                      .join(' ') || '—'}
+                    {employee.admin_level === 'co_admin' && (
+                      <span className="ms-2 flex items-center gap-1 rounded-full bg-gold-500/10 px-2 py-0.5 text-xs text-gold-700 dark:text-gold-300">
+                        <Crown className="h-3 w-3" aria-hidden="true" />
+                        co_admin
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-ink-muted dark:text-ink-dark-muted">
+                    {employee.phone} · {employee.specialization || '—'} ·{' '}
+                    <span className={employee.account_status === 'suspended' ? 'text-red-600 dark:text-red-300' : ''}>
+                      {employee.account_status}
                     </span>
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-1 text-xs font-semibold">
+                  {employee.account_status === 'active' ? (
+                    <button
+                      type="button"
+                      onClick={() => handleAccountAction(employee.id, 'suspend')}
+                      className="flex items-center gap-1 rounded-lg px-2 py-1 text-red-600 transition-colors hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-red-300"
+                    >
+                      <UserX className="h-3.5 w-3.5" aria-hidden="true" />
+                      {t('founderUsers.suspendCta')}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleAccountAction(employee.id, 'activate')}
+                      className="flex items-center gap-1 rounded-lg px-2 py-1 text-brand-700 transition-colors hover:bg-brand-500/10 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:text-brand-300"
+                    >
+                      <UserCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                      {t('founderUsers.activateCta')}
+                    </button>
                   )}
-                </p>
-                <p className="text-xs text-ink-muted dark:text-ink-dark-muted">
-                  {employee.phone} · {employee.specialization || '—'} ·{' '}
-                  <span className={employee.account_status === 'suspended' ? 'text-red-600 dark:text-red-300' : ''}>
-                    {employee.account_status}
-                  </span>
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-1 text-xs font-semibold">
-                {employee.account_status === 'active' ? (
-                  <button
-                    type="button"
-                    onClick={() => handleAccountAction(employee.id, 'suspend')}
-                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-red-600 transition-colors hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-red-300"
-                  >
-                    <UserX className="h-3.5 w-3.5" aria-hidden="true" />
-                    {t('founderUsers.suspendCta')}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleAccountAction(employee.id, 'activate')}
-                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-brand-700 transition-colors hover:bg-brand-500/10 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:text-brand-300"
-                  >
-                    <UserCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                    {t('founderUsers.activateCta')}
-                  </button>
-                )}
-                {employee.admin_level === 'co_admin' ? (
-                  <button
-                    type="button"
-                    onClick={() => handleAccountAction(employee.id, 'remove_co_admin')}
-                    className="flex items-center gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
-                  >
-                    <ShieldOff className="h-3.5 w-3.5" aria-hidden="true" />
-                    {t('founderUsers.removeCoAdminCta')}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleAccountAction(employee.id, 'assign_co_admin')}
-                    className="flex items-center gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
-                  >
-                    <Crown className="h-3.5 w-3.5" aria-hidden="true" />
-                    {t('founderUsers.assignCoAdminCta')}
-                  </button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+                  {employee.admin_level === 'co_admin' ? (
+                    <button
+                      type="button"
+                      onClick={() => handleAccountAction(employee.id, 'remove_co_admin')}
+                      className="flex items-center gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
+                    >
+                      <ShieldOff className="h-3.5 w-3.5" aria-hidden="true" />
+                      {t('founderUsers.removeCoAdminCta')}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleAccountAction(employee.id, 'assign_co_admin')}
+                        className="flex items-center gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
+                      >
+                        <Crown className="h-3.5 w-3.5" aria-hidden="true" />
+                        {t('founderUsers.assignCoAdminCta')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAccountAction(employee.id, 'demote_customer')}
+                        className="flex items-center gap-1 rounded-lg px-2 py-1 text-slate-500 transition-colors hover:bg-slate-500/10 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:text-slate-400"
+                      >
+                        <UserMinus className="h-3.5 w-3.5" aria-hidden="true" />
+                        {t('founderUsers.demoteCustomerCta')}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )
+      )}
+
+      {/* Members (customers) tab */}
+      {activeTab === 'customers' && (
+        customers === null ? (
+          <LoadingSpinner inline locale={locale} className="mt-4" />
+        ) : customers.length === 0 ? (
+          <p className="mt-6 text-center text-sm text-ink-muted dark:text-ink-dark-muted">
+            {t('founderUsers.noCustomersYet')}
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {customers.map((customer) => (
+              <li
+                key={customer.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl2 border border-black/5 p-3 text-sm transition-all duration-200 hover:shadow-soft dark:border-white/10"
+              >
+                <div>
+                  <p className="font-semibold">
+                    {[customer.given_name, customer.family_name].filter(Boolean).join(' ') || '—'}
+                  </p>
+                  <p className="text-xs text-ink-muted dark:text-ink-dark-muted">
+                    {customer.phone || '—'} ·{' '}
+                    <span className={customer.account_status === 'suspended' ? 'text-red-600 dark:text-red-300' : ''}>
+                      {customer.account_status}
+                    </span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAccountAction(customer.id, 'promote_employee')}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-500/10 focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-amber-300"
+                >
+                  <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t('founderUsers.promoteEmployeeCta')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )
       )}
 
       <section className="mt-8 rounded-2xl border border-black/5 bg-white/60 p-6 shadow-soft transition-shadow duration-300 hover:shadow-elevate dark:border-white/10 dark:bg-surface-dark-alt/60">
