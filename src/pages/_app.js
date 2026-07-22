@@ -50,6 +50,12 @@ export default function App({ Component, pageProps }) {
     };
   }, [router.events]);
 
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  }, []);
+
   return (
     <div className={`${notoSansArabic.variable} ${cairo.variable} contents`}>
       <MotionConfig reducedMotion="user">
