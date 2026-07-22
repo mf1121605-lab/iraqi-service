@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Globe, LogOut, Menu, Moon, Sun, Volume2, VolumeX, X } from 'lucide-react';
+import { Globe, Menu, Moon, Sun, Volume2, VolumeX, X } from 'lucide-react';
 import {
   LOCALE_META,
   defaultLocale,
@@ -13,7 +13,6 @@ import { toggleAmbientAudio, useAmbientAudioPlaying } from '../../utils/ambientA
 import { useSiteSettings } from '../../utils/useSiteSettings';
 import NotificationBell from '../UI/NotificationBell';
 import RequestAlertBell from '../UI/RequestAlertBell';
-import DmInvitationBell from '../UI/DmInvitationBell';
 import Avatar from '../Chat/Avatar';
 import ProfileDrawer from '../UI/ProfileDrawer';
 
@@ -185,7 +184,6 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
             )}
             <RequestAlertBell profile={profile} locale={locale} />
             {userId && <NotificationBell userId={userId} locale={locale} />}
-            {userId && <DmInvitationBell userId={userId} locale={locale} />}
             {siteSettings?.site_ambient_audio_url && (
               <button
                 type="button"
@@ -235,16 +233,6 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
                 />
               </span>
             </button>
-            {onSignOut && (
-              <button
-                type="button"
-                onClick={onSignOut}
-                className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 px-3.5 py-2 text-sm font-semibold text-[#1c0a00] shadow-[0_4px_14px_-4px_rgba(245,158,11,0.55)] transition-all duration-200 hover:-translate-y-px hover:shadow-[0_6px_20px_-4px_rgba(245,158,11,0.7)] focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:ring-offset-2 dark:focus:ring-offset-[#0d1117]"
-              >
-                <LogOut className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
-                <span className="hidden sm:inline">{t('common.signOut')}</span>
-              </button>
-            )}
             {navItems && navItems.length > 0 && (
               <button
                 type="button"
