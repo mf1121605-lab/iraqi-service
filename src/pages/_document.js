@@ -13,6 +13,15 @@ export default function Document() {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="خدماتي" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="خدماتي" />
+        <meta property="og:title" content="خدماتي — منصة الخدمات العراقية" />
+        <meta property="og:description" content="منصة متكاملة لتقديم وطلب الخدمات المتنوعة بكل سهولة ويسر" />
+        <meta property="og:image" content="/brand/logo-icon-512.png" />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content="خدماتي — منصة الخدمات العراقية" />
+        <meta name="twitter:description" content="منصة متكاملة لتقديم وطلب الخدمات المتنوعة بكل سهولة ويسر" />
+        <meta name="twitter:image" content="/brand/logo-icon-512.png" />
       </Head>
       <body>
         <Main />

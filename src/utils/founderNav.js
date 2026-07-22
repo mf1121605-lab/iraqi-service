@@ -7,6 +7,7 @@ import {
   ListTree,
   MessageCircle,
   Newspaper,
+  Package,
   Radio,
   ScrollText,
   Settings,
@@ -32,6 +33,8 @@ export function useFounderNav(locale, active) {
     { href: '/hq/news-links', label: t('hq.newsLinksNavCta'), icon: Newspaper },
     { href: '/hq/urgent-news', label: t('urgentNews.navCta'), active: active === 'urgent-news', icon: AlertTriangle },
     { href: '/founder/quick-requests', label: t('founderPanel.navQuickRequests'), active: active === 'quick-requests', icon: Zap },
+    { href: '/founder/products', label: t('founderPanel.navProducts'), active: active === 'products', icon: Package },
+    { href: '/founder/chat-rooms', label: t('founderPanel.navChatRooms'), active: active === 'chat-rooms', icon: MessageCircle },
     { href: '/chat', label: t('chat.roomsTitle'), icon: MessageCircle },
   ];
 }
