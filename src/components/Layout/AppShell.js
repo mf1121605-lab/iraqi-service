@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Globe, Menu, Moon, Sun, Volume2, VolumeX, X } from 'lucide-react';
+import { Globe, Moon, Sun, Volume2, VolumeX } from 'lucide-react';
 import {
   LOCALE_META,
   defaultLocale,
@@ -11,8 +11,10 @@ import {
 import { supabaseClient } from '../../lib/supabaseClient';
 import { toggleAmbientAudio, useAmbientAudioPlaying } from '../../utils/ambientAudio';
 import { useSiteSettings } from '../../utils/useSiteSettings';
+import { useNavBadges } from '../../utils/useNavBadges';
 import NotificationBell from '../UI/NotificationBell';
 import RequestAlertBell from '../UI/RequestAlertBell';
+import BottomNavBar from './BottomNavBar';
 import Avatar from '../Chat/Avatar';
 import ProfileDrawer from '../UI/ProfileDrawer';
 
@@ -41,10 +43,14 @@ function getStoredTheme() {
 export default function AppShell({ title, navItems, onSignOut, userId, profile, onProfileUpdated, children }) {
   const locale = useSyncedLocale();
   const [theme, setTheme] = useState('light');
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const siteSettings = useSiteSettings();
   const ambientPlaying = useAmbientAudioPlaying();
+  const { requestsBadge } = useNavBadges(userId, profile?.role);
+
+  const badges = {
+    '/customer/requests': requestsBadge,
+  };
 
   useEffect(() => {
     setTheme(getStoredTheme());
@@ -58,10 +64,6 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
-
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [navItems]);
 
   // Powers the founder's online/offline presence badge — a light
   // periodic ping while this authenticated page is open, not a full
@@ -166,14 +168,18 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
             </nav>
           )}
 
-          {/* RIGHT SIDE: actions */}
+          {/* RIGHT SIDE: actions — each button gets a subtle 3D depth effect */}
           <div className="flex items-center gap-1 text-sm">
             {profile && (
               <button
                 type="button"
                 onClick={() => setProfileOpen(true)}
                 aria-label={t('profileDrawer.title')}
-                className="relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 hover:bg-black/6 focus:outline-none focus:ring-2 focus:ring-amber-500/50 dark:hover:bg-white/8"
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 active:scale-90
+                  bg-gradient-to-b from-white/8 to-white/3 border border-white/10
+                  shadow-[0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.10)]
+                  hover:from-white/12 hover:border-white/18
+                  focus:outline-none focus:ring-2 focus:ring-amber-500/50"
               >
                 <Avatar avatarKey={profile.avatar_key} name={profile.given_name} seed={profile.id} className="h-8 w-8 ring-2 ring-transparent dark:ring-amber-500/20" />
                 <span className="absolute bottom-0.5 h-2.5 w-2.5 rtl:left-0.5 ltr:right-0.5">
@@ -188,24 +194,32 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
               <button
                 type="button"
                 onClick={toggleAmbientAudio}
-                className="flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 hover:bg-black/6 focus:outline-none focus:ring-2 focus:ring-amber-500/50 dark:hover:bg-white/8"
+                className="flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 active:scale-90
+                  bg-gradient-to-b from-white/8 to-white/3 border border-white/10
+                  shadow-[0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.10)]
+                  hover:from-white/12 hover:border-white/18
+                  focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                 aria-label={ambientPlaying ? t('common.muteSiteAudio') : t('common.unmuteSiteAudio')}
                 aria-pressed={ambientPlaying}
               >
                 {ambientPlaying ? (
-                  <Volume2 className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                  <Volume2 className="h-4 w-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" strokeWidth={2} aria-hidden="true" />
                 ) : (
-                  <VolumeX className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                  <VolumeX className="h-4 w-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" strokeWidth={2} aria-hidden="true" />
                 )}
               </button>
             )}
             <button
               type="button"
               onClick={toggleLocale}
-              className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors duration-200 hover:bg-black/6 focus:outline-none focus:ring-2 focus:ring-amber-500/50 dark:hover:bg-white/8"
+              className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 active:scale-95
+                bg-gradient-to-b from-white/8 to-white/3 border border-white/10
+                shadow-[0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.10)]
+                hover:from-white/12 hover:border-white/18
+                focus:outline-none focus:ring-2 focus:ring-amber-500/50"
               aria-label={t('gateway.switchLanguage')}
             >
-              <Globe className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+              <Globe className="h-4 w-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" strokeWidth={2} aria-hidden="true" />
               <span className="hidden sm:inline">
                 {LOCALE_META.find((meta) => meta.code !== locale)?.nativeName}
               </span>
@@ -213,19 +227,23 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
             <button
               type="button"
               onClick={toggleTheme}
-              className="flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 hover:bg-black/6 focus:outline-none focus:ring-2 focus:ring-amber-500/50 dark:hover:bg-white/8"
+              className="flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 active:scale-90
+                bg-gradient-to-b from-white/8 to-white/3 border border-white/10
+                shadow-[0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.10)]
+                hover:from-white/12 hover:border-white/18
+                focus:outline-none focus:ring-2 focus:ring-amber-500/50"
               aria-label={theme === 'dark' ? t('common.lightMode') : t('common.darkMode')}
             >
               <span className="relative block h-4 w-4">
                 <Sun
-                  className={`absolute inset-0 h-4 w-4 transition-all duration-300 ${
+                  className={`absolute inset-0 h-4 w-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] transition-all duration-300 ${
                     theme === 'dark' ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'
                   }`}
                   strokeWidth={2}
                   aria-hidden="true"
                 />
                 <Moon
-                  className={`absolute inset-0 h-4 w-4 transition-all duration-300 ${
+                  className={`absolute inset-0 h-4 w-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] transition-all duration-300 ${
                     theme === 'dark' ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0'
                   }`}
                   strokeWidth={2}
@@ -233,34 +251,12 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
                 />
               </span>
             </button>
-            {navItems && navItems.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setMobileOpen((current) => !current)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors duration-200 hover:bg-black/6 focus:outline-none focus:ring-2 focus:ring-amber-500/50 dark:hover:bg-white/8 sm:hidden"
-                aria-label={t('common.menu')}
-                aria-expanded={mobileOpen}
-              >
-                {mobileOpen ? (
-                  <X className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
-                ) : (
-                  <Menu className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
-                )}
-              </button>
-            )}
           </div>
         </div>
-
-        {/* MOBILE NAV DRAWER */}
-        {navItems && navItems.length > 0 && mobileOpen && (
-          <nav className="animate-slide-down glass-nav border-t border-black/5 px-4 py-4 dark:glass-nav-dark dark:border-amber-500/10 sm:hidden">
-            <div className="flex flex-col gap-1.5">
-              <NavLinks onNavigate={() => setMobileOpen(false)} />
-            </div>
-          </nav>
-        )}
       </header>
-      <main id="main-content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
+      {/* Extra bottom padding on mobile so content clears the fixed bottom nav */}
+      <main id="main-content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:pb-8 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]">{children}</main>
+      <BottomNavBar navItems={navItems} badges={badges} />
       {profile && (
         <ProfileDrawer
           open={profileOpen}
