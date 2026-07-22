@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ClipboardList, GraduationCap, Heart, Image as ImageIcon, LayoutGrid, MessageCircle, Newspaper, Search, Send, ThumbsUp, Trash2, TriangleAlert } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
-import QuickRequestWidget from '../../components/UI/QuickRequestWidget';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Avatar from '../../components/Chat/Avatar';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -10,9 +9,8 @@ import { translate } from '../../utils/i18n';
 import { safeSlug } from '../../utils/safeStorageName';
 
 const REACTIONS = [
-  { type: 'like',  emoji: '👍', key: 'likeCta' },
-  { type: 'love',  emoji: '❤️', key: 'loveCta' },
-  { type: 'angry', emoji: '😡', key: 'angryCta' },
+  { type: 'like',    emoji: '👍', key: 'likeCta' },
+  { type: 'dislike', emoji: '👎', key: 'dislikeCta' },
 ];
 
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -55,7 +53,7 @@ function PostCard({ post, profile, locale, t, onReact, onDelete, onComment, onDe
   }
 
   return (
-    <article className="metal-panel overflow-hidden p-0 text-ink-light dark:text-white">
+    <article className="gold-border-spin metal-panel overflow-hidden p-0 text-ink-light dark:text-white">
       {/* Post header */}
       <div className="flex items-center gap-3 px-4 pt-4">
         <Avatar avatarKey={post.author?.avatar_key} name={post.author?.given_name} seed={post.author_id} className="h-10 w-10" />
@@ -98,6 +96,7 @@ function PostCard({ post, profile, locale, t, onReact, onDelete, onComment, onDe
             }`}
           >
             <span>{emoji}</span>
+            <span className="hidden xs:inline">{t(`socialFeed.${key}`)}</span>
             {count > 0 && <span className="text-xs tabular-nums">{count}</span>}
           </button>
         ))}
@@ -281,10 +280,6 @@ export default function CustomerNews() {
         <Newspaper className="h-5 w-5 text-gold-600 dark:text-gold-300" aria-hidden="true" />
         {t('socialFeed.pageTitle')}
       </h2>
-
-      <div className="mt-5">
-        <QuickRequestWidget sectionName={t('socialFeed.pageTitle')} locale={locale} profile={profile} />
-      </div>
 
       {/* Post composer */}
       <form onSubmit={handlePost} className="metal-panel mt-5 p-4 text-ink-light dark:text-white">
