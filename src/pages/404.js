@@ -3,10 +3,10 @@ import { useLocale } from '../components/Layout/AppShell';
 import { translate } from '../utils/i18n';
 import { useSession } from '../utils/useSession';
 
-function dashboardPath(role) {
-  if (role === 'founder' || role === 'co_admin') return '/founder/dashboard';
-  if (role === 'employee') return '/employee/dashboard';
-  if (role === 'customer') return '/customer/dashboard';
+function dashboardPath(profile) {
+  if (profile.role === 'founder' || profile.admin_level === 'co_admin') return '/founder/dashboard';
+  if (profile.role === 'employee') return '/employee/dashboard';
+  if (profile.role === 'customer') return '/customer/dashboard';
   return '/login';
 }
 
@@ -14,7 +14,7 @@ export default function NotFound() {
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const { profile } = useSession();
-  const homeHref = profile ? dashboardPath(profile.role) : '/';
+  const homeHref = profile ? dashboardPath(profile) : '/';
 
   return (
     <main

@@ -39,7 +39,7 @@ export default function Home({ siteSettings }) {
 
   useEffect(() => {
     if (authLoading || !session || !profile) return;
-    router.replace(dashboardPathForRole(profile.role));
+    router.replace(dashboardPathForRole(profile));
   }, [authLoading, session, profile, router]);
 
   function selectLanguage(code) {

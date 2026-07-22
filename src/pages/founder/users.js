@@ -19,7 +19,7 @@ const emptyForm = {
 };
 
 export default function FounderUsers() {
-  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder', 'co_admin']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'users');

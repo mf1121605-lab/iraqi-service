@@ -17,7 +17,7 @@ import { hoverLift } from '../../components/UI/Motion';
 const Icon3D = dynamic(() => import('../../components/UI/Icon3D'), { ssr: false });
 
 export default function FounderDashboard() {
-  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder']);
+  const { profile, loading, signOut, refreshProfile } = useRequireRole(['founder', 'co_admin']);
   const locale = useLocale();
   const t = (path) => translate(locale, path);
   const navItems = useFounderNav(locale, 'dashboard');

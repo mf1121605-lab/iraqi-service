@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabaseClient } from '../lib/supabaseClient';
 
-export function dashboardPathForRole(role) {
-  if (role === 'founder') return '/founder/dashboard';
+export function dashboardPathForRole(roleOrProfile) {
+  const role = typeof roleOrProfile === 'string' ? roleOrProfile : roleOrProfile?.role;
+  const adminLevel = typeof roleOrProfile === 'string' ? null : roleOrProfile?.admin_level;
+  if (role === 'founder' || adminLevel === 'co_admin') return '/founder/dashboard';
   if (role === 'employee') return '/employee/dashboard';
   return '/customer/dashboard';
 }
@@ -80,8 +82,12 @@ export function useRequireRole(allowedRoles) {
       router.replace('/');
       return;
     }
-    if (!allowedRolesKey.split(',').includes(profile.role)) {
-      router.replace(dashboardPathForRole(profile.role));
+    // co_admin is an admin_level on an employee profile, not a separate role value.
+    // Build the effective role set so pages can gate on 'co_admin' explicitly.
+    const effectiveRoles = [profile.role];
+    if (profile.admin_level === 'co_admin') effectiveRoles.push('co_admin');
+    if (!allowedRolesKey.split(',').some((r) => effectiveRoles.includes(r))) {
+      router.replace(dashboardPathForRole(profile));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, session, profile, allowedRolesKey, router]);
