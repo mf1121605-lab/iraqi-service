@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { AnimatePresence } from 'framer-motion';
 import {
+  Banknote,
   Check,
   CheckCheck,
   ClipboardCheck,
@@ -56,6 +57,12 @@ export default function EmployeeDashboard() {
   const [statusNote, setStatusNote] = useState('');
   const [nextStatus, setNextStatus] = useState('in_review');
   const [claimedNotice, setClaimedNotice] = useState('');
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('zaincash');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentNotes, setPaymentNotes] = useState('');
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState('');
   const queueRef = useRef(null);
   const initialLoadRef = useRef(true);
 
@@ -268,6 +275,34 @@ export default function EmployeeDashboard() {
       message_type: 'sticker',
     });
     loadDetail(selectedId);
+  }
+
+  async function handleLogPayment(event) {
+    event.preventDefault();
+    if (!paymentAmount || !selectedId) return;
+    setPaymentSubmitting(true);
+    setPaymentSuccess('');
+    const session = await supabaseClient.auth.getSession();
+    const token = session.data?.session?.access_token;
+    try {
+      const res = await fetch('/api/employee/log-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ request_id: selectedId, method: paymentMethod, amount: paymentAmount, notes: paymentNotes }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'error');
+      setPaymentAmount('');
+      setPaymentNotes('');
+      setShowPaymentForm(false);
+      setPaymentSuccess(t('payments.successLogged'));
+      setTimeout(() => setPaymentSuccess(''), 3000);
+      loadDetail(selectedId);
+    } catch {
+      // silent — error visible to dev in console
+    } finally {
+      setPaymentSubmitting(false);
+    }
   }
 
   if (loading || !profile) {
@@ -537,6 +572,7 @@ export default function EmployeeDashboard() {
                         const isFirst = !bundled;
                         const isLast = !isBundled(messages[index + 1], message);
                         const isSticker = message.message_type === 'sticker';
+                        const isPayment = message.message_type === 'payment_proposal';
                         return (
                           <MessageBubble
                             key={message.id}
@@ -549,16 +585,32 @@ export default function EmployeeDashboard() {
                             bubbleClassName={
                               isSticker
                                 ? 'text-7xl leading-none'
-                                : `max-w-[70%] px-3 py-2 text-sm ${
-                                    isMine ? 'bg-amber-600 text-white shadow-lg' : 'border border-white/[0.08] bg-[#161b22] text-gray-200'
-                                  }`
+                                : isPayment
+                                  ? 'max-w-[75%]'
+                                  : `max-w-[70%] px-3 py-2 text-sm ${
+                                      isMine ? 'bg-amber-600 text-white shadow-lg' : 'border border-white/[0.08] bg-[#161b22] text-gray-200'
+                                    }`
                             }
                             onDelete={() => handleDeleteMessage(message.id)}
                             locale={locale}
                           >
                             {isSticker ? (
                               message.body
-                            ) : (
+                            ) : isPayment ? (() => {
+                              let parsed = {};
+                              try { parsed = JSON.parse(message.body ?? '{}'); } catch { /* */ }
+                              return (
+                                <div className="rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2.5 text-sm">
+                                  <div className="flex items-center gap-1.5 font-bold text-amber-400">
+                                    <Banknote className="h-4 w-4" aria-hidden="true" />
+                                    {t('payments.paymentProposalLabel')}
+                                  </div>
+                                  <p className="mt-1 text-white/80">{t('payments.methodLabel')}: {parsed.method === 'zaincash' ? 'ZainCash' : 'Qi Card'}</p>
+                                  <p className="text-white/80">{t('payments.amountLabel')}: <span className="font-semibold text-amber-300">{Number(parsed.amount).toLocaleString('ar-IQ')} IQD</span></p>
+                                  {parsed.notes && <p className="mt-1 text-xs text-white/50">{parsed.notes}</p>}
+                                </div>
+                              );
+                            })() : (
                               <>
                                 {message.body && <p className="whitespace-pre-wrap">{message.body}</p>}
                                 {message.attachment_url && <MessageAttachment path={message.attachment_url} isMine={isMine} locale={locale} />}
@@ -582,6 +634,56 @@ export default function EmployeeDashboard() {
                     </AnimatePresence>
                   </div>
                   {pendingAttachment && <p className="mt-1 text-xs text-white/60">{pendingAttachment.name}</p>}
+                  {paymentSuccess && (
+                    <p className="mt-1 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-400">
+                      {paymentSuccess}
+                    </p>
+                  )}
+                  {showPaymentForm && (
+                    <form onSubmit={handleLogPayment} className="mt-3 space-y-2 rounded-xl border border-amber-400/30 bg-amber-400/5 p-3">
+                      <p className="text-xs font-semibold text-amber-400">{t('payments.logPaymentTitle')}</p>
+                      <div className="flex gap-2">
+                        {['zaincash', 'qi_card'].map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setPaymentMethod(m)}
+                            className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors ${
+                              paymentMethod === m
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-white/5 text-white/60 hover:bg-white/10'
+                            }`}
+                          >
+                            {m === 'zaincash' ? 'ZainCash' : 'Qi Card'}
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        type="number"
+                        min="1"
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                        placeholder={t('payments.amountPlaceholder')}
+                        className="input-cinematic w-full text-sm"
+                        required
+                        dir="ltr"
+                      />
+                      <input
+                        value={paymentNotes}
+                        onChange={(e) => setPaymentNotes(e.target.value)}
+                        placeholder={t('payments.notesLabel')}
+                        className="input-cinematic w-full text-sm"
+                      />
+                      <div className="flex gap-2">
+                        <button type="submit" disabled={paymentSubmitting} className="btn-cinematic-gold flex-1 py-1.5 text-xs disabled:opacity-50">
+                          {t('payments.logPaymentCta')}
+                        </button>
+                        <button type="button" onClick={() => setShowPaymentForm(false)} className="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-white/60 hover:bg-white/10">
+                          ✕
+                        </button>
+                      </div>
+                    </form>
+                  )}
                   <form onSubmit={handleSendMessage} className="relative mt-3 flex items-center gap-2">
                     <input
                       value={messageBody}
@@ -596,6 +698,16 @@ export default function EmployeeDashboard() {
                     />
                     <VoiceRecorder pathPrefix={`requests/${selectedId}`} locale={locale} onUploaded={setPendingAttachment} />
                     <StickerPicker onPick={handleSendSticker} locale={locale} />
+                    <button
+                      type="button"
+                      onClick={() => setShowPaymentForm((v) => !v)}
+                      title={t('payments.logPaymentTitle')}
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                        showPaymentForm ? 'bg-amber-500 text-white' : 'bg-white/5 text-amber-400 hover:bg-amber-400/20'
+                      }`}
+                    >
+                      <Banknote className="h-4 w-4" aria-hidden="true" />
+                    </button>
                     <button type="submit" className="btn-cinematic-gold flex items-center gap-1.5 px-4 py-2 text-sm">
                       <Send className="h-3.5 w-3.5 rtl:-scale-x-100" aria-hidden="true" />
                       {t('employeeDesk.sendCta')}

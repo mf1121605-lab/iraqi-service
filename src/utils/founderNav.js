@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   BarChart3,
+  CreditCard,
   Database,
   Image as ImageIcon,
   LayoutDashboard,
@@ -27,6 +28,7 @@ export function useFounderNav(locale, active) {
     { href: '/founder/users', label: t('founderPanel.navUsers'), active: active === 'users', icon: Users },
     { href: '/founder/users-data', label: t('founderPanel.navUsersData'), active: active === 'users-data', icon: Database },
     { href: '/founder/stats', label: t('founderPanel.navStats'), active: active === 'stats', icon: BarChart3 },
+    { href: '/founder/payments', label: t('payments.navCta'), active: active === 'payments', icon: CreditCard },
     { href: '/founder/audit-log', label: t('founderPanel.navAuditLog'), active: active === 'audit-log', icon: ScrollText },
     { href: '/founder/settings', label: t('founderSettings.title'), active: active === 'settings', icon: Settings },
     { href: '/chat/hq', label: t('hq.chatNavCta'), icon: Radio },

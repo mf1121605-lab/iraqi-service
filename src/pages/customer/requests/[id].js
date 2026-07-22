@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertTriangle, Check, CheckCheck, CheckCircle2, Circle, ClipboardList, GraduationCap, Inbox, LayoutGrid, Search, Send, Star } from 'lucide-react';
+import { AlertTriangle, Banknote, Check, CheckCheck, CheckCircle2, Circle, ClipboardList, GraduationCap, Inbox, LayoutGrid, Search, Send, Star } from 'lucide-react';
 import AppShell, { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import StatusBadge from '../../../components/UI/StatusBadge';
@@ -298,6 +298,7 @@ export default function CustomerRequestDetail() {
                 const isFirst = !bundled;
                 const isLast = !isBundled(messages[index + 1], message);
                 const isSticker = message.message_type === 'sticker';
+                const isPayment = message.message_type === 'payment_proposal';
                 return (
                   <MessageBubble
                     key={message.id}
@@ -310,16 +311,32 @@ export default function CustomerRequestDetail() {
                     bubbleClassName={
                       isSticker
                         ? 'text-7xl leading-none'
-                        : `max-w-[70%] px-3 py-2 text-sm ${
-                            isMine ? 'bg-amber-600 text-white shadow-lg' : 'border border-white/[0.08] bg-[#161b22] text-gray-200'
-                          }`
+                        : isPayment
+                          ? 'max-w-[75%]'
+                          : `max-w-[70%] px-3 py-2 text-sm ${
+                              isMine ? 'bg-amber-600 text-white shadow-lg' : 'border border-white/[0.08] bg-[#161b22] text-gray-200'
+                            }`
                     }
                     onDelete={() => handleDeleteMessage(message.id)}
                     locale={locale}
                   >
                     {isSticker ? (
                       message.body
-                    ) : (
+                    ) : isPayment ? (() => {
+                      let parsed = {};
+                      try { parsed = JSON.parse(message.body ?? '{}'); } catch { /* */ }
+                      return (
+                        <div className="rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2.5 text-sm">
+                          <div className="flex items-center gap-1.5 font-bold text-amber-400">
+                            <Banknote className="h-4 w-4" aria-hidden="true" />
+                            {t('payments.paymentProposalLabel')}
+                          </div>
+                          <p className="mt-1 text-white/80">{t('payments.methodLabel')}: {parsed.method === 'zaincash' ? 'ZainCash' : 'Qi Card'}</p>
+                          <p className="text-white/80">{t('payments.amountLabel')}: <span className="font-semibold text-amber-300">{Number(parsed.amount).toLocaleString('ar-IQ')} IQD</span></p>
+                          {parsed.notes && <p className="mt-1 text-xs text-white/50">{parsed.notes}</p>}
+                        </div>
+                      );
+                    })() : (
                       <>
                         {message.body && <p className="whitespace-pre-wrap">{message.body}</p>}
                         {message.attachment_url && <MessageAttachment path={message.attachment_url} isMine={isMine} locale={locale} />}
