@@ -66,7 +66,7 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['var(--font-noto-sans-arabic)', 'Tahoma', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-tajawal)', 'var(--font-noto-sans-arabic)', 'Tahoma', 'system-ui', 'sans-serif'],
         display: ['var(--font-cairo)', 'var(--font-noto-sans-arabic)', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {

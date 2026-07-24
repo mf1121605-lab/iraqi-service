@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { MotionConfig } from 'framer-motion';
-import { Cairo, Noto_Sans_Arabic } from 'next/font/google';
+import { Cairo, Noto_Sans_Arabic, Tajawal } from 'next/font/google';
 import SplashScreen from '../components/UI/SplashScreen';
 import ErrorBoundary from '../components/UI/ErrorBoundary';
 import PermissionPrompt from '../components/UI/PermissionPrompt';
@@ -16,6 +16,13 @@ const InteractiveBackground3D = dynamic(
   () => import('../components/UI/InteractiveBackground3D'),
   { ssr: false }
 );
+
+const tajawal = Tajawal({
+  subsets: ['arabic', 'latin'],
+  weight: ['400', '500', '700', '800'],
+  variable: '--font-tajawal',
+  display: 'swap',
+});
 
 const notoSansArabic = Noto_Sans_Arabic({
   subsets: ['arabic'],
@@ -57,7 +64,7 @@ export default function App({ Component, pageProps }) {
   }, []);
 
   return (
-    <div className={`${notoSansArabic.variable} ${cairo.variable} contents`}>
+    <div className={`${tajawal.variable} ${notoSansArabic.variable} ${cairo.variable} contents`}>
       <MotionConfig reducedMotion="user">
         <ErrorBoundary>
           <div className="fixed inset-0 -z-10 pointer-events-none bg-[#0d1117]">
