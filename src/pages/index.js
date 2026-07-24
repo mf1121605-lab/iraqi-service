@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowUpRight, UserPlus, UserRound, X } from 'lucide-react';
+import { ArrowLeftRight, ArrowUpRight, UserPlus, UserRound, X } from 'lucide-react';
 import GoogleGlyph from '../components/UI/GoogleGlyph';
 import {
   LOCALE_META,
@@ -271,8 +271,8 @@ export default function Home({ siteSettings }) {
             </div>
           </MotionLink>
 
-          {/* About Us + Privacy Policy buttons — spans all 3 cols */}
-          <motion.div variants={itemVariants} className="md:col-span-3 flex justify-center gap-4 flex-wrap">
+          {/* About Us + Privacy Policy + Language Switch — spans all 3 cols */}
+          <motion.div variants={itemVariants} className="md:col-span-3 flex justify-center gap-3 flex-wrap">
             <button
               type="button"
               onClick={() => setModalOpen('about')}
@@ -286,6 +286,14 @@ export default function Home({ siteSettings }) {
               className="rounded-xl border border-amber-400/50 bg-amber-400/5 px-5 py-2.5 text-sm font-bold text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)] hover:shadow-[0_0_25px_rgba(245,158,11,0.45)] transition-shadow"
             >
               {t('gateway.privacyCta')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep('language')}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-bold text-white/60 hover:border-white/40 hover:text-white transition-all"
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
+              {t('gateway.switchLanguage')}
             </button>
           </motion.div>
         </motion.div>
