@@ -103,7 +103,10 @@ export default function EmployeeDashboard() {
       const justClaimed = previousQueue.find(
         (old) => !old.assigned_employee_id && (!nextIds.has(old.id) || nextQueue.find((r) => r.id === old.id)?.assigned_employee_id)
       );
-      if (justClaimed) {
+      // Only show the "claimed by other" notice when it wasn't THIS employee who claimed it.
+      const claimedByOther = justClaimed &&
+        nextQueue.find((r) => r.id === justClaimed.id)?.assigned_employee_id !== profile?.id;
+      if (claimedByOther) {
         setClaimedNotice(justClaimed.title);
         setTimeout(() => setClaimedNotice(''), 3000);
       }
@@ -279,7 +282,7 @@ export default function EmployeeDashboard() {
 
   async function claimRequest(requestId) {
     await supabaseClient.from('requests').update({ assigned_employee_id: profile.id }).eq('id', requestId);
-    loadQueue();
+    await loadQueue();
     loadDetail(requestId);
   }
 

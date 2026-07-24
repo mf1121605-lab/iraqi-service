@@ -119,19 +119,31 @@ export default function CustomerRequestDetail() {
     // on every page load a customer does of their own request, no
     // background worker involved.
     supabaseClient.rpc('expire_stale_claims').then(() => {});
-    const { data: requestRow } = await supabaseClient
+    let { data: row, error } = await supabaseClient
       .from('requests')
       .select('id, title, description, category, status, assigned_employee_id, created_at, is_disputed')
       .eq('id', id)
       .maybeSingle();
-    if (!requestRow) return;
-    setRequest(requestRow);
+    if (error) {
+      // is_disputed column may not be in the live DB yet — fall back to
+      // a query without it so the page still loads.
+      const { data: fallback } = await supabaseClient
+        .from('requests')
+        .select('id, title, description, category, status, assigned_employee_id, created_at')
+        .eq('id', id)
+        .maybeSingle();
+      if (!fallback) return;
+      row = { ...fallback, is_disputed: false };
+    } else if (!row) {
+      return;
+    }
+    setRequest(row);
 
-    if (requestRow.assigned_employee_id) {
+    if (row.assigned_employee_id) {
       supabaseClient
         .from('profiles')
         .select('id, given_name, family_name, avatar_key, specialization')
-        .eq('id', requestRow.assigned_employee_id)
+        .eq('id', row.assigned_employee_id)
         .maybeSingle()
         .then(({ data }) => setEmployee(data ?? null));
     }
