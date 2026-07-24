@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Globe, Moon, Sun, Volume2, VolumeX } from 'lucide-react';
+import { audioFX } from '../../utils/audioFX';
 import {
   LOCALE_META,
   defaultLocale,
@@ -108,7 +109,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
           <a
             key={item.href}
             href={item.href}
-            onClick={onNavigate}
+            onClick={(e) => { audioFX.playNavTap(); if (onNavigate) onNavigate(e); }}
             className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 hover:-translate-y-px focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${
               item.active
                 ? 'bg-gradient-to-r from-amber-500/20 to-amber-600/10 text-amber-400 border border-amber-500/35 shadow-[0_0_14px_-4px_rgba(245,158,11,0.30)] dark:from-amber-500/20 dark:to-amber-600/10'

@@ -1,9 +1,12 @@
+import { audioFX } from '../../utils/audioFX';
+
 export default function NavIcon3D({ icon: Icon, label, href, active, badge }) {
   return (
     <div className={badge > 0 ? 'animate-icon-bounce' : ''}>
       <a
         href={href}
         aria-label={label}
+        onClick={() => audioFX.playNavTap()}
         className="relative flex flex-col items-center gap-0.5 group outline-none"
       >
         {/* 3D icon container */}

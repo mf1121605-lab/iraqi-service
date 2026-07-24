@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { audioFX } from '../../../utils/audioFX';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -192,7 +193,12 @@ export default function CustomerRequestDetail() {
     const channel = supabaseClient
       .channel(`request-detail-${id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'requests', filter: `id=eq.${id}` }, loadAll)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'request_messages', filter: `request_id=eq.${id}` }, loadAll)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'request_messages', filter: `request_id=eq.${id}` }, (payload) => {
+        if (payload.new?.sender_id !== profile.id) audioFX.playMessageReceived();
+        loadAll();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'request_messages', filter: `request_id=eq.${id}` }, loadAll)
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'request_messages', filter: `request_id=eq.${id}` }, loadAll)
       .subscribe();
 
     return () => supabaseClient.removeChannel(channel);
@@ -237,6 +243,7 @@ export default function CustomerRequestDetail() {
     setSending(false);
     setMessageBody('');
     setPendingAttachment(null);
+    audioFX.playMessageSent();
     loadAll();
   }
 
@@ -247,6 +254,7 @@ export default function CustomerRequestDetail() {
       body: sticker,
       message_type: 'sticker',
     });
+    audioFX.playStickerPicked();
     loadAll();
   }
 

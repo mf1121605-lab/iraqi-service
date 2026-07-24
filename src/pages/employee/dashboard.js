@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { audioFX } from '../../utils/audioFX';
 import { useRouter } from 'next/router';
 import { AnimatePresence } from 'framer-motion';
 import {
@@ -212,7 +213,17 @@ export default function EmployeeDashboard() {
       .channel(`request-detail-${selectedId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'request_messages', filter: `request_id=eq.${selectedId}` },
+        { event: 'INSERT', schema: 'public', table: 'request_messages', filter: `request_id=eq.${selectedId}` },
+        (payload) => { if (payload.new?.sender_id !== profile?.id) audioFX.playMessageReceived(); loadDetail(selectedId); }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'request_messages', filter: `request_id=eq.${selectedId}` },
+        () => loadDetail(selectedId)
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'request_messages', filter: `request_id=eq.${selectedId}` },
         () => loadDetail(selectedId)
       )
       .subscribe();
@@ -295,6 +306,7 @@ export default function EmployeeDashboard() {
     });
     setMessageBody('');
     setPendingAttachment(null);
+    audioFX.playMessageSent();
     loadDetail(selectedId);
   }
 
@@ -305,6 +317,7 @@ export default function EmployeeDashboard() {
       body: sticker,
       message_type: 'sticker',
     });
+    audioFX.playStickerPicked();
     loadDetail(selectedId);
   }
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { audioFX } from '../../utils/audioFX';
 import { ClipboardList, GraduationCap, Heart, Image as ImageIcon, LayoutGrid, MessageCircle, Newspaper, Search, Send, ThumbsUp, Trash2, TriangleAlert } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -250,9 +251,11 @@ export default function CustomerNews() {
       await supabaseClient.from('social_reactions').delete().eq('id', existingReaction.id);
       if (existingReaction.reaction_type !== reactionType) {
         await supabaseClient.from('social_reactions').insert({ post_id: postId, user_id: profile.id, reaction_type: reactionType });
+        audioFX.playReaction();
       }
     } else {
       await supabaseClient.from('social_reactions').insert({ post_id: postId, user_id: profile.id, reaction_type: reactionType });
+      audioFX.playReaction();
     }
     load();
   }
