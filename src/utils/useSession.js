@@ -27,7 +27,7 @@ export function useSession() {
     const { data } = await supabaseClient
       .from('profiles')
       .select(
-        'id, role, admin_level, account_status, phone, phone_verified, email, given_name, father_name, grandfather_name, family_name, avatar_key, specialization, active_services, created_at, updated_at, pinned_room_ids, username, recovery_question_id, onboarding_complete'
+        'id, role, admin_level, account_status, phone, phone_verified, email, given_name, father_name, grandfather_name, family_name, avatar_key, specialization, active_services, created_at, updated_at, pinned_room_ids, username, recovery_question_id'
       )
       .eq('id', userId)
       .single();
@@ -38,7 +38,15 @@ export function useSession() {
       await new Promise((resolve) => setTimeout(resolve, 400));
       return loadProfile(userId, attempt + 1);
     }
-    setProfile(data ?? null);
+    // Derive onboarding_complete from existing columns so the app works
+    // even before the migration that adds the real DB column is applied.
+    const profile = data ? {
+      ...data,
+      onboarding_complete:
+        data.role !== 'customer' ||
+        (!!data.avatar_key && !!data.given_name && data.given_name !== ''),
+    } : null;
+    setProfile(profile);
   }, []);
 
   useEffect(() => {

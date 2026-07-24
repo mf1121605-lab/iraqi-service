@@ -49,7 +49,7 @@ export default function UnifiedLogin() {
 
   useEffect(() => {
     if (loading || !session || !profile) return;
-    if (profile.role === 'customer' && !profile.avatar_key) {
+    if (profile.role === 'customer' && !profile.onboarding_complete) {
       router.replace('/customer/onboarding');
       return;
     }
