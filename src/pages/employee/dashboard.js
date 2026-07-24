@@ -65,6 +65,11 @@ export default function EmployeeDashboard() {
   const [paymentSuccess, setPaymentSuccess] = useState('');
   const queueRef = useRef(null);
   const initialLoadRef = useRef(true);
+  const msgListRef = useRef(null);
+  const msgEndRef = useRef(null);
+  const isMsgAtBottomRef = useRef(true);
+  const [showMsgScrollDown, setShowMsgScrollDown] = useState(false);
+  const [msgUnreadCount, setMsgUnreadCount] = useState(0);
 
   useEffect(() => {
     if (!profile) return;
@@ -214,6 +219,32 @@ export default function EmployeeDashboard() {
     return () => supabaseClient.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
+
+  useEffect(() => {
+    const container = msgListRef.current;
+    if (!container) return;
+    if (isMsgAtBottomRef.current) {
+      msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setMsgUnreadCount(0);
+    } else {
+      setMsgUnreadCount((prev) => prev + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length]);
+
+  function handleMsgScroll() {
+    const container = msgListRef.current;
+    if (!container) return;
+    const atBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    isMsgAtBottomRef.current = atBottom;
+    setShowMsgScrollDown(!atBottom);
+    if (atBottom) setMsgUnreadCount(0);
+  }
+
+  function scrollMsgToBottom() {
+    msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setMsgUnreadCount(0);
+  }
 
   async function toggleService(category) {
     const next = activeServices.includes(category)
@@ -561,8 +592,11 @@ export default function EmployeeDashboard() {
                     recipientAvatarKey={customer?.avatar_key}
                     recipientSeed={customer?.id}
                   />
+                  <div className="relative mt-2">
                   <div
-                    className="mt-2 max-h-56 overflow-y-auto rounded-xl bg-[#0d1117] p-2"
+                    ref={msgListRef}
+                    onScroll={handleMsgScroll}
+                    className="max-h-56 overflow-y-auto rounded-xl bg-[#0d1117] p-2"
                     style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '18px 18px' }}
                   >
                     <AnimatePresence initial={false}>
@@ -632,6 +666,17 @@ export default function EmployeeDashboard() {
                         );
                       })}
                     </AnimatePresence>
+                    <div ref={msgEndRef} />
+                  </div>
+                  {showMsgScrollDown && (
+                    <button
+                      type="button"
+                      onClick={scrollMsgToBottom}
+                      className="absolute bottom-1 start-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1 text-xs font-bold text-black shadow-md"
+                    >
+                      ↓{msgUnreadCount > 0 ? ` ${msgUnreadCount}` : ''}
+                    </button>
+                  )}
                   </div>
                   {pendingAttachment && <p className="mt-1 text-xs text-white/60">{pendingAttachment.name}</p>}
                   {paymentSuccess && (

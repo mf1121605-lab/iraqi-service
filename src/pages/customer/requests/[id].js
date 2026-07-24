@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -107,6 +107,11 @@ export default function CustomerRequestDetail() {
   const [messageBody, setMessageBody] = useState('');
   const [pendingAttachment, setPendingAttachment] = useState(null);
   const [sending, setSending] = useState(false);
+  const [showScrollDown, setShowScrollDown] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const listRef = useRef(null);
+  const listEndRef = useRef(null);
+  const isAtBottomRef = useRef(true);
 
   async function loadAll() {
     // Lazy SLA check (see expire_stale_claims() migration comment) — runs
@@ -193,6 +198,31 @@ export default function CustomerRequestDetail() {
     return () => supabaseClient.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, id]);
+
+  useEffect(() => {
+    const container = listRef.current;
+    if (!container) return;
+    if (isAtBottomRef.current) {
+      listEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setUnreadCount(0);
+    } else {
+      setUnreadCount((prev) => prev + 1);
+    }
+  }, [messages.length]);
+
+  const handleScroll = useCallback(() => {
+    const container = listRef.current;
+    if (!container) return;
+    const atBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    isAtBottomRef.current = atBottom;
+    setShowScrollDown(!atBottom);
+    if (atBottom) setUnreadCount(0);
+  }, []);
+
+  function scrollToBottom() {
+    listEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setUnreadCount(0);
+  }
 
   async function handleSendMessage(event) {
     event.preventDefault();
@@ -286,7 +316,10 @@ export default function CustomerRequestDetail() {
               recipientSeed={employee.id}
             />
           )}
+          <div className="relative">
           <div
+            ref={listRef}
+            onScroll={handleScroll}
             className="max-h-96 overflow-y-auto rounded-xl p-2"
             style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '18px 18px' }}
           >
@@ -358,6 +391,17 @@ export default function CustomerRequestDetail() {
                 );
               })}
             </AnimatePresence>
+            <div ref={listEndRef} />
+          </div>
+          {showScrollDown && (
+            <button
+              type="button"
+              onClick={scrollToBottom}
+              className="absolute bottom-2 start-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-full bg-amber-500 px-3 py-1.5 text-xs font-bold text-black shadow-lg"
+            >
+              ↓{unreadCount > 0 ? ` ${unreadCount}` : ''}
+            </button>
+          )}
           </div>
 
           <form onSubmit={handleSendMessage} className="mt-3 flex items-center gap-2 border-t border-white/10 pt-3">

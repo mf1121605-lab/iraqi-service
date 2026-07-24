@@ -65,7 +65,7 @@ export default function StickerPicker({ onPick, locale, roomGifs = [], onPickGif
   const isGifTab = activePackId === '__gif__';
 
   return (
-    <span className="relative">
+    <span className="relative inline-block">
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
@@ -76,7 +76,15 @@ export default function StickerPicker({ onPick, locale, roomGifs = [], onPickGif
         <StickerIcon className="h-4 w-4" aria-hidden="true" />
       </button>
       {open && (
-        <div className="glass-panel-dark absolute bottom-full end-0 z-20 mb-2 w-64 animate-scale-in rounded-2xl p-3 [transform-origin:bottom_right] rtl:[transform-origin:bottom_left]">
+        <>
+          {/* Backdrop — closes picker on outside click */}
+          <div
+            className="fixed inset-0 z-40 bg-black/60"
+            onClick={() => setOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="pointer-events-auto w-full max-w-sm animate-scale-in overflow-hidden rounded-2xl border border-amber-500/30 bg-[#0d1117]" style={{ maxHeight: '60vh' }}>
           {/* Tab row: GIF tab first, then emoji packs */}
           <div className="mb-2 flex items-center gap-0.5 overflow-x-auto border-b border-white/[0.08] pb-2 scrollbar-none">
             {/* GIF special tab */}
@@ -188,6 +196,8 @@ export default function StickerPicker({ onPick, locale, roomGifs = [], onPickGif
             </div>
           )}
         </div>
+          </div>
+        </>
       )}
     </span>
   );
