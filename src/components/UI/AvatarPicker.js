@@ -5,10 +5,6 @@ import { safeSlug } from '../../utils/safeStorageName';
 import { useLocale } from '../Layout/AppShell';
 import { translate } from '../../utils/i18n';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-
-// 8 cartoon character preset keys — images must be uploaded by the founder to
-// Supabase Storage at: site-assets/avatars/char-1.png … char-8.png
 export const AVATAR_KEYS = [
   'char-1', 'char-2', 'char-3', 'char-4',
   'char-5', 'char-6', 'char-7', 'char-8',
@@ -16,13 +12,7 @@ export const AVATAR_KEYS = [
 
 export function avatarSrc(avatarKey) {
   if (!avatarKey) return null;
-  // Full URL (uploaded photo or previously resolved preset) → pass through
   if (/^https?:\/\//i.test(avatarKey)) return avatarKey;
-  // Cartoon character presets stored in Supabase Storage
-  if (/^char-\d+$/.test(avatarKey)) {
-    return `${SUPABASE_URL}/storage/v1/object/public/site-assets/avatars/${avatarKey}.png`;
-  }
-  // Legacy SVG presets
   return `/assets/avatars/${avatarKey}.svg`;
 }
 

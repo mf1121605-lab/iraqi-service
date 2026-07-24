@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Background -->
+  <circle cx="100" cy="100" r="100" fill="#0f2a2a"/>
+  <!-- Abaya / body (teal) -->
+  <ellipse cx="100" cy="182" rx="62" ry="32" fill="#1a6a6a"/>
+  <rect x="66" y="150" width="68" height="35" rx="10" fill="#1a6a6a"/>
+  <!-- Hijab outer (dark teal) -->
+  <path d="M48 100 Q42 130 45 155 Q70 165 100 166 Q130 165 155 155 Q158 130 152 100 Q142 80 120 75 L100 72 L80 75 Q58 80 48 100Z" fill="#1a8080"/>
+  <!-- Hijab inner frame -->
+  <path d="M62 85 Q62 60 100 58 Q138 60 138 85 Q138 92 136 97 Q118 90 100 90 Q82 90 64 97 Q62 92 62 85Z" fill="#20a0a0"/>
+  <!-- Face -->
+  <ellipse cx="100" cy="100" rx="38" ry="42" fill="#e8b898"/>
+  <!-- Eyebrows (thick, strong) -->
+  <path d="M72 82 Q82 75 92 80" stroke="#1a0808" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <path d="M108 80 Q118 75 128 82" stroke="#1a0808" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <!-- Eyes white -->
+  <ellipse cx="82" cy="92" rx="9" ry="10" fill="white"/>
+  <ellipse cx="118" cy="92" rx="9" ry="10" fill="white"/>
+  <!-- Irises (dark green) -->
+  <circle cx="83" cy="93" r="6.5" fill="#1a4a30"/>
+  <circle cx="119" cy="93" r="6.5" fill="#1a4a30"/>
+  <!-- Pupils -->
+  <circle cx="84" cy="94" r="4" fill="#050a05"/>
+  <circle cx="120" cy="94" r="4" fill="#050a05"/>
+  <!-- Shine -->
+  <circle cx="85.5" cy="91.5" r="2" fill="white"/>
+  <circle cx="121.5" cy="91.5" r="2" fill="white"/>
+  <!-- Eyelashes -->
+  <path d="M73 85 Q82 80 91 85" stroke="#1a0a00" stroke-width="2" fill="none"/>
+  <path d="M109 85 Q118 80 127 85" stroke="#1a0a00" stroke-width="2" fill="none"/>
+  <!-- Nose -->
+  <path d="M97 107 Q100 112 103 107" stroke="#c08050" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- Calm smile -->
+  <path d="M87 120 Q100 130 113 120" stroke="#a06030" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- Rosy cheeks -->
+  <ellipse cx="70" cy="110" rx="10" ry="7" fill="#e07878" opacity="0.3"/>
+  <ellipse cx="130" cy="110" rx="10" ry="7" fill="#e07878" opacity="0.3"/>
+  <!-- Hijab pin (teal gem) -->
+  <circle cx="100" cy="86" r="3.5" fill="#00b0a0"/>
+  <circle cx="100" cy="86" r="2" fill="#80e0d8"/>
+</svg>

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Background -->
+  <circle cx="100" cy="100" r="100" fill="#0f3d30"/>
+  <!-- Body / teal shirt -->
+  <ellipse cx="100" cy="182" rx="58" ry="32" fill="#1a8a6a"/>
+  <rect x="70" y="155" width="60" height="30" rx="8" fill="#1a8a6a"/>
+  <!-- Neck -->
+  <rect x="88" y="141" width="24" height="18" rx="6" fill="#c4855a"/>
+  <!-- Head -->
+  <circle cx="100" cy="95" r="50" fill="#c4855a"/>
+  <!-- Ears -->
+  <ellipse cx="51" cy="96" rx="8" ry="11" fill="#c4855a"/>
+  <ellipse cx="149" cy="96" rx="8" ry="11" fill="#c4855a"/>
+  <ellipse cx="51" cy="96" rx="4" ry="7" fill="#a86840"/>
+  <ellipse cx="149" cy="96" rx="4" ry="7" fill="#a86840"/>
+  <!-- Hair (curly/afro top) -->
+  <circle cx="100" cy="54" r="36" fill="#1a0a00"/>
+  <circle cx="72" cy="62" r="16" fill="#1a0a00"/>
+  <circle cx="128" cy="62" r="16" fill="#1a0a00"/>
+  <circle cx="85" cy="50" r="14" fill="#1a0a00"/>
+  <circle cx="115" cy="50" r="14" fill="#1a0a00"/>
+  <!-- Beard (light stubble) -->
+  <path d="M70 118 Q100 138 130 118 Q128 145 100 148 Q72 145 70 118Z" fill="#0d0600" opacity="0.5"/>
+  <!-- Eyebrows (thick) -->
+  <path d="M71 80 Q82 74 93 79" stroke="#0d0600" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <path d="M107 79 Q118 74 129 80" stroke="#0d0600" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <!-- Eyes white -->
+  <ellipse cx="82" cy="91" rx="9" ry="10" fill="white"/>
+  <ellipse cx="118" cy="91" rx="9" ry="10" fill="white"/>
+  <!-- Irises -->
+  <circle cx="83" cy="92" r="6" fill="#2a1400"/>
+  <circle cx="119" cy="92" r="6" fill="#2a1400"/>
+  <!-- Pupils -->
+  <circle cx="84" cy="93" r="3.5" fill="#050500"/>
+  <circle cx="120" cy="93" r="3.5" fill="#050500"/>
+  <!-- Shine -->
+  <circle cx="85.5" cy="90.5" r="1.8" fill="white"/>
+  <circle cx="121.5" cy="90.5" r="1.8" fill="white"/>
+  <!-- Nose -->
+  <path d="M96 105 Q100 113 104 105" stroke="#956040" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- Smile (warm) -->
+  <path d="M87 120 Q100 132 113 120" stroke="#7a4020" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+</svg>

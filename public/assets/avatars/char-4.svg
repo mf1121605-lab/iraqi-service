@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Background -->
+  <circle cx="100" cy="100" r="100" fill="#1a2a4a"/>
+  <!-- Body / suit -->
+  <ellipse cx="100" cy="182" rx="58" ry="32" fill="#1e2d50"/>
+  <rect x="70" y="155" width="60" height="30" rx="8" fill="#1e2d50"/>
+  <!-- Shirt/tie -->
+  <rect x="86" y="155" width="28" height="28" rx="2" fill="white"/>
+  <path d="M100 157 L96 175 L100 178 L104 175 Z" fill="#c0392b"/>
+  <!-- Neck -->
+  <rect x="88" y="141" width="24" height="18" rx="6" fill="#e0a870"/>
+  <!-- Head -->
+  <circle cx="100" cy="95" r="50" fill="#e0a870"/>
+  <!-- Ears -->
+  <ellipse cx="51" cy="96" rx="8" ry="11" fill="#e0a870"/>
+  <ellipse cx="149" cy="96" rx="8" ry="11" fill="#e0a870"/>
+  <ellipse cx="51" cy="96" rx="4" ry="7" fill="#c0845a"/>
+  <ellipse cx="149" cy="96" rx="4" ry="7" fill="#c0845a"/>
+  <!-- Hair (neat combed, dark) -->
+  <path d="M50 88 Q52 45 100 45 Q148 45 150 88 L148 82 Q140 48 100 48 Q60 48 52 82 Z" fill="#1a0808"/>
+  <!-- Side part -->
+  <path d="M100 48 L100 68" stroke="#2a1010" stroke-width="3"/>
+  <!-- Glasses frames -->
+  <rect x="68" y="83" width="24" height="17" rx="8" stroke="#2a2a2a" stroke-width="3" fill="none"/>
+  <rect x="108" y="83" width="24" height="17" rx="8" stroke="#2a2a2a" stroke-width="3" fill="none"/>
+  <line x1="92" y1="91" x2="108" y2="91" stroke="#2a2a2a" stroke-width="3"/>
+  <line x1="68" y1="88" x2="58" y2="84" stroke="#2a2a2a" stroke-width="2.5"/>
+  <line x1="132" y1="88" x2="142" y2="84" stroke="#2a2a2a" stroke-width="2.5"/>
+  <!-- Eyebrows -->
+  <path d="M72 80 Q80 75 90 79" stroke="#1a0808" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <path d="M110 79 Q118 75 128 80" stroke="#1a0808" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- Eyes -->
+  <ellipse cx="80" cy="91" rx="7" ry="7" fill="#d0f0ff" opacity="0.9"/>
+  <ellipse cx="120" cy="91" rx="7" ry="7" fill="#d0f0ff" opacity="0.9"/>
+  <circle cx="81" cy="92" r="4.5" fill="#1a4a6a"/>
+  <circle cx="121" cy="92" r="4.5" fill="#1a4a6a"/>
+  <circle cx="82" cy="93" r="2.5" fill="#050a0f"/>
+  <circle cx="122" cy="93" r="2.5" fill="#050a0f"/>
+  <circle cx="83" cy="90.5" r="1.5" fill="white"/>
+  <circle cx="123" cy="90.5" r="1.5" fill="white"/>
+  <!-- Nose -->
+  <path d="M96 104 Q100 112 104 104" stroke="#a06030" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- Confident smile -->
+  <path d="M88 117 Q100 127 112 117" stroke="#a06030" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+</svg>

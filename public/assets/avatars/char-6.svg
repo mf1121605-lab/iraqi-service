@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Background -->
+  <circle cx="100" cy="100" r="100" fill="#4a1a2a"/>
+  <!-- Abaya / body (rose) -->
+  <ellipse cx="100" cy="182" rx="62" ry="32" fill="#c06080"/>
+  <rect x="66" y="150" width="68" height="35" rx="10" fill="#c06080"/>
+  <!-- Hijab outer (rose/pink) -->
+  <path d="M48 100 Q42 130 45 155 Q70 165 100 166 Q130 165 155 155 Q158 130 152 100 Q142 80 120 75 L100 72 L80 75 Q58 80 48 100Z" fill="#d4749a"/>
+  <!-- Hijab inner frame -->
+  <path d="M62 85 Q62 60 100 58 Q138 60 138 85 Q138 92 136 97 Q118 90 100 90 Q82 90 64 97 Q62 92 62 85Z" fill="#e090b0"/>
+  <!-- Face -->
+  <ellipse cx="100" cy="100" rx="38" ry="42" fill="#f0c8a0"/>
+  <!-- Eyebrows (arched) -->
+  <path d="M73 82 Q82 75 91 80" stroke="#2a1008" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <path d="M109 80 Q118 75 127 82" stroke="#2a1008" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <!-- Eyes white -->
+  <ellipse cx="82" cy="92" rx="9" ry="10" fill="white"/>
+  <ellipse cx="118" cy="92" rx="9" ry="10" fill="white"/>
+  <!-- Irises (warm brown) -->
+  <circle cx="83" cy="93" r="6.5" fill="#4a2008"/>
+  <circle cx="119" cy="93" r="6.5" fill="#4a2008"/>
+  <!-- Pupils -->
+  <circle cx="84" cy="94" r="4" fill="#0a0500"/>
+  <circle cx="120" cy="94" r="4" fill="#0a0500"/>
+  <!-- Shine -->
+  <circle cx="85.5" cy="91.5" r="2" fill="white"/>
+  <circle cx="121.5" cy="91.5" r="2" fill="white"/>
+  <!-- Eyelashes -->
+  <path d="M73 85 Q82 80 91 85" stroke="#1a0800" stroke-width="2" fill="none"/>
+  <path d="M109 85 Q118 80 127 85" stroke="#1a0800" stroke-width="2" fill="none"/>
+  <!-- Nose -->
+  <path d="M97 107 Q100 112 103 107" stroke="#c08050" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- Big bright smile -->
+  <path d="M85 119 Q100 133 115 119" stroke="#a05030" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M88 122 Q100 131 112 122" fill="white" opacity="0.8"/>
+  <!-- Rosy cheeks -->
+  <ellipse cx="70" cy="110" rx="10" ry="7" fill="#e878a0" opacity="0.35"/>
+  <ellipse cx="130" cy="110" rx="10" ry="7" fill="#e878a0" opacity="0.35"/>
+  <!-- Hijab pin + earring hint -->
+  <circle cx="100" cy="86" r="3.5" fill="#d4a017"/>
+  <circle cx="100" cy="86" r="2" fill="#f5d060"/>
+</svg>
