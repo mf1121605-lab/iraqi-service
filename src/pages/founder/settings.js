@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff, Megaphone, Music, Settings, ShieldOff } from 'lucide-react';
+import { Eye, EyeOff, Megaphone, Music, Send, Settings, ShieldOff } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ImageUploader from '../../components/UI/ImageUploader';
@@ -31,6 +31,78 @@ const FIELD_KEYS = [
 
 function emptyFields() {
   return FIELD_KEYS.reduce((acc, key) => ({ ...acc, [key]: key === 'announcement_enabled' ? false : '' }), {});
+}
+
+function BroadcastSection({ t }) {
+  const [bTitle, setBTitle] = useState('');
+  const [bBody, setBBody] = useState('');
+  const [bLoading, setBLoading] = useState(false);
+  const [bSuccess, setBSuccess] = useState('');
+  const [bError, setBError] = useState('');
+
+  async function handleBroadcast(e) {
+    e.preventDefault();
+    setBLoading(true);
+    setBSuccess('');
+    setBError('');
+    try {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      const res = await fetch('/api/founder/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ title: bTitle, body: bBody }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setBError(data.error || 'خطأ'); } else {
+        setBSuccess(`${t('broadcast.successMessage')} (${data.count})`);
+        setBTitle('');
+        setBBody('');
+      }
+    } catch { setBError('خطأ في الاتصال'); }
+    setBLoading(false);
+  }
+
+  return (
+    <section className="metal-panel space-y-4 border border-amber-500/20 p-6 text-white">
+      <h3 className="flex items-center gap-2 font-display font-semibold text-gold-300">
+        <Send className="h-4 w-4" aria-hidden="true" />
+        {t('broadcast.sectionTitle')}
+      </h3>
+      <p className="text-sm text-white/60">{t('broadcast.sectionDesc')}</p>
+      <form onSubmit={handleBroadcast} className="space-y-3">
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-white/70">{t('broadcast.titleLabel')}</label>
+          <input
+            type="text"
+            value={bTitle}
+            onChange={e => setBTitle(e.target.value)}
+            required
+            className="input-cinematic w-full text-sm"
+            placeholder={t('broadcast.titlePlaceholder')}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-white/70">{t('broadcast.bodyLabel')}</label>
+          <textarea
+            value={bBody}
+            onChange={e => setBBody(e.target.value)}
+            rows={3}
+            className="input-cinematic w-full resize-none text-sm"
+            placeholder={t('broadcast.bodyPlaceholder')}
+          />
+        </div>
+        {bError && <p className="text-xs text-red-400">{bError}</p>}
+        {bSuccess && <p className="text-xs text-emerald-400">{bSuccess}</p>}
+        <button
+          type="submit"
+          disabled={bLoading || !bTitle.trim()}
+          className="btn-cinematic-gold px-5 py-2 text-sm disabled:opacity-50"
+        >
+          {bLoading ? '...' : t('broadcast.sendCta')}
+        </button>
+      </form>
+    </section>
+  );
 }
 
 function NuclearButton({ locale, t }) {
@@ -372,6 +444,8 @@ export default function FounderSettings() {
             </div>
           </div>
         </section>
+
+        <BroadcastSection t={t} />
 
         {profile.role === 'founder' && (
           <section className="metal-panel space-y-4 border border-red-500/30 p-6 text-white">

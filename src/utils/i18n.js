@@ -477,6 +477,16 @@ const dictionaries = {
       empty: 'لا توجد منشورات بعد — كن أول من يشارك!',
       anonymousAuthor: 'مستخدم',
     },
+    broadcast: {
+      sectionTitle: 'إشعار جماعي للزبائن',
+      sectionDesc: 'إرسال إشعار لجميع الزبائن المسجلين في المنصة.',
+      titleLabel: 'عنوان الإشعار',
+      titlePlaceholder: 'مثال: تحديث مهم',
+      bodyLabel: 'نص الإشعار',
+      bodyPlaceholder: 'اكتب الرسالة هنا...',
+      sendCta: 'إرسال لجميع الزبائن',
+      successMessage: 'تم الإرسال بنجاح — عدد المستلمين',
+    },
     nuclear: {
       dangerZoneTitle: 'منطقة الخطر',
       dangerZoneDesc: 'هذا الزر يغلق الموقع ويحذف جميع البيانات. لا يمكن التراجع عن العملية.',
@@ -1242,6 +1252,16 @@ const dictionaries = {
       deleteCommentCta: 'سڕینەوە',
       empty: 'هێشتا هیچ پۆستێک نییە — یەکەمت بە!',
       anonymousAuthor: 'بەکارهێنەر',
+    },
+    broadcast: {
+      sectionTitle: 'ئاگادارکردنەوەی کۆمەڵی بۆ کڕیاران',
+      sectionDesc: 'ناردنی ئاگادارکردنەوە بۆ هەموو کڕیارانی تۆمارکراو لە پلاتفۆرمەکە.',
+      titleLabel: 'سەردێڕی ئاگادارکردنەوە',
+      titlePlaceholder: 'نموونە: نوێکردنەوەی گرنگ',
+      bodyLabel: 'دەقی ئاگادارکردنەوە',
+      bodyPlaceholder: 'پەیامەکەت لێرە بنووسە...',
+      sendCta: 'ناردن بۆ هەموو کڕیاران',
+      successMessage: 'بە سەرکەوتوویی نێردرا — ژمارەی وەرگرتووان',
     },
     nuclear: {
       dangerZoneTitle: 'ناوچەی مەترسی',
