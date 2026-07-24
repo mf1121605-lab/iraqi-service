@@ -13,7 +13,9 @@ export const AVATAR_KEYS = [
 export function avatarSrc(avatarKey) {
   if (!avatarKey) return null;
   if (/^https?:\/\//i.test(avatarKey)) return avatarKey;
-  return `/assets/avatars/${avatarKey}.svg`;
+  // Legacy: full path already stored (e.g. '/assets/avatars/char-1.svg')
+  if (avatarKey.startsWith('/')) return avatarKey;
+  return `/assets/avatars/${avatarKey}.png`;
 }
 
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -44,21 +46,19 @@ export default function AvatarPicker({ value, onSelect, profileId }) {
     setUploading(false);
   }
 
-  // Resolve the current selected value to a URL for comparison
-  const resolvedValue = value && !/^https?:\/\//i.test(value) ? avatarSrc(value) : value;
-
   return (
     <div className="space-y-5">
       {/* Cartoon character preset grid */}
       <div className="grid grid-cols-4 gap-3">
         {AVATAR_KEYS.map((key, index) => {
           const src = avatarSrc(key);
-          const isSelected = resolvedValue === src;
+          // Match on key ('char-1'), legacy full-path, or http URL
+          const isSelected = value === key || value === src || value === `/assets/avatars/${key}.svg`;
           return (
             <button
               key={key}
               type="button"
-              onClick={() => onSelect(src)}
+              onClick={() => onSelect(key)}
               aria-pressed={isSelected}
               aria-label={t('onboarding.avatarOption').replace('{n}', index + 1)}
               className={`group relative flex flex-col items-center gap-1 rounded-2xl p-2 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold-300 ${
@@ -116,10 +116,10 @@ export default function AvatarPicker({ value, onSelect, profileId }) {
       {uploadError && <p className="text-center text-xs text-red-400">{uploadError}</p>}
 
       {/* Show custom photo preview if a non-preset URL is selected */}
-      {resolvedValue && /^https?:\/\//i.test(resolvedValue) && !AVATAR_KEYS.some((k) => avatarSrc(k) === resolvedValue) && (
+      {value && /^https?:\/\//i.test(value) && (
         <div className="flex flex-col items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={resolvedValue} alt="" className="h-20 w-20 rounded-full object-cover ring-2 ring-gold-400 shadow-glow" />
+          <img src={value} alt="" className="h-20 w-20 rounded-full object-cover ring-2 ring-gold-400 shadow-glow" />
           <span className="text-xs text-emerald-400">{t('onboarding.photoSelected')}</span>
         </div>
       )}
