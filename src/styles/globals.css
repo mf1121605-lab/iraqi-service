@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── THEME CSS CUSTOM PROPERTIES ──────────────────────────────────────────
+   Defaults match the original gold/dark identity.
+   JavaScript in _app.js overwrites these from founder_settings so the change
+   propagates to every element that references the variables — no page reload.
+   ──────────────────────────────────────────────────────────────────────────── */
+:root {
+  --color-accent: #f59e0b;
+  --color-bg: #0d1117;
+}
+
 html {
   scroll-behavior: smooth;
   min-height: 100svh;
@@ -62,12 +72,12 @@ body {
    DARK MODE — deep luxury charcoal #0d1117
    ============================================= */
 .dark body {
-  background-color: #0d1117;
+  background-color: var(--color-bg, #0d1117);
   background-image:
-    radial-gradient(ellipse 80% 60% at 50% -5%, rgba(245,158,11,0.07) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 80% at 85% 60%, rgba(245,158,11,0.04) 0%, transparent 50%),
-    radial-gradient(ellipse 70% 50% at 15% 80%, rgba(217,119,6,0.03) 0%, transparent 45%),
-    radial-gradient(circle at 50% 50%, #161b22 0%, #0d1117 60%, #090c12 100%);
+    radial-gradient(ellipse 80% 60% at 50% -5%, color-mix(in srgb, var(--color-accent) 7%, transparent) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 80% at 85% 60%, color-mix(in srgb, var(--color-accent) 4%, transparent) 0%, transparent 50%),
+    radial-gradient(ellipse 70% 50% at 15% 80%, color-mix(in srgb, var(--color-accent) 3%, transparent) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--color-bg, #0d1117) 40%, #161b22) 0%, var(--color-bg, #0d1117) 60%, color-mix(in srgb, var(--color-bg, #0d1117) 60%, #000) 100%);
 }
 
 /* =============================================
@@ -86,13 +96,13 @@ body {
     z-index: 60;
     pointer-events: none;
     border-radius: 6px;
-    border: 1px solid rgba(245, 158, 11, 0.65);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 65%, transparent);
     box-shadow:
       0 0 0 1px rgba(0, 0, 0, 0.9),
-      inset 0 0 0 5px #0d1117,
-      inset 0 0 0 6px rgba(245, 158, 11, 0.25),
-      inset 0 0 60px rgba(245, 158, 11, 0.04),
-      0 0 24px rgba(245, 158, 11, 0.08);
+      inset 0 0 0 5px var(--color-bg, #0d1117),
+      inset 0 0 0 6px color-mix(in srgb, var(--color-accent) 25%, transparent),
+      inset 0 0 60px color-mix(in srgb, var(--color-accent) 4%, transparent),
+      0 0 24px color-mix(in srgb, var(--color-accent) 8%, transparent);
   }
 }
 
@@ -114,7 +124,7 @@ body {
   .cinematic-frame-corner::after {
     content: '';
     position: absolute;
-    background: linear-gradient(90deg, #fcd34d, #f59e0b 55%, #d97706);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 80%, #fff), var(--color-accent) 55%, color-mix(in srgb, var(--color-accent) 85%, #000));
   }
 
   .cinematic-frame-corner::before {
@@ -163,10 +173,10 @@ body {
   background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(245, 158, 11, 0.14);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 14%, transparent);
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(245, 158, 11, 0.06);
+    inset 0 1px 0 color-mix(in srgb, var(--color-accent) 6%, transparent);
 }
 
 .glass-premium::after {
@@ -177,12 +187,12 @@ body {
   padding: 1.5px;
   background: conic-gradient(
     from var(--border-angle),
-    rgba(230, 171, 44, 0.06) 0%,
-    rgba(255, 215, 0, 0) 45%,
-    rgba(255, 215, 0, 0.80) 72%,
+    color-mix(in srgb, var(--color-accent) 6%, transparent) 0%,
+    transparent 45%,
+    color-mix(in srgb, var(--color-accent) 80%, transparent) 72%,
     rgba(255, 255, 255, 0.90) 78%,
-    rgba(255, 215, 0, 0.80) 84%,
-    rgba(230, 171, 44, 0.06) 100%
+    color-mix(in srgb, var(--color-accent) 80%, transparent) 84%,
+    color-mix(in srgb, var(--color-accent) 6%, transparent) 100%
   );
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -195,11 +205,11 @@ body {
 
 .dark .glass-premium {
   background: rgba(13, 17, 23, 0.72);
-  border: 1px solid rgba(245, 158, 11, 0.18);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 18%, transparent);
   box-shadow:
     0 16px 48px rgba(0, 0, 0, 0.65),
-    inset 0 1px 0 rgba(245, 158, 11, 0.08),
-    0 0 0 1px rgba(245, 158, 11, 0.05);
+    inset 0 1px 0 color-mix(in srgb, var(--color-accent) 8%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 5%, transparent);
 }
 
 /* =============================================
@@ -571,12 +581,12 @@ select:focus-visible {
   padding: 1.5px;
   background: conic-gradient(
     from var(--border-angle),
-    rgba(230, 171, 44, 0.08) 0%,
-    rgba(255, 215, 0, 0) 45%,
-    rgba(255, 215, 0, 0.85) 72%,
+    color-mix(in srgb, var(--color-accent) 8%, transparent) 0%,
+    transparent 45%,
+    color-mix(in srgb, var(--color-accent) 85%, transparent) 72%,
     rgba(255, 255, 255, 0.95) 78%,
-    rgba(255, 215, 0, 0.85) 84%,
-    rgba(230, 171, 44, 0.08) 100%
+    color-mix(in srgb, var(--color-accent) 85%, transparent) 84%,
+    color-mix(in srgb, var(--color-accent) 8%, transparent) 100%
   );
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);

@@ -588,6 +588,10 @@ const dictionaries = {
       announcementEnabledLabel: 'تفعيل شريط الإعلانات',
       announcementTextArLabel: 'نص الإعلان (عربي)',
       announcementTextCkbLabel: 'نص الإعلان (كردي)',
+      themeColorSectionTitle: 'ألوان الموقع',
+      accentColorLabel: 'لون الإطار والحدود',
+      bgColorLabel: 'لون الخلفية',
+      themeColorHint: 'التغييرات تنطبق فوراً على الموقع لجميع الزوار عند الحفظ.',
     },
     profileDrawer: {
       title: 'الملف الشخصي',
@@ -1410,6 +1414,10 @@ const dictionaries = {
       announcementEnabledLabel: 'چالاککردنی شریتی ڕاگەیاندن',
       announcementTextArLabel: 'دەقی ڕاگەیاندن (عەرەبی)',
       announcementTextCkbLabel: 'دەقی ڕاگەیاندن (کوردی)',
+      themeColorSectionTitle: 'ڕەنگەکانی ماڵپەڕ',
+      accentColorLabel: 'ڕەنگی چوارچێوە و سنوور',
+      bgColorLabel: 'ڕەنگی پاشبنەما',
+      themeColorHint: 'گۆڕانکارییەکان دوای پاشەکەوتکردن یەکسەر بۆ هەموو سەردانکەران دەردەکەوێت.',
     },
     profileDrawer: {
       title: 'پرۆفایلی کەسی',

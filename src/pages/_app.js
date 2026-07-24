@@ -44,6 +44,23 @@ export default function App({ Component, pageProps }) {
   const [transitioning, setTransitioning] = useState(false);
   const handleSettings = useCallback((settings) => setSiteSettings(settings), []);
 
+  // Apply founder-controlled CSS custom properties so every element
+  // that references var(--color-accent) / var(--color-bg) updates instantly
+  // for all visitors without a page reload.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (siteSettings?.accent_color) {
+      root.style.setProperty('--color-accent', siteSettings.accent_color);
+    } else {
+      root.style.removeProperty('--color-accent');
+    }
+    if (siteSettings?.bg_color) {
+      root.style.setProperty('--color-bg', siteSettings.bg_color);
+    } else {
+      root.style.removeProperty('--color-bg');
+    }
+  }, [siteSettings]);
+
   useEffect(() => {
     const start = () => setTransitioning(true);
     const end = () => setTransitioning(false);
@@ -67,11 +84,11 @@ export default function App({ Component, pageProps }) {
     <div className={`${tajawal.variable} ${notoSansArabic.variable} ${cairo.variable} contents`}>
       <MotionConfig reducedMotion="user">
         <ErrorBoundary>
-          <div className="fixed inset-0 -z-10 pointer-events-none bg-[#0d1117]">
+          <div className="fixed inset-0 -z-10 pointer-events-none" style={{ backgroundColor: 'var(--color-bg, #0d1117)' }}>
             <InteractiveBackground3D />
           </div>
           {transitioning && (
-            <div className="fixed inset-0 z-[150] bg-[#0d1117] flex items-center justify-center">
+            <div className="fixed inset-0 z-[150] flex items-center justify-center" style={{ backgroundColor: 'var(--color-bg, #0d1117)' }}>
               <LoadingSpinner />
             </div>
           )}

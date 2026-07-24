@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff, Megaphone, Music, Send, Settings, ShieldOff } from 'lucide-react';
+import { Eye, EyeOff, Megaphone, Music, Palette, Send, Settings, ShieldOff } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ImageUploader from '../../components/UI/ImageUploader';
@@ -13,6 +13,8 @@ import { translate } from '../../utils/i18n';
 const FIELD_KEYS = [
   'background_image_path',
   'background_color',
+  'accent_color',
+  'bg_color',
   'hero_title_ar',
   'hero_title_ckb',
   'hero_subtitle_ar',
@@ -27,6 +29,26 @@ const FIELD_KEYS = [
   'announcement_text_ar',
   'announcement_text_ckb',
   'site_ambient_audio_url',
+];
+
+const ACCENT_PRESETS = [
+  { hex: '#f59e0b', label: 'ذهبي' },
+  { hex: '#3b82f6', label: 'أزرق' },
+  { hex: '#8b5cf6', label: 'بنفسجي' },
+  { hex: '#ec4899', label: 'وردي' },
+  { hex: '#10b981', label: 'أخضر' },
+  { hex: '#ef4444', label: 'أحمر' },
+  { hex: '#06b6d4', label: 'سماوي' },
+  { hex: '#f97316', label: 'برتقالي' },
+];
+
+const BG_PRESETS = [
+  { hex: '#0d1117', label: 'رمادي غامق' },
+  { hex: '#000000', label: 'أسود' },
+  { hex: '#111827', label: 'رمادي داكن' },
+  { hex: '#0a192f', label: 'أزرق داكن' },
+  { hex: '#1a0a2e', label: 'بنفسجي داكن' },
+  { hex: '#1a0f00', label: 'بني داكن' },
 ];
 
 function emptyFields() {
@@ -64,7 +86,7 @@ function BroadcastSection({ t }) {
 
   return (
     <section className="metal-panel space-y-4 border border-amber-500/20 p-6 text-white">
-      <h3 className="flex items-center gap-2 font-display font-semibold text-gold-300">
+      <h3 className="flex items-center gap-2 font-display font-semibold text-[color:var(--color-accent,#f59e0b)]">
         <Send className="h-4 w-4" aria-hidden="true" />
         {t('broadcast.sectionTitle')}
       </h3>
@@ -254,6 +276,14 @@ export default function FounderSettings() {
       setError(t('founderSettings.backgroundColorInvalid'));
       return;
     }
+    if (fields.accent_color && !/^#[0-9a-fA-F]{6}$/.test(fields.accent_color)) {
+      setError(t('founderSettings.backgroundColorInvalid'));
+      return;
+    }
+    if (fields.bg_color && !/^#[0-9a-fA-F]{6}$/.test(fields.bg_color)) {
+      setError(t('founderSettings.backgroundColorInvalid'));
+      return;
+    }
     setSaving(true);
     const payload = FIELD_KEYS.reduce((acc, key) => {
       const value = fields[key];
@@ -289,8 +319,112 @@ export default function FounderSettings() {
       </h2>
 
       <form onSubmit={handleSave} className="mt-6 max-w-2xl space-y-6">
+        {/* ─── Theme Colors ─── */}
+        <section className="metal-panel space-y-6 p-6 text-white">
+          <h3 className="flex items-center gap-2 font-display font-semibold text-[color:var(--color-accent,#f59e0b)]">
+            <Palette className="h-4 w-4" aria-hidden="true" />
+            {t('founderSettings.themeColorSectionTitle')}
+          </h3>
+
+          {/* Accent (border/frame) color */}
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-white/70">{t('founderSettings.accentColorLabel')}</label>
+            <div className="flex flex-wrap gap-2">
+              {ACCENT_PRESETS.map(({ hex, label }) => (
+                <button
+                  key={hex}
+                  type="button"
+                  title={label}
+                  onClick={() => setField('accent_color', hex)}
+                  style={{ backgroundColor: hex }}
+                  className={`h-9 w-9 rounded-xl border-2 transition-all duration-150 ${
+                    fields.accent_color === hex
+                      ? 'border-white scale-110 shadow-[0_0_10px_rgba(255,255,255,0.5)]'
+                      : 'border-white/20 hover:border-white/60 hover:scale-105'
+                  }`}
+                  aria-label={label}
+                />
+              ))}
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="color"
+                value={/^#[0-9a-fA-F]{6}$/.test(fields.accent_color) ? fields.accent_color : '#f59e0b'}
+                onChange={(e) => setField('accent_color', e.target.value)}
+                aria-label={t('founderSettings.accentColorLabel')}
+                className="h-10 w-14 shrink-0 cursor-pointer rounded-lg border border-white/15 bg-transparent p-1"
+              />
+              <input
+                value={fields.accent_color}
+                onChange={(e) => setField('accent_color', e.target.value)}
+                placeholder="#f59e0b"
+                dir="ltr"
+                className="input-cinematic flex-1 text-sm"
+              />
+              {fields.accent_color && (
+                <button type="button" onClick={() => setField('accent_color', '')} className="shrink-0 text-xs text-white/50 underline">
+                  {t('common.remove')}
+                </button>
+              )}
+            </div>
+            {/* Live preview strip */}
+            <div
+              className="mt-1 h-1.5 w-full rounded-full transition-colors duration-300"
+              style={{ backgroundColor: /^#[0-9a-fA-F]{6}$/.test(fields.accent_color) ? fields.accent_color : '#f59e0b' }}
+            />
+          </div>
+
+          {/* Background color */}
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-white/70">{t('founderSettings.bgColorLabel')}</label>
+            <div className="flex flex-wrap gap-2">
+              {BG_PRESETS.map(({ hex, label }) => (
+                <button
+                  key={hex}
+                  type="button"
+                  title={label}
+                  onClick={() => setField('bg_color', hex)}
+                  style={{ backgroundColor: hex }}
+                  className={`h-9 w-9 rounded-xl border-2 transition-all duration-150 ${
+                    fields.bg_color === hex
+                      ? 'border-[color:var(--color-accent,#f59e0b)] scale-110 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                      : 'border-white/20 hover:border-white/60 hover:scale-105'
+                  }`}
+                  aria-label={label}
+                />
+              ))}
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="color"
+                value={/^#[0-9a-fA-F]{6}$/.test(fields.bg_color) ? fields.bg_color : '#0d1117'}
+                onChange={(e) => setField('bg_color', e.target.value)}
+                aria-label={t('founderSettings.bgColorLabel')}
+                className="h-10 w-14 shrink-0 cursor-pointer rounded-lg border border-white/15 bg-transparent p-1"
+              />
+              <input
+                value={fields.bg_color}
+                onChange={(e) => setField('bg_color', e.target.value)}
+                placeholder="#0d1117"
+                dir="ltr"
+                className="input-cinematic flex-1 text-sm"
+              />
+              {fields.bg_color && (
+                <button type="button" onClick={() => setField('bg_color', '')} className="shrink-0 text-xs text-white/50 underline">
+                  {t('common.remove')}
+                </button>
+              )}
+            </div>
+            <div
+              className="mt-1 h-1.5 w-full rounded-full border border-white/10 transition-colors duration-300"
+              style={{ backgroundColor: /^#[0-9a-fA-F]{6}$/.test(fields.bg_color) ? fields.bg_color : '#0d1117' }}
+            />
+          </div>
+          <p className="text-xs text-white/40">{t('founderSettings.themeColorHint')}</p>
+        </section>
+
         <section className="metal-panel space-y-4 p-6 text-white">
-          <h3 className="font-display font-semibold text-gold-300">{t('founderSettings.brandingSectionTitle')}</h3>
+          <h3 className="font-display font-semibold text-[color:var(--color-accent,#f59e0b)]">{t('founderSettings.brandingSectionTitle')}</h3>
           <div>
             <label className="mb-1 block text-sm text-white/70">{t('founderSettings.backgroundImageLabel')}</label>
             <div className="flex flex-wrap items-center gap-2">
@@ -332,7 +466,7 @@ export default function FounderSettings() {
         </section>
 
         <section className="metal-panel space-y-4 p-6 text-white">
-          <h3 className="flex items-center gap-2 font-display font-semibold text-gold-300">
+          <h3 className="flex items-center gap-2 font-display font-semibold text-[color:var(--color-accent,#f59e0b)]">
             <Music className="h-4 w-4" aria-hidden="true" />
             {t('founderSettings.audioSectionTitle')}
           </h3>
@@ -350,7 +484,7 @@ export default function FounderSettings() {
         </section>
 
         <section className="metal-panel space-y-4 p-6 text-white">
-          <h3 className="font-display font-semibold text-gold-300">{t('founderSettings.contentSectionTitle')}</h3>
+          <h3 className="font-display font-semibold text-[color:var(--color-accent,#f59e0b)]">{t('founderSettings.contentSectionTitle')}</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm text-white/70">{t('founderSettings.heroTitleArLabel')}</label>
@@ -372,7 +506,7 @@ export default function FounderSettings() {
         </section>
 
         <section className="metal-panel space-y-4 p-6 text-white">
-          <h3 className="font-display font-semibold text-gold-300">{t('founderSettings.footerSectionTitle')}</h3>
+          <h3 className="font-display font-semibold text-[color:var(--color-accent,#f59e0b)]">{t('founderSettings.footerSectionTitle')}</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm text-white/70">{t('founderSettings.footerPhoneLabel')}</label>
@@ -412,7 +546,7 @@ export default function FounderSettings() {
         </section>
 
         <section className="metal-panel space-y-4 p-6 text-white">
-          <h3 className="flex items-center gap-2 font-display font-semibold text-gold-300">
+          <h3 className="flex items-center gap-2 font-display font-semibold text-[color:var(--color-accent,#f59e0b)]">
             <Megaphone className="h-4 w-4" aria-hidden="true" />
             {t('founderSettings.announcementSectionTitle')}
           </h3>
