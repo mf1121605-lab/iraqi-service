@@ -69,7 +69,8 @@ export default function CustomerOnboarding() {
 
     setSaving(false);
     if (saveError) {
-      setError(saveError.message || t('common.errorGeneric'));
+      console.error('onboarding save error:', saveError);
+      setError(t('common.errorGeneric'));
       return;
     }
     router.replace('/customer/dashboard');

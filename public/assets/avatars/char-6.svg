@@ -5,11 +5,11 @@
   <ellipse cx="100" cy="182" rx="62" ry="32" fill="#c06080"/>
   <rect x="66" y="150" width="68" height="35" rx="10" fill="#c06080"/>
   <!-- Hijab outer (rose/pink) -->
-  <path d="M48 100 Q42 130 45 155 Q70 165 100 166 Q130 165 155 155 Q158 130 152 100 Q142 80 120 75 L100 72 L80 75 Q58 80 48 100Z" fill="#d4749a"/>
+  <path d="M48 100 Q42 130 45 155 Q70 165 100 166 Q130 165 155 155 Q158 130 152 100 Q142 76 118 68 L100 54 L82 68 Q58 76 48 100Z" fill="#d4749a"/>
   <!-- Hijab inner frame -->
   <path d="M62 85 Q62 60 100 58 Q138 60 138 85 Q138 92 136 97 Q118 90 100 90 Q82 90 64 97 Q62 92 62 85Z" fill="#e090b0"/>
   <!-- Face -->
-  <ellipse cx="100" cy="100" rx="38" ry="42" fill="#f0c8a0"/>
+  <ellipse cx="100" cy="100" rx="34" ry="38" fill="#f0c8a0"/>
   <!-- Eyebrows (arched) -->
   <path d="M73 82 Q82 75 91 80" stroke="#2a1008" stroke-width="3.5" stroke-linecap="round" fill="none"/>
   <path d="M109 80 Q118 75 127 82" stroke="#2a1008" stroke-width="3.5" stroke-linecap="round" fill="none"/>

@@ -666,7 +666,7 @@ const dictionaries = {
     },
     onboarding: {
       title: 'إعداد حسابك',
-      subtitle: 'هذه الخطوات إجبارية لاستخدام المنصة',
+      subtitle: 'هذه الخطوات ضرورية لاستخدام المنصة',
       nameStepTitle: 'أدخل اسمك',
       givenNamePlaceholder: 'الاسم الأول',
       familyNamePlaceholder: 'اسم العائلة',
