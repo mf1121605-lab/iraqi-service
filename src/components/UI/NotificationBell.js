@@ -128,7 +128,7 @@ export default function NotificationBell({ userId, locale }) {
       </button>
 
       {open && (
-        <div className="glass-panel-dark absolute end-0 z-20 mt-2 w-80 animate-scale-in rounded-2xl p-3 text-ink-light shadow-elevate-lg dark:text-ink-dark [transform-origin:top_right] rtl:[transform-origin:top_left]">
+        <div className="absolute end-0 z-20 mt-2 w-80 animate-scale-in rounded-2xl border border-white/10 bg-[#0d1117]/95 p-3 text-white shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-xl [transform-origin:top_right] rtl:[transform-origin:top_left]">
           <div className="flex items-center justify-between px-1">
             <span className="text-sm font-semibold">{t('notifications.title')}</span>
             {unreadCount > 0 && (

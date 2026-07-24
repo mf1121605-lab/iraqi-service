@@ -130,7 +130,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
         {t('common.skipToContent')}
       </a>
       {/* HEADER — glassmorphism navbar with amber border in dark mode */}
-      <header className="sticky top-0 z-30 relative overflow-hidden glass-nav dark:glass-nav-dark transition-all duration-300 shadow-soft dark:shadow-[0_4px_24px_-8px_rgba(0,0,0,0.7),0_0_0_1px_rgba(245,158,11,0.08)]">
+      <header className="sticky top-0 z-30 relative glass-nav dark:glass-nav-dark transition-all duration-300 shadow-soft dark:shadow-[0_4px_24px_-8px_rgba(0,0,0,0.7),0_0_0_1px_rgba(245,158,11,0.08)]">
         {/* Night-sky twinkling backdrop — dark mode only */}
         <div className="pointer-events-none absolute inset-0 hidden dark:block" aria-hidden="true">
           <div className="absolute inset-0 bg-gradient-to-b from-[#090c12]/95 via-[#0d1117]/60 to-transparent" />
