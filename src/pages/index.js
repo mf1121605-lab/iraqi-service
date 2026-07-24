@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeftRight, ArrowUpRight, ExternalLink, Mail, Phone, UserPlus, UserRound, X } from 'lucide-react';
+import { ArrowUpRight, UserPlus, UserRound, X } from 'lucide-react';
 import GoogleGlyph from '../components/UI/GoogleGlyph';
 import {
   LOCALE_META,
@@ -69,9 +69,6 @@ export default function Home({ siteSettings }) {
   const activeLocale = locale ?? defaultLocale;
   const heroTitle = siteText(siteSettings, activeLocale, 'hero_title') || t('gateway.welcomeTitle');
   const heroSubtitle = siteText(siteSettings, activeLocale, 'hero_subtitle') || t('gateway.welcomeSubtitle');
-  const footerLegal = siteText(siteSettings, activeLocale, 'footer_legal') || t('common.footerDisclaimer');
-  const hasContactRow =
-    siteSettings?.footer_phone || siteSettings?.footer_email || siteSettings?.footer_instagram_url || siteSettings?.footer_twitter_url;
 
   const handleCardMouseMove = (e) => {
     const card = e.currentTarget;
@@ -98,7 +95,7 @@ export default function Home({ siteSettings }) {
   };
 
   return (
-    <main className="dark relative flex min-h-screen items-center justify-center overflow-x-hidden bg-transparent px-4 sm:px-6 pt-6 pb-36 sm:pb-10 font-display">
+    <main className="dark relative flex min-h-screen items-center justify-center overflow-x-hidden bg-transparent px-4 sm:px-6 py-6 font-display">
       <div className="pointer-events-none absolute inset-0 bg-radial-vignette opacity-40" />
 
       {step === 'language' && (
@@ -400,50 +397,6 @@ export default function Home({ siteSettings }) {
         )}
       </AnimatePresence>
 
-      {/* Footer */}
-      <div className="absolute inset-x-2 sm:inset-x-6 bottom-3 z-10 text-center">
-        {step === 'gateway' && hasContactRow && (
-          <div className="mb-2 flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs text-white/60 bg-black/40 backdrop-blur-md px-3 sm:px-4 py-2 rounded-full max-w-full mx-auto border border-white/5 overflow-x-auto">
-            {siteSettings.footer_phone && (
-              <a href={`tel:${siteSettings.footer_phone}`} className="flex items-center gap-1.5 hover:text-gold-300 transition-colors">
-                <Phone className="h-3.5 w-3.5 text-gold-400" aria-hidden="true" />
-                <span dir="ltr">{siteSettings.footer_phone}</span>
-              </a>
-            )}
-            {siteSettings.footer_email && (
-              <a href={`mailto:${siteSettings.footer_email}`} className="flex items-center gap-1.5 hover:text-gold-300 transition-colors">
-                <Mail className="h-3.5 w-3.5 text-gold-400" aria-hidden="true" />
-                <span dir="ltr">{siteSettings.footer_email}</span>
-              </a>
-            )}
-            {siteSettings.footer_instagram_url && (
-              <a href={siteSettings.footer_instagram_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:text-gold-300 transition-colors">
-                <ExternalLink className="h-3.5 w-3.5 text-gold-400" aria-hidden="true" />
-                Instagram
-              </a>
-            )}
-            {siteSettings.footer_twitter_url && (
-              <a href={siteSettings.footer_twitter_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:text-gold-300 transition-colors">
-                <ExternalLink className="h-3.5 w-3.5 text-gold-400" aria-hidden="true" />
-                X
-              </a>
-            )}
-          </div>
-        )}
-        <div className="flex flex-col items-center gap-1.5">
-          <p className="max-w-sm text-center text-[11px] leading-relaxed text-white/35">{footerLegal}</p>
-          {step === 'gateway' && (
-            <button
-              type="button"
-              onClick={() => setStep('language')}
-              className="inline-flex items-center gap-1.5 text-[10px] text-gold-400/60 underline underline-offset-4 transition-colors hover:text-gold-300"
-            >
-              <ArrowLeftRight className="h-3 w-3" />
-              {t('gateway.switchLanguage')}
-            </button>
-          )}
-        </div>
-      </div>
     </main>
   );
 }
