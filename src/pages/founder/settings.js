@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Megaphone, Music, Settings } from 'lucide-react';
+import { Eye, EyeOff, Megaphone, Music, Settings, ShieldOff } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ImageUploader from '../../components/UI/ImageUploader';
@@ -31,6 +31,111 @@ const FIELD_KEYS = [
 
 function emptyFields() {
   return FIELD_KEYS.reduce((acc, key) => ({ ...acc, [key]: key === 'announcement_enabled' ? false : '' }), {});
+}
+
+function NuclearButton({ locale, t }) {
+  const [lockdownActive, setLockdownActive] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [passcode, setPasscode] = useState('');
+  const [revealed, setRevealed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+
+  useEffect(() => {
+    supabaseClient.from('site_lockdown').select('active').eq('id', 1).single().then(({ data }) => {
+      setLockdownActive(data?.active ?? false);
+    });
+  }, []);
+
+  async function callNuclear(action) {
+    setError('');
+    setSuccessMsg('');
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      const res = await fetch('/api/founder/nuclear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ action, passcode }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setError(json.error || 'خطأ'); setLoading(false); return; }
+      setSuccessMsg(action === 'activate' ? t('nuclear.successActivated') : t('nuclear.successDeactivated'));
+      setLockdownActive(action === 'activate');
+      setShowConfirm(false);
+      setPasscode('');
+    } catch { setError('خطأ في الاتصال'); }
+    setLoading(false);
+  }
+
+  if (lockdownActive === null) return null;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 text-xs">
+        <span className={`h-2 w-2 rounded-full ${lockdownActive ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
+        <span className="text-white/60">{lockdownActive ? t('nuclear.lockdownActive') : t('nuclear.lockdownInactive')}</span>
+      </div>
+
+      {lockdownActive ? (
+        <button
+          type="button"
+          onClick={() => setShowConfirm(true)}
+          className="rounded-xl border border-emerald-500/50 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+        >
+          {t('nuclear.deactivateCta')}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowConfirm(true)}
+          className="rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-2 text-sm font-bold text-red-400 hover:bg-red-500/20 transition-colors"
+        >
+          {t('nuclear.activateCta')}
+        </button>
+      )}
+
+      {showConfirm && (
+        <div className="space-y-3 rounded-xl border border-red-500/30 bg-red-950/30 p-4">
+          <p className="text-sm font-bold text-red-400">{lockdownActive ? t('nuclear.deactivateCta') : t('nuclear.confirmTitle')}</p>
+          {!lockdownActive && <p className="text-xs text-white/60">{t('nuclear.confirmWarning')}</p>}
+          <div className="relative">
+            <input
+              type={revealed ? 'text' : 'password'}
+              value={passcode}
+              onChange={(e) => setPasscode(e.target.value)}
+              placeholder={t('nuclear.passcodePlaceholder')}
+              className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-red-400"
+              dir="ltr"
+            />
+            <button type="button" onClick={() => setRevealed((v) => !v)} className="absolute end-2 top-2 text-white/40 hover:text-white/70">
+              {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          {error && <p className="text-xs text-red-400">{error}</p>}
+          {successMsg && <p className="text-xs text-emerald-400">{successMsg}</p>}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={loading || !passcode}
+              onClick={() => callNuclear(lockdownActive ? 'deactivate' : 'activate')}
+              className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-50 hover:bg-red-700 transition-colors"
+            >
+              {loading ? '...' : lockdownActive ? t('nuclear.deactivateCta') : t('nuclear.activateAndWipeCta')}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowConfirm(false); setPasscode(''); setError(''); }}
+              className="rounded-xl border border-white/20 px-4 py-2 text-xs text-white/60 hover:text-white transition-colors"
+            >
+              إلغاء
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function FounderSettings() {
@@ -267,6 +372,17 @@ export default function FounderSettings() {
             </div>
           </div>
         </section>
+
+        {profile.role === 'founder' && (
+          <section className="metal-panel space-y-4 border border-red-500/30 p-6 text-white">
+            <h3 className="flex items-center gap-2 font-display font-semibold text-red-400">
+              <ShieldOff className="h-4 w-4" aria-hidden="true" />
+              {t('nuclear.dangerZoneTitle')}
+            </h3>
+            <p className="text-sm text-white/60">{t('nuclear.dangerZoneDesc')}</p>
+            <NuclearButton locale={locale} t={t} />
+          </section>
+        )}
 
         <div className="flex flex-wrap items-center gap-3">
           <button type="submit" disabled={saving} className="btn-cinematic-gold px-6 py-3 text-sm disabled:opacity-50">
