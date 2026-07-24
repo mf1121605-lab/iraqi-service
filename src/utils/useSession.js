@@ -27,7 +27,7 @@ export function useSession() {
     const { data } = await supabaseClient
       .from('profiles')
       .select(
-        'id, role, admin_level, account_status, phone, phone_verified, email, given_name, father_name, grandfather_name, family_name, avatar_key, specialization, active_services, created_at, updated_at, pinned_room_ids, username, recovery_question_id'
+        'id, role, admin_level, account_status, phone, phone_verified, email, given_name, father_name, grandfather_name, family_name, avatar_key, specialization, active_services, created_at, updated_at, pinned_room_ids, username, recovery_question_id, onboarding_complete'
       )
       .eq('id', userId)
       .single();

@@ -716,6 +716,7 @@ export default function CustomerNews() {
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp"
+              capture="environment"
               className="hidden"
               multiple
               onChange={handleImageChange}

@@ -269,7 +269,7 @@ export default function ProfileDrawer({
               <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 text-transparent transition-all duration-200 group-hover:bg-black/50 group-hover:text-white">
                 {avatarUploading ? <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" /> : <Camera className="h-6 w-6" aria-hidden="true" />}
               </span>
-              <input type="file" accept={ALLOWED_AVATAR_TYPES.join(',')} onChange={handleAvatarChange} disabled={avatarUploading} className="hidden" />
+              <input type="file" accept={ALLOWED_AVATAR_TYPES.join(',')} capture="user" onChange={handleAvatarChange} disabled={avatarUploading} className="hidden" />
             </label>
             <p className="text-xs text-white/50">{t('profileDrawer.avatarEditCta')}</p>
             {avatarError && <p className="text-xs text-red-400" dir="ltr">{avatarError}</p>}
