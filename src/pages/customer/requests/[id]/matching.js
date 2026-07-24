@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
-import { BadgeCheck, CircleCheck as CheckCircle2, Radar, Users } from 'lucide-react';
+import { BadgeCheck, Briefcase, CircleCheck as CheckCircle2, GraduationCap, Radar, Users } from 'lucide-react';
 import { useLocale } from '../../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 import Avatar from '../../../../components/Chat/Avatar';
+import { avatarSrc } from '../../../../components/UI/AvatarPicker';
 import { supabaseClient } from '../../../../lib/supabaseClient';
 import { useRequireRole } from '../../../../utils/useSession';
 import { translate } from '../../../../utils/i18n';
@@ -18,23 +19,78 @@ function candidateName(candidate, t) {
   return [candidate.given_name, candidate.family_name].filter(Boolean).join(' ') || t('requestMatching.anonymousEmployee');
 }
 
+const AVATAR_INITIALS_COLORS = ['#7c3aed', '#b45309', '#047857', '#be185d', '#0369a1'];
+function avatarColor(seed) {
+  if (!seed) return AVATAR_INITIALS_COLORS[0];
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return AVATAR_INITIALS_COLORS[h % AVATAR_INITIALS_COLORS.length];
+}
+
 function CandidateCard({ candidate, t }) {
+  const imgSrc = avatarSrc(candidate.avatar_key);
+  const initials = (candidate.given_name || '?').trim().charAt(0).toUpperCase();
+  const isActive = Boolean(candidate.is_online);
+
   return (
-    <div className="glass-panel-dark flex w-56 flex-col items-center gap-2 rounded-2xl p-5 text-center shadow-[0_20px_45px_-15px_rgba(0,0,0,0.6)]">
-      <Avatar avatarKey={candidate.avatar_key} name={candidate.given_name} seed={candidate.id} className="h-16 w-16 ring-2 ring-gold-400/30" />
-      <p className="flex items-center gap-1.5 truncate text-sm font-bold text-white">
-        <span
-          className={`h-2 w-2 shrink-0 rounded-full ${
-            candidate.is_online ? 'bg-yellow-400 shadow-[0_0_8px_#f59e0b]' : 'bg-gray-500'
-          }`}
-          aria-label={candidate.is_online ? t('requestMatching.onlineLabel') : t('requestMatching.offlineLabel')}
-        />
-        {candidateName(candidate, t)}
-        {candidate.is_verified && (
-          <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-blue-400" aria-label={t('requestMatching.verifiedBadgeLabel')} />
+    <div className="relative w-56 overflow-hidden rounded-2xl bg-[#000] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.8),0_0_0_1px_rgba(245,158,11,0.35),0_0_24px_-4px_rgba(245,158,11,0.20)]">
+      {/* Animated gold top-edge shimmer */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-px bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" aria-hidden="true" />
+
+      {/* Hero photo / initials */}
+      <div className="relative h-40 w-full overflow-hidden">
+        {imgSrc ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img src={imgSrc} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div
+            className="flex h-full w-full items-center justify-center text-5xl font-bold text-white/90"
+            style={{ background: `linear-gradient(135deg, ${avatarColor(candidate.id)}, ${avatarColor(candidate.id + '1')})` }}
+          >
+            {initials}
+          </div>
         )}
-      </p>
-      {candidate.specialization && <p className="truncate text-xs text-white/50">{candidate.specialization}</p>}
+        {/* Bottom photo gradient fade */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#000] to-transparent" aria-hidden="true" />
+      </div>
+
+      {/* Info section */}
+      <div className="space-y-1.5 px-4 pb-4 pt-2 text-center">
+        {/* Status indicator */}
+        <div className="flex items-center justify-center gap-1.5">
+          <span
+            className={`h-2 w-2 shrink-0 rounded-full ${
+              isActive ? 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.9)]' : 'bg-gray-600'
+            }`}
+            aria-hidden="true"
+          />
+          <span className={`text-[10px] font-semibold ${isActive ? 'text-yellow-400' : 'text-white/35'}`}>
+            {isActive ? t('requestMatching.onlineLabel') : t('requestMatching.offlineLabel')}
+          </span>
+        </div>
+
+        {/* Name + verified badge */}
+        <p className="flex items-center justify-center gap-1 text-sm font-bold text-white leading-tight">
+          {candidateName(candidate, t)}
+          {candidate.is_verified && (
+            <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-blue-400" aria-label={t('requestMatching.verifiedBadgeLabel')} />
+          )}
+        </p>
+
+        {/* Specialization with graduation cap icon */}
+        {candidate.specialization && (
+          <p className="flex items-center justify-center gap-1 truncate text-[11px] text-white/55">
+            <GraduationCap className="h-3 w-3 shrink-0 text-amber-400/70" aria-hidden="true" />
+            {candidate.specialization}
+          </p>
+        )}
+
+        {/* Role tag */}
+        <p className="flex items-center justify-center gap-1 text-[10px] text-white/35">
+          <Briefcase className="h-3 w-3 shrink-0" aria-hidden="true" />
+          {t('requestMatching.employeeRoleLabel')}
+        </p>
+      </div>
     </div>
   );
 }
@@ -77,7 +133,7 @@ function ShuffleDeck({ candidates, t }) {
   if (deck.length === 0) return null;
 
   return (
-    <div className="relative h-48 w-56">
+    <div className="relative h-72 w-56">
       {deck.slice(0, DECK_VISIBLE_DEPTH).map((candidate, position) => {
         const isExiting = position === 0 && candidate.id === exitingId;
         const target = isExiting
