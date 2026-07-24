@@ -28,7 +28,8 @@ export default function Home({ siteSettings }) {
     if (stored) {
       setLocale(stored);
     } else {
-      setStoredLocale(defaultLocale);
+      // First visit — show language picker before gateway
+      setStep('language');
     }
   }, []);
 
@@ -293,7 +294,7 @@ export default function Home({ siteSettings }) {
               className="inline-flex items-center gap-2 rounded-xl border border-amber-400/50 bg-amber-400/5 px-5 py-2.5 text-sm font-bold text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)] hover:shadow-[0_0_25px_rgba(245,158,11,0.45)] transition-shadow"
             >
               <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
-              {t('gateway.switchLanguage')}
+              {LOCALE_META.find((m) => m.code !== locale)?.nativeName ?? t('gateway.switchLanguage')}
             </button>
           </motion.div>
         </motion.div>
