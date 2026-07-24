@@ -47,6 +47,7 @@ export default function ProfileDrawer({
 }) {
   const t = (path) => translate(locale, path);
   const [activeTab, setActiveTab] = useState('info');
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -444,7 +445,7 @@ export default function ProfileDrawer({
               {onSignOut && (
                 <button
                   type="button"
-                  onClick={onSignOut}
+                  onClick={() => setLogoutConfirmOpen(true)}
                   className="flex w-full items-center gap-3 rounded-xl2 border border-red-400/20 bg-red-400/5 px-4 py-3 text-sm font-semibold text-red-300 transition-colors hover:bg-red-400/10 focus:outline-none focus:ring-2 focus:ring-red-400"
                 >
                   <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -455,6 +456,37 @@ export default function ProfileDrawer({
           )}
         </div>
       </aside>
+
+      {/* Logout confirmation modal */}
+      {logoutConfirmOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4">
+          <div className="metal-panel w-full max-w-xs space-y-5 p-6 text-center text-white">
+            <div className="flex justify-center">
+              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/15 ring-1 ring-red-400/30">
+                <LogOut className="h-6 w-6 text-red-400" aria-hidden="true" />
+              </span>
+            </div>
+            <p className="font-bold text-base">{t('profileDrawer.logoutConfirmTitle')}</p>
+            <p className="text-sm text-white/55">{t('profileDrawer.logoutConfirmDesc')}</p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="btn-cinematic-gold flex-1 py-2.5 text-sm font-bold"
+              >
+                {t('profileDrawer.logoutConfirmYes')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setLogoutConfirmOpen(false)}
+                className="flex-1 rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-white/70 hover:bg-white/8 transition-colors"
+              >
+                {t('profileDrawer.logoutConfirmNo')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
