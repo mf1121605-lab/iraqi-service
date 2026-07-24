@@ -67,11 +67,59 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  compress: true,
+  poweredByHeader: false,
+
+  // Optimize images from Supabase storage
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh4.googleusercontent.com',
+      },
+    ],
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [375, 640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
+    minimumCacheTTL: 86400, // 24h
+  },
+
   async headers() {
     return [
       {
         source: '/(.*)',
         headers: securityHeaders,
+      },
+      // Long-lived cache for Next.js static assets (content-hashed filenames)
+      {
+        source: '/_next/static/(.*)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      // Cache brand assets for a week
+      {
+        source: '/brand/(.*)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=604800, stale-while-revalidate=86400' },
+        ],
+      },
+      // Service worker — must not be cached
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
       },
     ];
   },

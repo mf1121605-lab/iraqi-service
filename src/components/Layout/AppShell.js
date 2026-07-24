@@ -256,7 +256,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
         </div>
       </header>
       {/* Extra bottom padding on mobile so content clears the fixed bottom nav */}
-      <main id="main-content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:pb-8 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]">{children}</main>
+      <main id="main-content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:pb-8 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] animate-fade-up">{children}</main>
       <BottomNavBar navItems={navItems} badges={badges} />
       {profile && (
         <ProfileDrawer
