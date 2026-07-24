@@ -90,6 +90,11 @@ export function useRequireRole(allowedRoles) {
       router.replace('/');
       return;
     }
+    // Suspended accounts are immediately signed out regardless of role.
+    if (profile.account_status === 'suspended') {
+      signOut().then(() => router.replace('/'));
+      return;
+    }
     // co_admin is an admin_level on an employee profile, not a separate role value.
     // Build the effective role set so pages can gate on 'co_admin' explicitly.
     const effectiveRoles = [profile.role];
