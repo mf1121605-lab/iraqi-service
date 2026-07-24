@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { motion } from 'framer-motion';
-import { ArrowLeftRight, ArrowUpRight, ExternalLink, Mail, Phone, ShieldCheck, Activity, UserPlus, UserRound } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowLeftRight, ArrowUpRight, ExternalLink, Mail, Phone, UserPlus, UserRound, X } from 'lucide-react';
 import GoogleGlyph from '../components/UI/GoogleGlyph';
 import {
   LOCALE_META,
@@ -21,6 +21,7 @@ export default function Home({ siteSettings }) {
   const { session, profile, loading: authLoading } = useSession();
   const [locale, setLocale] = useState(defaultLocale);
   const [step, setStep] = useState('gateway');
+  const [modalOpen, setModalOpen] = useState(null); // 'about' | 'privacy' | null
 
   useEffect(() => {
     const stored = getStoredLocale();
@@ -41,6 +42,14 @@ export default function Home({ siteSettings }) {
     if (authLoading || !session || !profile) return;
     router.replace(dashboardPathForRole(profile));
   }, [authLoading, session, profile, router]);
+
+  // Close modal on Escape
+  useEffect(() => {
+    if (!modalOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') setModalOpen(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [modalOpen]);
 
   function selectLanguage(code) {
     setLocale(code);
@@ -145,9 +154,8 @@ export default function Home({ siteSettings }) {
             <div className="bento-card-glow" />
             <div>
               <div className="flex items-center gap-3 mb-6">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold-400/10 shadow-glow">
-                  <ShieldCheck className="h-5 w-5 text-gold-300 animate-pulse" />
-                </span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/brand/logo-icon-512.png" alt="" aria-hidden="true" className="h-10 w-10 rounded-full object-contain" />
                 <span className="text-xs font-semibold uppercase tracking-[0.25em] text-gold-300/80">
                   {t('common.platformName')}
                 </span>
@@ -158,15 +166,6 @@ export default function Home({ siteSettings }) {
               <p className="mt-4 text-base md:text-xl text-white/70 max-w-xl font-light leading-relaxed line-clamp-4 md:line-clamp-none">
                 {heroSubtitle}
               </p>
-            </div>
-            <div className="mt-8 flex flex-wrap gap-4 items-center border-t border-white/5 pt-6">
-              <div className="flex items-center gap-2 text-xs text-white/50 bg-white/5 px-3 py-1.5 rounded-full">
-                <Activity className="h-3 w-3 text-emerald-400" />
-                <span>حالة المنصة: متصلة</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-white/50 bg-white/5 px-3 py-1.5 rounded-full">
-                <span>تحديث أمان نشط</span>
-              </div>
             </div>
           </motion.div>
 
@@ -201,7 +200,7 @@ export default function Home({ siteSettings }) {
             </div>
           </motion.button>
 
-          {/* Action Card: مستخدم جديد — whole card is clickable */}
+          {/* Action Card: مستخدم جديد */}
           <MotionLink
             href="/customer"
             variants={itemVariants}
@@ -238,7 +237,7 @@ export default function Home({ siteSettings }) {
             </div>
           </MotionLink>
 
-          {/* Action Card: لدي حساب — whole card is clickable */}
+          {/* Action Card: لدي حساب */}
           <MotionLink
             href="/login"
             variants={itemVariants}
@@ -274,8 +273,132 @@ export default function Home({ siteSettings }) {
               </p>
             </div>
           </MotionLink>
+
+          {/* About Us + Privacy Policy buttons — spans all 3 cols */}
+          <motion.div variants={itemVariants} className="md:col-span-3 flex justify-center gap-4 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setModalOpen('about')}
+              className="rounded-xl border border-amber-400/50 bg-amber-400/5 px-5 py-2.5 text-sm font-bold text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)] hover:shadow-[0_0_25px_rgba(245,158,11,0.45)] transition-shadow"
+            >
+              {t('gateway.aboutUsCta')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setModalOpen('privacy')}
+              className="rounded-xl border border-amber-400/50 bg-amber-400/5 px-5 py-2.5 text-sm font-bold text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)] hover:shadow-[0_0_25px_rgba(245,158,11,0.45)] transition-shadow"
+            >
+              {t('gateway.privacyCta')}
+            </button>
+          </motion.div>
         </motion.div>
       )}
+
+      {/* About Us / Privacy Policy Modal */}
+      <AnimatePresence>
+        {modalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm"
+            onClick={() => setModalOpen(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 40, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 40, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-amber-400/20 bg-[#0d1117] p-6 md:p-8 text-white shadow-[0_0_40px_rgba(245,158,11,0.15)]"
+            >
+              <button
+                type="button"
+                onClick={() => setModalOpen(null)}
+                className="absolute end-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-colors"
+                aria-label="إغلاق"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              {modalOpen === 'about' && (
+                <div className="space-y-4 leading-relaxed text-white/85">
+                  <h2 className="text-xl font-bold text-amber-400">{t('gateway.aboutUsCta')}</h2>
+                  <p>مرحباً بكم في <strong className="text-white">المنصة العراقية للخدمات</strong>، بوابتكم الرقمية الموثوقة لتسهيل وأتمتة المعاملات والخدمات الإلكترونية والأكاديمية في العراق.</p>
+                  <div>
+                    <p className="font-semibold text-amber-300 mb-1">رؤيتنا</p>
+                    <p>نسعى إلى إعادة تعريف مفهوم تقديم الخدمات في العراق من خلال التحول الرقمي الشامل، واختصار الوقت والجهد على المواطنين عبر تقديم حلول ذكية وآمنة تضمن إنجاز المعاملات بمرونة عالية ودون الحاجة للتنقل والمراجعات التقليدية.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-amber-300 mb-1">رسالتنا</p>
+                    <p>تقديم بيئة رقمية سهلة الاستخدام تعتمد على أحدث التقنيات البرمجية وأعلى معايير الأمان، لربط المواطن بالخدمات الإدارية، الأكاديمية، والخدمية بسرعة وشفافية متكاملة.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-amber-300 mb-2">ماذا نقدم؟</p>
+                    <ul className="space-y-2 text-sm">
+                      <li className="flex gap-2"><span className="text-amber-400 shrink-0">•</span><span><strong className="text-white/90">إنجاز المعاملات والخدمات:</strong> متابعة وتسهيل إجراءات التقديم والخدمات الإلكترونية المختلفة.</span></li>
+                      <li className="flex gap-2"><span className="text-amber-400 shrink-0">•</span><span><strong className="text-white/90">إدارة الوثائق والمستمسكات:</strong> رفع وتدقيق المستندات الرسمية وإدارتها ببيئة مشفرة.</span></li>
+                      <li className="flex gap-2"><span className="text-amber-400 shrink-0">•</span><span><strong className="text-white/90">الدفع الإلكتروني الآمن:</strong> دعم وسائل الدفع المحلية المعتمدة (زين كاش، كي كارد).</span></li>
+                      <li className="flex gap-2"><span className="text-amber-400 shrink-0">•</span><span><strong className="text-white/90">التتبع المباشر:</strong> نظام تتبع ذكي يتيح للمستخدم معرفة حالة معاملته خطوة بخطوة.</span></li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-amber-300 mb-2">قيمنا الجوهرية</p>
+                    <ol className="space-y-1 text-sm list-decimal list-inside">
+                      <li><strong className="text-white/90">الأمان والسرية:</strong> حماية بيانات ومستمسكات المستخدمين بأعلى تقنيات التشفير.</li>
+                      <li><strong className="text-white/90">السرعة والإتقان:</strong> المتابعة الدقيقة لضمان إنجاز الطلبات في أسرع وقت ممكن.</li>
+                      <li><strong className="text-white/90">الشفافية:</strong> وضوح كامل في الرسوم والخطوات وحالة الخدمة.</li>
+                    </ol>
+                  </div>
+                </div>
+              )}
+
+              {modalOpen === 'privacy' && (
+                <div className="space-y-4 leading-relaxed text-white/85 text-sm">
+                  <h2 className="text-xl font-bold text-amber-400">{t('gateway.privacyCta')}</h2>
+                  <p>تولي <strong className="text-white">المنصة العراقية للخدمات</strong> أهمية بالغة لخصوصية مستخدميها وحماية بياناتهم الشخصية.</p>
+                  <div>
+                    <p className="font-semibold text-amber-300 mb-1">1. البيانات التي نجمعها</p>
+                    <ul className="space-y-1">
+                      <li className="flex gap-2"><span className="text-amber-400 shrink-0">•</span><span><strong className="text-white/90">البيانات الشخصية:</strong> الاسم الكامل، رقم الهاتف، عنوان البريد الإلكتروني، ومحل السكن.</span></li>
+                      <li className="flex gap-2"><span className="text-amber-400 shrink-0">•</span><span><strong className="text-white/90">الوثائق الرسمية:</strong> صور البطاقة الموحدة، جواز السفر، أو المستندات الأكاديمية.</span></li>
+                      <li className="flex gap-2"><span className="text-amber-400 shrink-0">•</span><span><strong className="text-white/90">معلومات الدفع:</strong> بيانات إشعارات التسديد (دون تخزين أرقام البطاقات الحساسة).</span></li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-amber-300 mb-1">2. كيفية استخدام البيانات</p>
+                    <ul className="space-y-1">
+                      <li className="flex gap-2"><span className="text-amber-400 shrink-0">•</span><span>تنفيذ وتجهيز المعاملات والخدمات التي يطلبها المستخدم.</span></li>
+                      <li className="flex gap-2"><span className="text-amber-400 shrink-0">•</span><span>التحقق من صحة المستندات المرفوعة لضمان مطابقتها للشروط.</span></li>
+                      <li className="flex gap-2"><span className="text-amber-400 shrink-0">•</span><span>إرسال إشعارات وتحديثات حول حالة الطلب.</span></li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-amber-300 mb-1">3. حماية وتشفير البيانات</p>
+                    <p>نلتزم بتطبيق أحدث معايير الأمان السيبراني ونظم التشفير (SSL/TLS) لحماية بياناتك. تتم معالجة الملفات داخل قواعد بيانات سحابية مشفرة ومؤمنة.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-amber-300 mb-1">4. مشاركة البيانات</p>
+                    <p>لا نقوم ببيع أو إيجار أو مشاركة بياناتك الشخصية مع أي جهات تجارية أو إعلانية.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-amber-300 mb-1">5. حقوق المستخدم</p>
+                    <ul className="space-y-1">
+                      <li className="flex gap-2"><span className="text-amber-400 shrink-0">•</span><span>طلب الاطلاع على بياناتك الشخصية.</span></li>
+                      <li className="flex gap-2"><span className="text-amber-400 shrink-0">•</span><span>طلب تصحيح أي بيانات غير دقيقة.</span></li>
+                      <li className="flex gap-2"><span className="text-amber-400 shrink-0">•</span><span>طلب حذف المستمسكات بعد اكتمال الخدمة.</span></li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-amber-300 mb-1">6. التحديثات</p>
+                    <p>قد نقوم بتحديث سياسة الخصوصية من وقت لآخر. سيتم نشر أي تغييرات على هذه الصفحة مع تحديث تاريخ التعديل.</p>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Footer */}
       <div className="absolute inset-x-6 bottom-4 z-10 text-center">

@@ -54,6 +54,8 @@ const dictionaries = {
       loginDesc: 'تسجيل الدخول لحسابك',
       googleDesc: 'تسجيل الدخول السريع',
       switchLanguage: 'تغيير اللغة',
+      aboutUsCta: 'من نحن',
+      privacyCta: 'سياسة الخصوصية',
     },
     authLogin: {
       title: 'تسجيل الدخول',
@@ -831,6 +833,8 @@ const dictionaries = {
       loginDesc: 'چوونەژوورەوە بۆ هەژمارەکەت',
       googleDesc: 'چوونەژوورەوەی خێرا',
       switchLanguage: 'گۆڕینی زمان',
+      aboutUsCta: 'ئێمە کێین',
+      privacyCta: 'سیاسەتی تایبەتمەندی',
     },
     authLogin: {
       title: 'چوونەژوورەوە',
