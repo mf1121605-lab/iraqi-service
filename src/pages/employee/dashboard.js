@@ -6,6 +6,7 @@ import {
   Banknote,
   Check,
   CheckCheck,
+  ChevronRight,
   ClipboardCheck,
   History,
   Inbox,
@@ -71,6 +72,7 @@ export default function EmployeeDashboard() {
   const isMsgAtBottomRef = useRef(true);
   const [showMsgScrollDown, setShowMsgScrollDown] = useState(false);
   const [msgUnreadCount, setMsgUnreadCount] = useState(0);
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -155,6 +157,7 @@ export default function EmployeeDashboard() {
 
   async function loadDetail(requestId) {
     setSelectedId(requestId);
+    setMobileChatOpen(true);
     const [{ data: historyRows }, { data: messageRows }, { data: requestRow }] = await Promise.all([
       supabaseClient
         .from('request_status_history')
@@ -437,7 +440,7 @@ export default function EmployeeDashboard() {
         </aside>
 
         <section className="grid gap-6 lg:grid-cols-[320px_1fr]">
-          <div className="metal-panel p-4 text-white">
+          <div className={`metal-panel p-4 text-white${mobileChatOpen ? ' hidden lg:block' : ''}`}>
             <div className="mb-3 flex items-center gap-1 rounded-xl bg-white/5 p-1">
               <button
                 type="button"
@@ -545,6 +548,16 @@ export default function EmployeeDashboard() {
           </div>
 
           <div className="metal-panel p-6 text-white">
+            {mobileChatOpen && selectedRequest && (
+              <button
+                type="button"
+                onClick={() => setMobileChatOpen(false)}
+                className="mb-4 flex items-center gap-1.5 text-sm text-white/60 hover:text-white lg:hidden"
+              >
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                {t('employeeDesk.backToQueue')}
+              </button>
+            )}
             {!selectedRequest ? (
               <p className="text-sm text-white/60">{t('common.noResults')}</p>
             ) : (

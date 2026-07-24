@@ -239,6 +239,7 @@ const dictionaries = {
       updateStatusCta: 'تحديث الحالة',
       readReceiptSent: 'تم الإرسال',
       readReceiptRead: 'تمت القراءة',
+      backToQueue: 'القائمة',
     },
     quickRequest: {
       widgetTitle: 'طلب سريع',
@@ -1076,6 +1077,7 @@ const dictionaries = {
       updateStatusCta: 'نوێکردنەوەی دۆخ',
       readReceiptSent: 'نێردرا',
       readReceiptRead: 'خوێندرایەوە',
+      backToQueue: 'لیستەکە',
     },
     founderDashboard: {
       title: 'پانێلی سەرەکی',
