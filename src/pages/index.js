@@ -98,7 +98,7 @@ export default function Home({ siteSettings }) {
   };
 
   return (
-    <main className="dark relative flex min-h-screen items-center justify-center overflow-x-hidden bg-transparent p-6 font-display">
+    <main className="dark relative flex min-h-screen items-center justify-center overflow-x-hidden bg-transparent px-4 sm:px-6 pt-6 pb-36 sm:pb-10 font-display">
       <div className="pointer-events-none absolute inset-0 bg-radial-vignette opacity-40" />
 
       {step === 'language' && (
@@ -143,13 +143,13 @@ export default function Home({ siteSettings }) {
           variants={containerVariants}
           initial="hidden"
           animate="show"
-          className="relative z-10 grid w-full max-w-5xl gap-6 md:grid-cols-3"
+          className="relative z-10 grid w-full max-w-5xl gap-4 sm:gap-6 md:grid-cols-3"
         >
           {/* Hero Banner — spans 2 cols × 3 rows */}
           <motion.div
             variants={itemVariants}
             onMouseMove={handleCardMouseMove}
-            className="glass-premium bento-card md:col-span-2 md:row-span-3 p-8 md:p-12 flex flex-col justify-between"
+            className="glass-premium bento-card md:col-span-2 md:row-span-3 p-5 sm:p-8 md:p-12 flex flex-col justify-between"
           >
             <div className="bento-card-glow" />
             <div>
@@ -160,7 +160,7 @@ export default function Home({ siteSettings }) {
                   {t('common.platformName')}
                 </span>
               </div>
-              <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
                 {heroTitle}
               </h1>
               <p className="mt-4 text-base md:text-xl text-white/70 max-w-xl font-light leading-relaxed line-clamp-4 md:line-clamp-none">
@@ -401,9 +401,9 @@ export default function Home({ siteSettings }) {
       </AnimatePresence>
 
       {/* Footer */}
-      <div className="absolute inset-x-6 bottom-4 z-10 text-center">
+      <div className="absolute inset-x-2 sm:inset-x-6 bottom-3 z-10 text-center">
         {step === 'gateway' && hasContactRow && (
-          <div className="mb-2 flex flex-wrap items-center justify-center gap-6 text-xs text-white/60 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full w-max mx-auto border border-white/5">
+          <div className="mb-2 flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs text-white/60 bg-black/40 backdrop-blur-md px-3 sm:px-4 py-2 rounded-full max-w-full mx-auto border border-white/5 overflow-x-auto">
             {siteSettings.footer_phone && (
               <a href={`tel:${siteSettings.footer_phone}`} className="flex items-center gap-1.5 hover:text-gold-300 transition-colors">
                 <Phone className="h-3.5 w-3.5 text-gold-400" aria-hidden="true" />
