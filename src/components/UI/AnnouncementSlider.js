@@ -29,9 +29,9 @@ function swipePower(offset, velocity) {
 }
 
 const slideVariants = {
-  enter: (direction) => ({ x: direction > 0 ? 60 : -60, opacity: 0, scale: 0.98 }),
-  center: { x: 0, opacity: 1, scale: 1 },
-  exit: (direction) => ({ x: direction < 0 ? 60 : -60, opacity: 0, scale: 0.98 }),
+  enter: { opacity: 0, scale: 0.97 },
+  center: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.97 },
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -133,6 +133,7 @@ function AnnouncementSlider({ banners: bannersProp, locale, canEdit, onEdit, fal
        absolutely positioned so they don't add to the layout-flow height. */
     <div
       className={`relative ${HEIGHT_CLS} overflow-hidden rounded-[1.75rem] border border-gold-400/20 bg-white/[0.03] shadow-[0_0_50px_-15px_rgba(230,171,44,0.35)] backdrop-blur-xl`}
+      style={{ contain: 'paint' }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >

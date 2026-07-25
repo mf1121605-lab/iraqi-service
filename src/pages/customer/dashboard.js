@@ -233,6 +233,7 @@ export default function CustomerDashboard() {
   }
 
   return (
+    <div style={{ isolation: 'isolate' }}>
     <StaggerList>
       <StaggerItem>
         {/* AnnouncementSlider is self-managed: it fetches, polls, and shows
@@ -448,5 +449,6 @@ export default function CustomerDashboard() {
       </section>
       </StaggerItem>
     </StaggerList>
+    </div>
   );
 }

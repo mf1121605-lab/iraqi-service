@@ -74,7 +74,6 @@ export default function MotionGraphicsBanner({ type, titleAr, titleCkb, locale }
           right: '5%',
           background: `radial-gradient(circle, ${theme.accent}14 0%, transparent 70%)`,
           animation: 'glow-fade 6s ease-in-out infinite',
-          filter: 'blur(30px)',
         }}
         aria-hidden="true"
       />
