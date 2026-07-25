@@ -158,31 +158,29 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
             </nav>
           )}
 
-          {/* Mobile-only secondary nav: items not in the 3-slot bottom bar */}
-          {mobileSecondaryItems.length > 0 && (
-            <nav className="flex flex-wrap items-center gap-1 sm:hidden order-last w-full mt-1.5 pb-1 border-t border-white/8">
-              {mobileSecondaryItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-all
-                      ${item.active
-                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/35'
-                        : 'bg-white/5 text-white/60 hover:bg-white/8 hover:text-white'
-                      }`}
-                  >
-                    {Icon && <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />}
-                    {item.label}
-                  </a>
-                );
-              })}
-            </nav>
-          )}
-
           {/* RIGHT SIDE: actions — each button gets a subtle 3D depth effect */}
           <div className="flex items-center gap-1 text-sm">
+            {/* Mobile-only secondary nav icons — shown inline next to globe/volume on mobile */}
+            {mobileSecondaryItems.map((item) => {
+              const Icon = item.icon;
+              if (!Icon) return null;
+              return (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  aria-label={item.label}
+                  className={`sm:hidden flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 active:scale-90
+                    bg-gradient-to-b from-white/8 to-white/3 border shadow-[0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.10)]
+                    focus:outline-none focus:ring-2 focus:ring-amber-500/50
+                    ${item.active
+                      ? 'from-amber-500/20 to-amber-700/15 border-amber-500/40 text-amber-400'
+                      : 'border-white/10 text-white/70 hover:from-white/12 hover:border-white/18 hover:text-white'
+                    }`}
+                >
+                  <Icon className="h-4 w-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" strokeWidth={2} aria-hidden="true" />
+                </a>
+              );
+            })}
             {profile && (
               <button
                 type="button"
