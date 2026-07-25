@@ -42,7 +42,7 @@ function Bell3DSvg({ hasUnread }) {
   );
 }
 
-export default function NotificationBell({ userId, locale, dropUp = false, navVariant = false }) {
+export default function NotificationBell({ userId, locale, dropUp = false, navVariant = false, channelSuffix = '' }) {
   const router = useRouter();
   const t = (path) => translate(locale, path);
   const [open, setOpen] = useState(false);
@@ -66,7 +66,7 @@ export default function NotificationBell({ userId, locale, dropUp = false, navVa
     loadNotifications();
 
     const notifChannel = supabaseClient
-      .channel(`notifications-${userId}`)
+      .channel(`notifications-${userId}${channelSuffix ? `-${channelSuffix}` : ''}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
@@ -75,7 +75,7 @@ export default function NotificationBell({ userId, locale, dropUp = false, navVa
       .subscribe();
 
     const inviteChannel = supabaseClient
-      .channel(`dm-invitations-bell-${userId}`)
+      .channel(`dm-invitations-bell-${userId}${channelSuffix ? `-${channelSuffix}` : ''}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_room_invitations', filter: `receiver_id=eq.${userId}` },
@@ -94,7 +94,7 @@ export default function NotificationBell({ userId, locale, dropUp = false, navVa
       supabaseClient.removeChannel(notifChannel);
       supabaseClient.removeChannel(inviteChannel);
     };
-  }, [userId]);
+  }, [userId, channelSuffix]);
 
   useEffect(() => {
     if (!isPushSupported()) return;

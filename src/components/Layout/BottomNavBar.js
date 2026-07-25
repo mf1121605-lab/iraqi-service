@@ -198,7 +198,7 @@ export default function BottomNavBar({ navItems, badges, userId, locale }) {
           {/* Right — Notifications Bell */}
           <div className="flex flex-col items-center gap-1">
             {userId ? (
-              <NotificationBell userId={userId} locale={locale} dropUp navVariant />
+              <NotificationBell userId={userId} locale={locale} dropUp navVariant channelSuffix="bar" />
             ) : (
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-b from-white/10 to-white/4 border border-white/12 shadow-[0_4px_14px_rgba(0,0,0,0.5)]">
                 <svg viewBox="0 0 28 28" fill="none" className="h-7 w-7" aria-hidden="true">

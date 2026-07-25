@@ -203,7 +203,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
             )}
             <RequestAlertBell profile={profile} locale={locale} />
             {/* Hide bell on mobile for customer pages — it lives in the bottom bar there */}
-            {userId && <span className={isCustomerNav ? 'hidden sm:inline-flex' : undefined}><NotificationBell userId={userId} locale={locale} /></span>}
+            {userId && <span className={isCustomerNav ? 'hidden sm:inline-flex' : undefined}><NotificationBell userId={userId} locale={locale} channelSuffix="hdr" /></span>}
             {siteSettings?.site_ambient_audio_url && (
               <button
                 type="button"
