@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ClipboardList, GraduationCap, Inbox, LayoutGrid, Search } from 'lucide-react';
-import AppShell, { useLocale } from '../../../components/Layout/AppShell';
+import { ChevronLeft, ClipboardList, Inbox } from 'lucide-react';
+import { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import StatusBadge from '../../../components/UI/StatusBadge';
 import { supabaseClient } from '../../../lib/supabaseClient';
@@ -46,23 +46,10 @@ export default function CustomerRequests() {
     [requests, activeFilter]
   );
 
-  if (loading || !profile) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center bg-gradient-hero text-white">
-        <LoadingSpinner locale={locale} />
-      </main>
-    );
-  }
-
-  const navItems = [
-    { href: '/customer/dashboard', label: t('customerHub.categoriesTitle'), icon: LayoutGrid },
-    { href: '/customer/search', label: t('search.navLabel'), icon: Search },
-    { href: '/customer/requests', label: t('customerHub.myRequestsCta'), active: true, icon: ClipboardList },
-    { href: '/customer/tutor', label: t('aiTutor.navCta'), icon: GraduationCap },
-  ];
+  if (loading || !profile) return null;
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
+    <>
       {/* Header + stats */}
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 font-display text-xl font-bold">
@@ -146,6 +133,6 @@ export default function CustomerRequests() {
           ))}
         </ul>
       )}
-    </AppShell>
+    </>
   );
 }

@@ -2,9 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
-import { AlertTriangle, ArrowLeft, ClipboardList, GraduationCap, LayoutGrid, MessageCircle, MessagesSquare, Newspaper, Search, ShoppingBag, Tag, Wrench } from 'lucide-react';
-import AppShell from '../../components/Layout/AppShell';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import { AlertTriangle, ArrowLeft, MessagesSquare, Newspaper, ShoppingBag, Tag, Wrench } from 'lucide-react';
 import SafeImage from '../../components/UI/SafeImage';
 import AnnouncementSlider from '../../components/UI/AnnouncementSlider';
 import LazyVideo from '../../components/UI/LazyVideo';
@@ -195,18 +193,6 @@ export default function CustomerDashboard() {
     return () => supabaseClient.removeChannel(channel);
   }, [profile]);
 
-  const navItems = useMemo(
-    () => [
-      { href: '/customer/dashboard', label: t('customerHub.categoriesTitle'), active: true, icon: LayoutGrid },
-      { href: '/customer/search', label: t('search.navLabel'), icon: Search },
-      { href: '/customer/requests', label: t('customerHub.myRequestsCta'), icon: ClipboardList },
-      { href: '/customer/tutor', label: t('aiTutor.navCta'), icon: GraduationCap },
-      { href: '/customer/news', label: t('socialFeed.navCta'), icon: Newspaper },
-      { href: '/chat', label: t('chat.roomsTitle'), icon: MessageCircle },
-    ],
-    [locale] // eslint-disable-line react-hooks/exhaustive-deps
-  );
-
   async function handleOrder(product) {
     setOrderMessage('');
     const price = product.discount_price ?? product.price;
@@ -229,16 +215,10 @@ export default function CustomerDashboard() {
     router.push(`/customer/orders/${data.id}/checkout`);
   }
 
-  if (loading || !profile) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center text-ink-light dark:text-ink-dark">
-        <LoadingSpinner locale={locale} />
-      </main>
-    );
-  }
+  if (loading || !profile) return null;
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
+    <>
       {banners.length > 0 ? (
         <AnnouncementSlider banners={banners} locale={locale} />
       ) : (
@@ -437,6 +417,6 @@ export default function CustomerDashboard() {
           </div>
         )}
       </section>
-    </AppShell>
+    </>
   );
 }

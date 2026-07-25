@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { ArrowRight, MessageSquarePlus, MessagesSquare } from 'lucide-react';
-import AppShell, { useLocale } from '../../../components/Layout/AppShell';
+import { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { MotionLink, cardLift } from '../../../components/UI/Motion';
 import { supabaseClient } from '../../../lib/supabaseClient';
@@ -50,13 +50,7 @@ export default function TutorSubjectSessions() {
     router.push(`/customer/tutor/session/${data.id}`);
   }
 
-  if (loading || !profile || !subject) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center bg-gradient-hero text-white">
-        <LoadingSpinner locale={locale} />
-      </main>
-    );
-  }
+  if (loading || !profile || !subject) return null;
 
   if (!isValidSubject) {
     router.replace('/customer/tutor');
@@ -64,7 +58,7 @@ export default function TutorSubjectSessions() {
   }
 
   return (
-    <AppShell onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
+    <>
       <Link
         href="/customer/tutor"
         className="flex items-center gap-1.5 text-sm text-ink-muted underline underline-offset-4 transition-colors hover:text-ink-light dark:text-ink-dark-muted dark:hover:text-ink-dark"
@@ -115,6 +109,6 @@ export default function TutorSubjectSessions() {
           ))}
         </ul>
       )}
-    </AppShell>
+    </>
   );
 }

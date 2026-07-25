@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ChevronLeft, ChevronRight, ClipboardList, Download, GraduationCap,
-  Image as ImageIcon, LayoutGrid, MessageCircle, Newspaper, Pin, PinOff,
+  ChevronLeft, ChevronRight, Download,
+  Image as ImageIcon, MessageCircle, Newspaper, Pin, PinOff,
   Reply, Search, Send, Share2, Trash2, X,
 } from 'lucide-react';
 import { audioFX } from '../../utils/audioFX';
-import AppShell, { useLocale } from '../../components/Layout/AppShell';
+import { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Avatar from '../../components/Chat/Avatar';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -480,15 +480,6 @@ export default function CustomerNews() {
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const navItems = [
-    { href: '/customer/dashboard', label: t('customerHub.categoriesTitle'), icon: LayoutGrid },
-    { href: '/customer/search', label: t('search.navLabel'), icon: Search },
-    { href: '/customer/requests', label: t('customerHub.myRequestsCta'), icon: ClipboardList },
-    { href: '/customer/news', label: t('socialFeed.navCta'), active: true, icon: Newspaper },
-    { href: '/customer/tutor', label: t('aiTutor.navCta'), icon: GraduationCap },
-    { href: '/chat', label: t('chat.roomsTitle'), icon: MessageCircle },
-  ];
-
   function buildQuery() {
     return supabaseClient
       .from('social_posts')
@@ -645,16 +636,10 @@ export default function CustomerNews() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  if (loading || !profile) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center text-ink-light dark:text-white">
-        <LoadingSpinner locale={locale} />
-      </main>
-    );
-  }
+  if (loading || !profile) return null;
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
+    <>
       <h2 className="section-title-cinematic font-display text-lg font-bold">
         <Newspaper className="h-5 w-5 text-gold-600 dark:text-gold-300" aria-hidden="true" />
         {t('socialFeed.pageTitle')}
@@ -776,6 +761,6 @@ export default function CustomerNews() {
           ))}
         </div>
       )}
-    </AppShell>
+    </>
   );
 }

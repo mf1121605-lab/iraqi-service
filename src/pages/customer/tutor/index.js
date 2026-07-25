@@ -1,5 +1,5 @@
-import { BookOpen, Calculator, ClipboardList, FlaskConical, GraduationCap, Languages, LayoutGrid, Moon, Search, Sparkles } from 'lucide-react';
-import AppShell, { useLocale } from '../../../components/Layout/AppShell';
+import { BookOpen, Calculator, FlaskConical, Languages, LayoutGrid, Moon, Sparkles } from 'lucide-react';
+import { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { MotionLink, cardLift } from '../../../components/UI/Motion';
 import { useRequireRole } from '../../../utils/useSession';
@@ -20,23 +20,10 @@ export default function TutorSubjects() {
   const locale = useLocale();
   const t = (path) => translate(locale, path);
 
-  if (loading || !profile) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center bg-gradient-hero text-white">
-        <LoadingSpinner locale={locale} />
-      </main>
-    );
-  }
-
-  const navItems = [
-    { href: '/customer/dashboard', label: t('customerHub.categoriesTitle'), icon: LayoutGrid },
-    { href: '/customer/search', label: t('search.navLabel'), icon: Search },
-    { href: '/customer/requests', label: t('customerHub.myRequestsCta'), icon: ClipboardList },
-    { href: '/customer/tutor', label: t('aiTutor.navCta'), active: true, icon: GraduationCap },
-  ];
+  if (loading || !profile) return null;
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
+    <>
       <h2 className="flex items-center gap-2 font-display text-xl font-bold">
         <Sparkles className="h-5 w-5 text-brand-600 dark:text-brand-300" aria-hidden="true" />
         {t('aiTutor.pageTitle')}
@@ -62,6 +49,6 @@ export default function TutorSubjects() {
           );
         })}
       </div>
-    </AppShell>
+    </>
   );
 }

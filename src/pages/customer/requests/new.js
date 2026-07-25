@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { CircleCheck as CheckCircle2, File as FileEdit, Newspaper } from 'lucide-react';
-import AppShell, { useLocale } from '../../../components/Layout/AppShell';
+import { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { supabaseClient } from '../../../lib/supabaseClient';
 import { useRequireRole } from '../../../utils/useSession';
@@ -96,16 +96,10 @@ export default function NewRequest() {
     setTimeout(() => router.push(`/customer/requests/${data.id}/matching`), 1200);
   }
 
-  if (loading || !profile) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center bg-gradient-hero text-white">
-        <LoadingSpinner locale={locale} />
-      </main>
-    );
-  }
+  if (loading || !profile) return null;
 
   return (
-    <AppShell onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
+    <>
       {newsItems.length > 0 && (
         <div className="mx-auto mb-4 max-w-xl animate-slide-up rounded-2xl border border-gold-400/20 bg-gold-400/5 p-5">
           <h3 className="flex items-center gap-1.5 text-sm font-bold text-gold-700 dark:text-gold-300">
@@ -212,6 +206,6 @@ export default function NewRequest() {
           </form>
         )}
       </div>
-    </AppShell>
+    </>
   );
 }

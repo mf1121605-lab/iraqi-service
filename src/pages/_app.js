@@ -16,6 +16,24 @@ const InteractiveBackground3D = dynamic(
   () => import('../components/UI/InteractiveBackground3D'),
   { ssr: false }
 );
+// Persistent shell for all customer + chat routes — renders header/nav once,
+// never remounts between tab navigations (same tree position in _app.js).
+const CustomerShell = dynamic(() => import('../components/Layout/CustomerShell'), { ssr: false });
+
+function isCustomerShellRoute(pathname) {
+  if (pathname.startsWith('/customer/')) {
+    if (pathname === '/customer/onboarding') return false;
+    if (pathname.startsWith('/customer/orders/')) return false;
+    if (pathname.endsWith('/matching')) return false;
+    if (pathname.startsWith('/customer/tutor/session/')) return false;
+    return true;
+  }
+  // Chat rooms list + DM threads use AppShell; individual group-chat rooms
+  // (/chat/[slug]) are standalone full-screen pages and stay outside the shell.
+  if (pathname === '/chat') return true;
+  if (pathname.startsWith('/chat/dm/')) return true;
+  return false;
+}
 
 const tajawal = Tajawal({
   subsets: ['arabic', 'latin'],
@@ -100,7 +118,13 @@ export default function App({ Component, pageProps }) {
           <PermissionPrompt />
           <SplashScreen />
           <SiteChrome onSettings={handleSettings} />
-          <Component {...pageProps} siteSettings={siteSettings} />
+          {isCustomerShellRoute(router.pathname) ? (
+            <CustomerShell pathname={router.pathname}>
+              <Component {...pageProps} siteSettings={siteSettings} />
+            </CustomerShell>
+          ) : (
+            <Component {...pageProps} siteSettings={siteSettings} />
+          )}
           <div className="grain-overlay" aria-hidden="true" />
           <div className="cinematic-frame" aria-hidden="true" />
           <div className="cinematic-frame-corner top-left" aria-hidden="true" />

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MessageCircle, MessageCircleMore, MessagesSquare, Search } from 'lucide-react';
-import AppShell, { useLocale } from '../../components/Layout/AppShell';
+import { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Avatar from '../../components/Chat/Avatar';
 import { supabaseClient } from '../../lib/supabaseClient';
@@ -95,13 +95,7 @@ export default function ChatRooms() {
     [dmThreads, normalizedQuery]
   );
 
-  if (loading || !profile) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-hero text-white">
-        <LoadingSpinner locale={locale} />
-      </main>
-    );
-  }
+  if (loading || !profile) return null;
 
   function RoomCard({ room, index }) {
     return (
@@ -128,7 +122,7 @@ export default function ChatRooms() {
   }
 
   return (
-    <AppShell onSignOut={signOut} userId={profile.id}>
+    <>
       <section className="mx-auto max-w-4xl rounded-3xl border border-white/[0.08] bg-[#111b21] p-4 text-white shadow-2xl sm:p-6">
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#00a884] text-white">
@@ -192,6 +186,6 @@ export default function ChatRooms() {
           </>
         )}
       </section>
-    </AppShell>
+    </>
   );
 }

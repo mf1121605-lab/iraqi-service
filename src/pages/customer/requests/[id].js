@@ -3,8 +3,8 @@ import { audioFX } from '../../../utils/audioFX';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertTriangle, Banknote, Check, CheckCheck, CheckCircle2, Circle, ClipboardList, GraduationCap, Inbox, LayoutGrid, Search, Send, Star } from 'lucide-react';
-import AppShell, { useLocale } from '../../../components/Layout/AppShell';
+import { AlertTriangle, Banknote, Check, CheckCheck, CheckCircle2, Circle, Inbox, Send, Star } from 'lucide-react';
+import { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import StatusBadge from '../../../components/UI/StatusBadge';
 import Avatar from '../../../components/Chat/Avatar';
@@ -275,25 +275,17 @@ export default function CustomerRequestDetail() {
     loadAll();
   }
 
-  if (loading || !profile || !request) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center bg-gradient-hero text-white">
-        <LoadingSpinner locale={locale} />
-      </main>
-    );
+  if (loading || !profile) return null;
+
+  if (!request) {
+    return <LoadingSpinner inline locale={locale} className="mt-6" />;
   }
 
-  const navItems = [
-    { href: '/customer/dashboard', label: t('customerHub.categoriesTitle'), icon: LayoutGrid },
-    { href: '/customer/search', label: t('search.navLabel'), icon: Search },
-    { href: '/customer/requests', label: t('customerHub.myRequestsCta'), active: true, icon: ClipboardList },
-    { href: '/customer/tutor', label: t('aiTutor.navCta'), icon: GraduationCap },
-  ];
   const matchedCategory = categories?.find((category) => category.key === request.category);
   const isFinished = FINISHED_STATUSES.includes(request.status);
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
+    <>
       <div className="mx-auto max-w-2xl">
         <div className="flex items-start justify-between gap-3 rounded-2xl border border-black/5 bg-white/60 p-5 shadow-soft dark:border-white/10 dark:bg-surface-dark-alt/60">
           <div>
@@ -548,6 +540,6 @@ export default function CustomerRequestDetail() {
           )
         )}
       </div>
-    </AppShell>
+    </>
   );
 }

@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { ArrowRight, BadgeCheck, ClipboardList, GraduationCap, LayoutGrid, Search, Star } from 'lucide-react';
-import AppShell, { useLocale } from '../../../components/Layout/AppShell';
-import LoadingSpinner from '../../../components/LoadingSpinner';
+import { ArrowRight, BadgeCheck, Star } from 'lucide-react';
+import { useLocale } from '../../../components/Layout/AppShell';
 import Avatar from '../../../components/Chat/Avatar';
 import { supabaseClient } from '../../../lib/supabaseClient';
 import { useRequireRole } from '../../../utils/useSession';
@@ -45,28 +44,15 @@ export default function EmployeePublicProfile() {
     load();
   }, [profile, id, router]);
 
-  if (loading || !profile || fetching) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center bg-gradient-hero text-white">
-        <LoadingSpinner locale={locale} />
-      </main>
-    );
-  }
+  if (loading || !profile || fetching) return null;
 
   if (!employee) return null;
-
-  const navItems = [
-    { href: '/customer/dashboard', label: t('customerHub.categoriesTitle'), icon: LayoutGrid },
-    { href: '/customer/search', label: t('search.navLabel'), icon: Search },
-    { href: '/customer/requests', label: t('customerHub.myRequestsCta'), icon: ClipboardList },
-    { href: '/customer/tutor', label: t('aiTutor.navCta'), icon: GraduationCap },
-  ];
 
   const fullName = [employee.given_name, employee.family_name].filter(Boolean).join(' ');
   const avgStars = Number(employee.avg_stars) || 0;
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
+    <>
       <div className="mx-auto max-w-lg">
         <Link
           href="/customer/requests"
@@ -148,6 +134,6 @@ export default function EmployeePublicProfile() {
           </div>
         )}
       </div>
-    </AppShell>
+    </>
   );
 }

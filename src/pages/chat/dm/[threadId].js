@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
 import { ArrowRight, ChevronDown, MoreVertical, Pencil, Phone, Save, Send, X } from 'lucide-react';
-import AppShell, { useLocale } from '../../../components/Layout/AppShell';
+import { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import Avatar from '../../../components/Chat/Avatar';
 import AttachmentUploader from '../../../components/Chat/AttachmentUploader';
@@ -182,24 +182,18 @@ export default function DirectMessageThread() {
     await supabaseClient.from('direct_messages').delete().eq('id', messageId);
   }
 
-  if (loading || !profile || (!otherUser && !notFound)) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center bg-gradient-hero text-white">
-        <LoadingSpinner locale={locale} />
-      </main>
-    );
+  if (loading || !profile) return null;
+
+  if (!otherUser && !notFound) {
+    return <LoadingSpinner inline locale={locale} className="mt-6" />;
   }
 
   if (notFound) {
-    return (
-      <AppShell onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
-        <p className="text-center text-sm text-ink-muted dark:text-ink-dark-muted">{t('common.noResults')}</p>
-      </AppShell>
-    );
+    return <p className="text-center text-sm text-ink-muted dark:text-ink-dark-muted">{t('common.noResults')}</p>;
   }
 
   return (
-    <AppShell onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
+    <>
       <div className="mx-auto flex h-[calc(100dvh-8rem)] max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0b141a] shadow-2xl">
         <div className="flex items-center gap-3 border-b border-white/10 bg-[#202c33] px-3 py-2.5">
           <Link
@@ -365,6 +359,6 @@ export default function DirectMessageThread() {
         </form>
         {pendingAttachment && <p className="mt-1 text-xs text-ink-muted dark:text-ink-dark-muted">{pendingAttachment.name}</p>}
       </div>
-    </AppShell>
+    </>
   );
 }

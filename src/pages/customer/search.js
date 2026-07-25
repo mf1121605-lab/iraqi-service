@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ClipboardList, GraduationCap, LayoutGrid, Package, Search, Tag, X } from 'lucide-react';
-import AppShell, { useLocale } from '../../components/Layout/AppShell';
+import { ClipboardList, Package, Search, Tag, X } from 'lucide-react';
+import { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
@@ -75,20 +75,7 @@ export default function CustomerSearch() {
     return () => clearTimeout(debounceRef.current);
   }, [query]);
 
-  if (loading || !profile) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center bg-gradient-hero text-white">
-        <LoadingSpinner locale={locale} />
-      </main>
-    );
-  }
-
-  const navItems = [
-    { href: '/customer/dashboard', label: t('customerHub.categoriesTitle'), icon: LayoutGrid },
-    { href: '/customer/search', label: t('search.navLabel'), active: true, icon: Search },
-    { href: '/customer/requests', label: t('customerHub.myRequestsCta'), icon: ClipboardList },
-    { href: '/customer/tutor', label: t('aiTutor.navCta'), icon: GraduationCap },
-  ];
+  if (loading || !profile) return null;
 
   const grouped = results
     ? {
@@ -98,8 +85,7 @@ export default function CustomerSearch() {
     : null;
 
   return (
-    <AppShell navItems={navItems} onSignOut={signOut} userId={profile.id} profile={profile} onProfileUpdated={refreshProfile}>
-      <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl">
         <h2 className="flex items-center gap-2 font-display text-xl font-bold">
           <Search className="h-5 w-5" aria-hidden="true" />
           {t('search.title')}
@@ -156,7 +142,6 @@ export default function CustomerSearch() {
         {!query && (
           <p className="mt-10 text-center text-sm text-ink-muted dark:text-ink-dark-muted">{t('search.hint')}</p>
         )}
-      </div>
-    </AppShell>
+    </div>
   );
 }
