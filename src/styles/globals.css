@@ -597,6 +597,55 @@ select:focus-visible {
   z-index: 1;
 }
 
+/* ─── Professional animated background ─────────────────────────────────── */
+@keyframes bg-drift {
+  0%   { background-position: 0%   50%; }
+  25%  { background-position: 50%  0%;  }
+  50%  { background-position: 100% 50%; }
+  75%  { background-position: 50%  100%; }
+  100% { background-position: 0%   50%; }
+}
+
+@keyframes gold-pulse {
+  0%,  100% { opacity: 0.35; transform: scale(1);    }
+  50%        { opacity: 0.65; transform: scale(1.08); }
+}
+
+@keyframes gold-pulse-2 {
+  0%,  100% { opacity: 0.20; transform: scale(1.05) translateX(0px);  }
+  50%        { opacity: 0.45; transform: scale(0.95) translateX(-20px); }
+}
+
+.pro-bg {
+  background: linear-gradient(
+    -45deg,
+    #060a0f,
+    #0d1117,
+    #100e06,
+    #0a0d18,
+    #0d1117,
+    #060a0f
+  );
+  background-size: 600% 600%;
+  animation: bg-drift 22s ease-in-out infinite;
+}
+
+.pro-bg-glow-1 {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 55% 40% at 25% 35%, rgba(230,171,44,0.11) 0%, transparent 70%);
+  animation: gold-pulse 7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.pro-bg-glow-2 {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 40% 50% at 75% 70%, rgba(180,111,23,0.09) 0%, transparent 65%);
+  animation: gold-pulse-2 9s ease-in-out infinite;
+  pointer-events: none;
+}
+
 /* ─── Music equalizer bars ──────────────────────────────────────────────── */
 @keyframes music-bar {
   0%, 100% { transform: scaleY(0.35); }
