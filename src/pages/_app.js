@@ -108,6 +108,14 @@ export default function App({ Component, pageProps }) {
       <MotionConfig reducedMotion="never">
         <ErrorBoundary>
           <div className="fixed inset-0 -z-10 pointer-events-none" style={{ backgroundColor: 'var(--color-bg, #0d1117)' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand/logo-icon-512.png"
+              alt=""
+              aria-hidden="true"
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] max-w-[85vw] select-none object-contain opacity-[0.055]"
+              draggable={false}
+            />
             <InteractiveBackground3D />
           </div>
           {transitioning && (
