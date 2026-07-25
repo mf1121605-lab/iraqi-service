@@ -54,30 +54,23 @@ html {
 }
 
 /* =============================================
-   LIGHT MODE — warm ivory gold, clean and bright
+   ALWAYS DARK — no light mode
    ============================================= */
 body {
-  @apply text-ink-light dark:text-ink-dark font-sans antialiased;
+  @apply text-ink-dark font-sans antialiased;
   font-feature-settings: 'ss01' 1;
-  background-color: #fdfaf3;
-  background-image:
-    radial-gradient(ellipse 90% 70% at 50% -10%, rgba(245,158,11,0.14) 0%, transparent 60%),
-    radial-gradient(ellipse 120% 90% at 50% 110%, rgba(47,148,128,0.08) 0%, transparent 55%),
-    radial-gradient(circle at 50% 50%, #fffdf7 0%, #fbf5e6 55%, #f6ecd2 100%);
-  background-attachment: fixed;
-  min-height: 100vh;
-}
-
-/* =============================================
-   DARK MODE — deep luxury charcoal #0d1117
-   ============================================= */
-.dark body {
   background-color: var(--color-bg, #0d1117);
   background-image:
     radial-gradient(ellipse 80% 60% at 50% -5%, color-mix(in srgb, var(--color-accent) 7%, transparent) 0%, transparent 55%),
     radial-gradient(ellipse 60% 80% at 85% 60%, color-mix(in srgb, var(--color-accent) 4%, transparent) 0%, transparent 50%),
     radial-gradient(ellipse 70% 50% at 15% 80%, color-mix(in srgb, var(--color-accent) 3%, transparent) 0%, transparent 45%),
     radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--color-bg, #0d1117) 40%, #161b22) 0%, var(--color-bg, #0d1117) 60%, color-mix(in srgb, var(--color-bg, #0d1117) 60%, #000) 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+.dark body {
+  background-color: var(--color-bg, #0d1117);
 }
 
 /* =============================================
