@@ -1,26 +1,73 @@
 import { useEffect, useState } from 'react';
 
 const AMBIENT_AUDIO_EVENT = 'iraqi-services:ambient-audio-change';
+const STORAGE_KEY = 'iraqi-services:ambient-playing';
 
-// The <audio> element itself lives in SiteChrome (mounted once in
-// _app.js, so it survives client-side page navigation instead of being
-// torn down and recreated per page like AppShell is). This module is the
-// glue that lets AppShell's speaker button — rendered fresh on every
-// page — control that one persistent element without either side needing
-// a shared parent or context provider, the same event-based pattern
-// useSyncedLocale already uses in utils/i18n.js.
 let audioElement = null;
 let playing = false;
+let autoPlayScheduled = false;
+
+function broadcast(state) {
+  window.dispatchEvent(new CustomEvent(AMBIENT_AUDIO_EVENT, { detail: state }));
+}
+
+// Try to play — succeeds if user has interacted with the page already
+function tryAutoPlay() {
+  if (!audioElement || playing) return;
+  if (typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEY) !== '1') return;
+  audioElement.play().then(() => {
+    playing = true;
+    autoPlayScheduled = false;
+    broadcast(true);
+  }).catch(() => {
+    // Browser blocked autoplay — will retry on next user interaction
+  });
+}
+
+// Schedule auto-play on the next user interaction if immediate play fails
+function scheduleAutoPlay() {
+  if (autoPlayScheduled) return;
+  autoPlayScheduled = true;
+  tryAutoPlay();
+  // Retry on first tap/click (browser unlocks audio on interaction)
+  const retry = () => { tryAutoPlay(); autoPlayScheduled = false; };
+  document.addEventListener('click', retry, { once: true });
+  document.addEventListener('touchstart', retry, { once: true, passive: true });
+}
 
 export function registerAmbientAudioElement(el) {
+  const wasPlaying = playing;
   audioElement = el;
-  // The element unmounts if the founder clears the track while someone
-  // has it playing — reset state and notify AppShell's button so it
-  // doesn't keep showing "playing" for an element that no longer exists.
-  if (!el && playing) {
-    playing = false;
-    window.dispatchEvent(new CustomEvent(AMBIENT_AUDIO_EVENT, { detail: false }));
+
+  if (!el) {
+    if (playing) {
+      playing = false;
+      if (typeof window !== 'undefined') broadcast(false);
+    }
+    return;
   }
+
+  if (wasPlaying) {
+    // Audio element was remounted (e.g. settings re-fetched) — resume immediately
+    el.play().catch(() => {});
+  } else {
+    // New mount — auto-start if user had it on before
+    scheduleAutoPlay();
+  }
+
+  // Sync playing state if the browser pauses/resumes externally (phone call, tab switch)
+  el.addEventListener('pause', () => {
+    if (playing) {
+      playing = false;
+      broadcast(false);
+    }
+  });
+  el.addEventListener('play', () => {
+    if (!playing) {
+      playing = true;
+      broadcast(true);
+    }
+  });
 }
 
 export function toggleAmbientAudio() {
@@ -28,20 +75,22 @@ export function toggleAmbientAudio() {
   if (playing) {
     audioElement.pause();
     playing = false;
+    if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, '0');
   } else {
-    // This only ever runs from a real click handler, so the browser's
-    // autoplay-with-sound restriction never applies here — no .catch()
-    // fallback needed, unlike the splash screen's unattended attempt.
     audioElement.play().catch(() => {});
     playing = true;
+    if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, '1');
   }
-  window.dispatchEvent(new CustomEvent(AMBIENT_AUDIO_EVENT, { detail: playing }));
+  broadcast(playing);
 }
 
 export function useAmbientAudioPlaying() {
   const [state, setState] = useState(false);
 
   useEffect(() => {
+    // Sync initial state (audio may already be playing from auto-start)
+    setState(playing);
+
     function handleChange(event) {
       setState(event.detail);
     }

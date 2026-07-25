@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Globe, Volume2, VolumeX } from 'lucide-react';
+import { Globe } from 'lucide-react';
 import { audioFX } from '../../utils/audioFX';
 import {
   LOCALE_META,
@@ -188,18 +188,25 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
               <button
                 type="button"
                 onClick={toggleAmbientAudio}
-                className="flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 active:scale-90
-                  bg-gradient-to-b from-white/8 to-white/3 border border-white/10
+                className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 active:scale-90
+                  bg-gradient-to-b border
                   shadow-[0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.10)]
-                  hover:from-white/12 hover:border-white/18
-                  focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                  focus:outline-none focus:ring-2 focus:ring-amber-500/50
+                  ${ambientPlaying
+                    ? 'from-amber-500/25 to-amber-700/15 border-amber-400/50 shadow-[0_0_14px_-2px_rgba(245,158,11,0.5),0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.15)]'
+                    : 'from-white/8 to-white/3 border-white/10 hover:from-white/12 hover:border-white/18 opacity-50'}`}
                 aria-label={ambientPlaying ? t('common.muteSiteAudio') : t('common.unmuteSiteAudio')}
                 aria-pressed={ambientPlaying}
               >
                 {ambientPlaying ? (
-                  <Volume2 className="h-4 w-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" strokeWidth={2} aria-hidden="true" />
+                  <span className="flex items-end gap-[3px] h-5 text-amber-400" aria-hidden="true">
+                    <span className="music-bar" />
+                    <span className="music-bar" />
+                    <span className="music-bar" />
+                    <span className="music-bar" />
+                  </span>
                 ) : (
-                  <VolumeX className="h-4 w-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" strokeWidth={2} aria-hidden="true" />
+                  <span className="text-lg leading-none select-none" aria-hidden="true">🎵</span>
                 )}
               </button>
             )}
