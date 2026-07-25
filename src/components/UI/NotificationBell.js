@@ -116,8 +116,15 @@ export default function NotificationBell({ userId, locale, dropUp = false, navVa
     try {
       await subscribeToPush(userId);
       setPushEnabled(true);
-    } catch {
-      setPushError(t('notifications.pushError'));
+    } catch (err) {
+      const code = err?.message ?? '';
+      if (code === 'PERMISSION_DENIED') {
+        setPushError(t('notifications.pushErrorDenied'));
+      } else if (code === 'PERMISSION_DISMISSED') {
+        setPushError('');
+      } else {
+        setPushError(t('notifications.pushError'));
+      }
     }
   }
 

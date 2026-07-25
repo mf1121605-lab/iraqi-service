@@ -18,15 +18,19 @@ export async function getExistingPushSubscription() {
 }
 
 export async function subscribeToPush(userId) {
+  const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  if (!vapidKey) throw new Error('VAPID_NOT_CONFIGURED');
+
   const registration = await navigator.serviceWorker.register('/sw.js');
+  await navigator.serviceWorker.ready;
+
   const permission = await Notification.requestPermission();
-  if (permission !== 'granted') {
-    throw new Error('notification permission denied');
-  }
+  if (permission === 'denied') throw new Error('PERMISSION_DENIED');
+  if (permission !== 'granted') throw new Error('PERMISSION_DISMISSED');
 
   const subscription = await registration.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
+    applicationServerKey: urlBase64ToUint8Array(vapidKey),
   });
 
   const raw = subscription.toJSON();
