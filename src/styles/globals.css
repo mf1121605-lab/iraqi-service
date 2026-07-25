@@ -601,6 +601,14 @@ select:focus-visible {
   50%       { opacity: 0.55; }
 }
 
+/* ─── Eagle logo glow ───────────────────────────────────────────── */
+.logo-eagle-glow {
+  filter:
+    drop-shadow(0 0 10px rgba(245, 158, 11, 0.90))
+    drop-shadow(0 0 24px rgba(245, 158, 11, 0.60))
+    drop-shadow(0 0 52px rgba(245, 158, 11, 0.28));
+}
+
 /* ─── Motion-graphic banner keyframes ───────────────────────────── */
 @keyframes mg-pulse-scale {
   0%, 100% { transform: scale(1); }

@@ -143,9 +143,9 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
           <div className="flex items-center gap-2.5">
             <span className="relative flex h-9 w-9 items-center justify-center">
               <span className="absolute inset-0 -z-10 animate-pulse-soft rounded-xl bg-amber-500/20 blur-md dark:bg-amber-400/15" aria-hidden="true" />
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-hero text-white shadow-glow dark:bg-none dark:bg-amber-500/12 dark:ring-1 dark:ring-amber-500/30 dark:shadow-[0_0_14px_-4px_rgba(245,158,11,0.45)]">
+              <span className="flex h-9 w-9 items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/brand/logo-icon-512.png" alt="" className="h-full w-full rounded-xl object-contain p-1" />
+                <img src="/brand/logo-eagle.png" alt="" className="logo-eagle-glow h-full w-full object-contain" />
               </span>
             </span>
             <h1 className="font-display text-lg font-bold tracking-tight text-ink-light dark:text-white">{title ?? t('common.platformName')}</h1>

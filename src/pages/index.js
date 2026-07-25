@@ -106,9 +106,9 @@ export default function Home({ siteSettings }) {
           transition={{ type: 'spring', stiffness: 100, damping: 20 }}
           className="glass-premium relative z-10 w-full max-w-md rounded-2xl p-10 text-center text-white"
         >
-          <div className="relative mx-auto mb-6 h-24 w-24 rounded-full bg-gradient-to-tr from-gold-500/20 to-gold-300/40 p-1 shadow-glow animate-pulse-slow">
+          <div className="relative mx-auto mb-6 h-28 w-28 animate-pulse-slow">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/logo-icon-512.png" alt="Platform Logo" className="h-full w-full rounded-full object-contain p-2" />
+            <img src="/brand/logo-eagle.png" alt="Platform Logo" className="logo-eagle-glow h-full w-full object-contain" />
           </div>
           <h2 className="mb-2 text-2xl font-bold tracking-wide text-gradient-gold">
             بوابة الخدمات العراقية
@@ -153,7 +153,7 @@ export default function Home({ siteSettings }) {
             <div>
               <div className="flex items-center gap-3 mb-6">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/brand/logo-icon-512.png" alt="" aria-hidden="true" className="h-10 w-10 rounded-full object-contain" />
+                <img src="/brand/logo-eagle.png" alt="" aria-hidden="true" className="logo-eagle-glow h-12 w-12 object-contain" />
                 <span className="text-xs font-semibold uppercase tracking-[0.25em] text-gold-300/80">
                   {t('common.platformName')}
                 </span>

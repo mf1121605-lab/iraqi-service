@@ -89,7 +89,7 @@ export default function ForgotPassword() {
         <div className="cinematic-card relative z-10 w-full max-w-md animate-scale-in p-10 text-center">
           <span className="cinematic-emblem mx-auto h-16 w-16">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/logo-icon-512.png" alt="" className="h-10 w-10 rounded-full object-contain" aria-hidden="true" />
+          <img src="/brand/logo-eagle.png" alt="" className="logo-eagle-glow h-14 w-14 object-contain" aria-hidden="true" />
           </span>
           <p className="mt-5 font-semibold text-white/85">{t('forgotPassword.successMessage')}</p>
           <MotionLink
@@ -111,7 +111,7 @@ export default function ForgotPassword() {
       <div className="cinematic-card relative z-10 w-full max-w-md animate-scale-in p-10">
         <span className="cinematic-emblem mx-auto h-16 w-16">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/logo-icon-512.png" alt="" className="h-10 w-10 rounded-full object-contain" aria-hidden="true" />
+          <img src="/brand/logo-eagle.png" alt="" className="logo-eagle-glow h-14 w-14 object-contain" aria-hidden="true" />
         </span>
         <h1 className="mt-5 text-center font-display text-3xl font-bold tracking-tight">{t('forgotPassword.title')}</h1>
 

@@ -94,10 +94,10 @@ export default function SplashScreen() {
         <div className="splash-shimmer-wrap">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/brand/logo-icon-512.png"
+            src="/brand/logo-eagle.png"
             alt=""
             aria-hidden="true"
-            className="splash-logo h-28 w-28 rounded-3xl object-contain"
+            className="splash-logo logo-eagle-glow h-28 w-28 object-contain"
           />
         </div>
         <p

@@ -17,11 +17,11 @@ export default function Document() {
         <meta property="og:site_name" content="خدماتي" />
         <meta property="og:title" content="خدماتي — منصة الخدمات العراقية" />
         <meta property="og:description" content="منصة متكاملة لتقديم وطلب الخدمات المتنوعة بكل سهولة ويسر" />
-        <meta property="og:image" content="/brand/logo-icon-512.png" />
+        <meta property="og:image" content="/brand/logo-eagle.jpg" />
         <meta name="twitter:card" content="summary" />
         <meta name="twitter:title" content="خدماتي — منصة الخدمات العراقية" />
         <meta name="twitter:description" content="منصة متكاملة لتقديم وطلب الخدمات المتنوعة بكل سهولة ويسر" />
-        <meta name="twitter:image" content="/brand/logo-icon-512.png" />
+        <meta name="twitter:image" content="/brand/logo-eagle.jpg" />
         <meta name="google-site-verification" content="WmqmC8Qa6jOEJiuio1CKV8rrUsFnl_Qznw0CbR56sbw" />
         <meta name="description" content="منصة متكاملة لتقديم وطلب الخدمات المتنوعة في العراق بكل سهولة ويسر" />
       </Head>

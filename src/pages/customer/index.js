@@ -152,7 +152,7 @@ export default function CustomerAuth() {
       <div className="cinematic-card relative z-10 w-full max-w-md animate-scale-in p-10">
         <span className="cinematic-emblem mx-auto h-16 w-16">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/logo-icon-512.png" alt="" className="h-10 w-10 rounded-full object-contain" aria-hidden="true" />
+          <img src="/brand/logo-eagle.png" alt="" className="logo-eagle-glow h-14 w-14 object-contain" aria-hidden="true" />
         </span>
         <div className="mt-5 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-gold-300/80">
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
