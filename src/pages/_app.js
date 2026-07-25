@@ -113,7 +113,7 @@ export default function App({ Component, pageProps }) {
               src="/brand/logo-icon-512.png"
               alt=""
               aria-hidden="true"
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] max-w-[85vw] select-none object-contain opacity-[0.055]"
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] max-w-[85vw] select-none object-contain opacity-[0.18] [mix-blend-mode:overlay]"
               draggable={false}
             />
             <InteractiveBackground3D />
