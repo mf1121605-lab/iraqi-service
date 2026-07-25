@@ -241,57 +241,59 @@ export default function CustomerDashboard() {
   if (loading || !profile) return null;
 
   return (
-    <>
-      {!bannersReady ? (
-        <div className="h-52 animate-pulse overflow-hidden rounded-[1.75rem] bg-white/[0.05] md:h-[17rem] lg:h-80" />
-      ) : banners.length > 0 ? (
-        <AnnouncementSlider banners={banners} locale={locale} />
-      ) : (
-        <section className="cinematic-card relative h-52 overflow-hidden p-5 text-ink-light dark:text-white sm:p-8 md:h-[17rem] md:p-10 lg:h-80">
-          <div className="iraq-flag-watermark pointer-events-none absolute inset-y-0 start-0 w-1/2 opacity-[0.05]" />
-          <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-xl [will-change:transform]" />
-          <div className="relative">
-            <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl md:text-2xl">{t('customerHub.heroFallbackTitle')}</h2>
-            <p className="mt-2 text-sm text-ink-muted dark:text-white/70 sm:text-base">{t('customerHub.heroFallbackSubtitle')}</p>
-          </div>
-        </section>
-      )}
+    <StaggerList>
+      <StaggerItem>
+        {!bannersReady ? (
+          <div className="h-52 animate-pulse overflow-hidden rounded-[1.75rem] bg-white/[0.05] md:h-[17rem] lg:h-80" />
+        ) : banners.length > 0 ? (
+          <AnnouncementSlider banners={banners} locale={locale} />
+        ) : (
+          <section className="cinematic-card relative h-52 overflow-hidden p-5 text-ink-light dark:text-white sm:p-8 md:h-[17rem] md:p-10 lg:h-80">
+            <div className="iraq-flag-watermark pointer-events-none absolute inset-y-0 start-0 w-1/2 opacity-[0.05]" />
+            <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-xl [will-change:transform]" />
+            <div className="relative">
+              <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl md:text-2xl">{t('customerHub.heroFallbackTitle')}</h2>
+              <p className="mt-2 text-sm text-ink-muted dark:text-white/70 sm:text-base">{t('customerHub.heroFallbackSubtitle')}</p>
+            </div>
+          </section>
+        )}
+      </StaggerItem>
 
       {urgentItems.length > 0 && (
-        <section className="mt-6 space-y-3">
-          <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">
-            <AlertTriangle className="h-4 w-4 text-red-400 sm:h-5 sm:w-5" aria-hidden="true" />
-            {t('urgentNews.sectionTitle')}
-          </h3>
-          {urgentItems.map((item) => (
-            <div
-              key={item.id}
-              className="relative rounded-2xl border-2 border-red-500 p-4 text-ink-light animate-[glow-red_2s_ease-in-out_infinite] dark:text-white"
-            >
-              <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold text-white">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-                {t('urgentNews.badge')}
-              </span>
-              <h4 className="font-bold">{locale === 'ar' ? item.title_ar : (item.title_ckb || item.title_ar)}</h4>
-              {(locale === 'ar' ? item.content_ar : item.content_ckb) && (
-                <p className="mt-1 text-sm text-ink-muted dark:text-white/70">
-                  {locale === 'ar' ? item.content_ar : item.content_ckb}
-                </p>
-              )}
-              {item.image_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={item.image_url} alt="" className="mt-2 w-full rounded-xl object-cover" />
-              )}
-            </div>
-          ))}
-        </section>
+        <StaggerItem>
+          <section className="mt-6 space-y-3">
+            <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">
+              <AlertTriangle className="h-4 w-4 text-red-400 sm:h-5 sm:w-5" aria-hidden="true" />
+              {t('urgentNews.sectionTitle')}
+            </h3>
+            {urgentItems.map((item) => (
+              <div
+                key={item.id}
+                className="relative rounded-2xl border-2 border-red-500 p-4 text-ink-light animate-[glow-red_2s_ease-in-out_infinite] dark:text-white"
+              >
+                <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold text-white">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                  {t('urgentNews.badge')}
+                </span>
+                <h4 className="font-bold">{locale === 'ar' ? item.title_ar : (item.title_ckb || item.title_ar)}</h4>
+                {(locale === 'ar' ? item.content_ar : item.content_ckb) && (
+                  <p className="mt-1 text-sm text-ink-muted dark:text-white/70">
+                    {locale === 'ar' ? item.content_ar : item.content_ckb}
+                  </p>
+                )}
+                {item.image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.image_url} alt="" className="mt-2 w-full rounded-xl object-cover" />
+                )}
+              </div>
+            ))}
+          </section>
+        </StaggerItem>
       )}
 
-      <div className="mt-6">
-      </div>
-
       {newsLinkGroups.length > 0 && (
-        <section className="metal-panel mt-6 p-4 text-ink-light dark:text-white sm:mt-10 sm:p-6">
+        <StaggerItem>
+          <section className="metal-panel mt-6 p-4 text-ink-light dark:text-white sm:mt-10 sm:p-6">
           <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">
             <Newspaper className="h-4 w-4 text-gold-600 dark:text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
             {t('customerHub.newsLinksTitle')}
@@ -339,17 +341,21 @@ export default function CustomerDashboard() {
             </div>
           ))}
         </section>
+      </StaggerItem>
       )}
 
       {/* 1. الخدمات */}
+      <StaggerItem>
       <section className="mt-6 sm:mt-10">
         <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">{t('customerHub.categoriesTitle')}</h3>
         <CategoryGrid categories={serviceCategories} locale={locale} />
       </section>
+      </StaggerItem>
 
       {/* 2. الأدوات المهمة — header and container always render, even
           with zero tool-tagged categories yet, so the section exists as
           soon as the founder adds one instead of appearing/disappearing. */}
+      <StaggerItem>
       <section className="mt-6 sm:mt-10">
         <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">
           <Wrench className="h-4 w-4 text-gold-600 dark:text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
@@ -361,10 +367,12 @@ export default function CustomerDashboard() {
           <CategoryGrid categories={toolCategories} locale={locale} />
         )}
       </section>
+      </StaggerItem>
 
       {/* 3. مجتمع المحادثات الهادفة — a single standalone promo card, not
           individual chat_rooms rows scattered across the grid; it links
           out to the dedicated /chat rooms list. */}
+      <StaggerItem>
       <section className="mt-6 sm:mt-10">
         <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">
           <MessagesSquare className="h-4 w-4 text-gold-600 dark:text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
@@ -389,8 +397,10 @@ export default function CustomerDashboard() {
           />
         </MotionLink>
       </section>
+      </StaggerItem>
 
       {/* 4. العروض والمتاجر */}
+      <StaggerItem>
       <section className="mt-6 sm:mt-10">
         <h3 className="section-title-cinematic font-display text-base font-bold sm:text-xl">
           <ShoppingBag className="h-4 w-4 text-gold-600 dark:text-gold-300 sm:h-5 sm:w-5" aria-hidden="true" />
@@ -442,6 +452,7 @@ export default function CustomerDashboard() {
           </div>
         )}
       </section>
-    </>
+      </StaggerItem>
+    </StaggerList>
   );
 }
