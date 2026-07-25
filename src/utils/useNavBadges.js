@@ -18,16 +18,40 @@ export function useNavBadges(userId, role) {
 
     loadCount();
 
-    const channel = supabaseClient
-      .channel(`nav-badges-${userId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'requests', filter: `customer_id=eq.${userId}` },
-        () => loadCount()
-      )
-      .subscribe();
+    let channel = null;
 
-    return () => supabaseClient.removeChannel(channel);
+    function subscribe() {
+      channel = supabaseClient
+        .channel(`nav-badges-${userId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'requests', filter: `customer_id=eq.${userId}` },
+          () => loadCount()
+        )
+        .subscribe();
+    }
+
+    function unsubscribe() {
+      if (channel) { supabaseClient.removeChannel(channel); channel = null; }
+    }
+
+    // Pause subscription when tab is hidden to save realtime connections.
+    function handleVisibility() {
+      if (document.hidden) {
+        unsubscribe();
+      } else {
+        loadCount();
+        if (!channel) subscribe();
+      }
+    }
+
+    if (!document.hidden) subscribe();
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      unsubscribe();
+    };
   }, [userId, role]);
 
   return { requestsBadge };

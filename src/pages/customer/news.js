@@ -500,13 +500,38 @@ export default function CustomerNews() {
   useEffect(() => {
     if (!profile) return undefined;
     load();
-    const channel = supabaseClient
-      .channel('social-feed-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'social_posts' }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'social_reactions' }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'social_comments' }, load)
-      .subscribe();
-    return () => supabaseClient.removeChannel(channel);
+
+    let channel = null;
+
+    function subscribe() {
+      channel = supabaseClient
+        .channel('social-feed-live')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'social_posts' }, load)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'social_reactions' }, load)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'social_comments' }, load)
+        .subscribe();
+    }
+
+    function unsubscribe() {
+      if (channel) { supabaseClient.removeChannel(channel); channel = null; }
+    }
+
+    function handleVisibility() {
+      if (document.hidden) {
+        unsubscribe();
+      } else {
+        load();
+        if (!channel) subscribe();
+      }
+    }
+
+    if (!document.hidden) subscribe();
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      unsubscribe();
+    };
   }, [profile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Image upload ──────────────────────────────────────────────────────────

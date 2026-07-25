@@ -65,34 +65,65 @@ export default function NotificationBell({ userId, locale, dropUp = false, navVa
     if (!userId) return undefined;
     loadNotifications();
 
-    const notifChannel = supabaseClient
-      .channel(`notifications-${userId}${channelSuffix ? `-${channelSuffix}` : ''}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
-        (payload) => setNotifications((current) => [payload.new, ...current])
-      )
-      .subscribe();
+    // Load pending invitations on mount/tab-focus
+    function loadInvitations() {
+      supabaseClient
+        .from('chat_room_invitations')
+        .select('*, sender:profiles!sender_id(given_name, family_name, role, avatar_key)')
+        .eq('receiver_id', userId)
+        .eq('status', 'pending')
+        .then(({ data }) => setInvitations(data ?? []));
+    }
+    loadInvitations();
 
-    const inviteChannel = supabaseClient
-      .channel(`dm-invitations-bell-${userId}${channelSuffix ? `-${channelSuffix}` : ''}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_room_invitations', filter: `receiver_id=eq.${userId}` },
-        async ({ new: row }) => {
-          const { data: sender } = await supabaseClient
-            .from('profiles')
-            .select('given_name, family_name, role, avatar_key')
-            .eq('id', row.sender_id)
-            .maybeSingle();
-          setInvitations((current) => [...current, { ...row, sender }]);
-        }
-      )
-      .subscribe();
+    let channel = null;
+
+    function subscribe() {
+      // Single channel for both notifications + DM invitations (saves 1 connection per user)
+      channel = supabaseClient
+        .channel(`bell-${userId}${channelSuffix ? `-${channelSuffix}` : ''}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+          (payload) => setNotifications((current) => [payload.new, ...current])
+        )
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'chat_room_invitations', filter: `receiver_id=eq.${userId}` },
+          async ({ new: row }) => {
+            const { data: sender } = await supabaseClient
+              .from('profiles')
+              .select('given_name, family_name, role, avatar_key')
+              .eq('id', row.sender_id)
+              .maybeSingle();
+            setInvitations((current) => [...current, { ...row, sender }]);
+          }
+        )
+        .subscribe();
+    }
+
+    function unsubscribe() {
+      if (channel) { supabaseClient.removeChannel(channel); channel = null; }
+    }
+
+    // Disconnect when tab is hidden, reconnect when visible — saves realtime
+    // connections for idle/background tabs.
+    function handleVisibility() {
+      if (document.hidden) {
+        unsubscribe();
+      } else {
+        loadNotifications();
+        loadInvitations();
+        subscribe();
+      }
+    }
+
+    if (!document.hidden) subscribe();
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
-      supabaseClient.removeChannel(notifChannel);
-      supabaseClient.removeChannel(inviteChannel);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      unsubscribe();
     };
   }, [userId, channelSuffix]);
 

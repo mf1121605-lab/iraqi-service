@@ -180,20 +180,36 @@ export default function CustomerDashboard() {
         .then(({ data }) => setUrgentItems(data ?? []));
     }
 
-    loadBanners();
-    loadProducts();
-    loadNewsLinks();
-    loadUrgentNews();
+    function loadAll() {
+      loadBanners();
+      loadProducts();
+      loadNewsLinks();
+      loadUrgentNews();
+    }
 
-    const channel = supabaseClient
-      .channel('customer-hub-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, loadBanners)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, loadProducts)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'news_links' }, loadNewsLinks)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'urgent_news' }, loadUrgentNews)
-      .subscribe();
+    loadAll();
 
-    return () => supabaseClient.removeChannel(channel);
+    // Announcements/products/news rarely change — poll every 3 min instead of
+    // maintaining a permanent realtime connection. This frees up Supabase
+    // realtime slots for features that actually need live updates (chat, requests).
+    let pollTimer = setInterval(loadAll, 3 * 60 * 1000);
+
+    function handleVisibility() {
+      if (document.hidden) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      } else {
+        loadAll();
+        if (!pollTimer) pollTimer = setInterval(loadAll, 3 * 60 * 1000);
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(pollTimer);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [profile]);
 
   async function handleOrder(product) {
