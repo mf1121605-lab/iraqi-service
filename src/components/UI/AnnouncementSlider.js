@@ -136,7 +136,7 @@ function AnnouncementSlider({ banners: bannersProp, locale, canEdit, onEdit, fal
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <AnimatePresence initial={false} custom={direction} mode="popLayout">
+      <AnimatePresence initial={false} custom={direction}>
         <motion.div
           key={banner.id}
           custom={direction}
