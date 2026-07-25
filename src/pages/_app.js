@@ -110,7 +110,13 @@ export default function App({ Component, pageProps }) {
           <div className="fixed inset-0 -z-10 pointer-events-none pro-bg">
             <div className="pro-bg-glow-1" />
             <div className="pro-bg-glow-2" />
-            <InteractiveBackground3D />
+            {/* 3D background hidden on mobile: WebGL compositor layers can
+                bypass CSS z-index on Android, causing torus/sphere shapes
+                to bleed through semi-transparent card backgrounds. Desktop
+                only — mobile gets the CSS gradient bg-drift instead. */}
+            <div className="hidden sm:block absolute inset-0">
+              <InteractiveBackground3D />
+            </div>
           </div>
           {transitioning && (
             <div className="fixed inset-0 z-[150] flex items-center justify-center" style={{ backgroundColor: 'var(--color-bg, #0d1117)' }}>

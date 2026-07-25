@@ -374,8 +374,8 @@ module.exports = {
           transition: 'box-shadow 250ms ease, transform 250ms ease, border-color 250ms ease',
         },
         '.dark .metal-panel': {
-          backgroundColor: 'rgba(22,27,34,0.90)',
-          backgroundImage: 'linear-gradient(145deg, rgba(245,158,11,0.03) 0%, rgba(22,27,34,0.95) 50%, rgba(13,17,23,0.98) 100%)',
+          backgroundColor: 'rgb(22,27,34)',
+          backgroundImage: 'linear-gradient(145deg, rgba(245,158,11,0.03) 0%, rgb(22,27,34) 50%, rgb(13,17,23) 100%)',
           border: '1px solid rgba(245,158,11,0.12)',
           boxShadow:
             'inset 0 1px 0 0 rgba(245,158,11,0.08), 0 20px 40px -12px rgba(0,0,0,0.7)',
