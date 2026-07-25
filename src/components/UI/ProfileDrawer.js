@@ -240,7 +240,7 @@ export default function ProfileDrawer({
       <div className="fixed inset-0 z-40 bg-black/60" onClick={onClose} aria-hidden="true" />
       <aside
         dir={locale === 'ar' || locale === 'ckb' ? 'rtl' : 'ltr'}
-        className="fixed inset-y-0 end-0 z-50 flex w-full max-w-sm animate-slide-down flex-col overflow-y-auto border-s border-gold-400/10 bg-[#0d1117] font-display text-white shadow-2xl"
+        className="fixed inset-y-0 left-0 z-50 flex w-full max-w-sm animate-slide-in-left flex-col overflow-y-auto border-r border-gold-400/10 bg-[#0d1117] font-display text-white shadow-2xl"
       >
         <div className="flex items-center justify-between border-b border-white/10 p-4">
           <h2 className="flex items-center gap-2 text-base font-bold">

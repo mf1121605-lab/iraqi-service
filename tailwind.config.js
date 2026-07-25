@@ -130,6 +130,10 @@ module.exports = {
           '0%': { opacity: '0', transform: 'translateY(-8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        'slide-in-left': {
+          '0%': { opacity: '0', transform: 'translateX(-100%)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
@@ -159,6 +163,7 @@ module.exports = {
         'scale-in': 'scale-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both',
         'slide-up': 'slide-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both',
         'slide-down': 'slide-down 0.25s cubic-bezier(0.16, 1, 0.3, 1) both',
+        'slide-in-left': 'slide-in-left 0.38s cubic-bezier(0.16, 1, 0.3, 1) both',
         shimmer: 'shimmer 2.5s ease-in-out infinite',
         'spotlight-sweep': 'spotlight-sweep 10s ease-in-out infinite',
         'wave-drift': 'wave-drift 18s linear infinite',

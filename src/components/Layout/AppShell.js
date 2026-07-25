@@ -181,24 +181,6 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
                 </a>
               );
             })}
-            {profile && (
-              <button
-                type="button"
-                onClick={() => setProfileOpen(true)}
-                aria-label={t('profileDrawer.title')}
-                className="relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 active:scale-90
-                  bg-gradient-to-b from-white/8 to-white/3 border border-white/10
-                  shadow-[0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.10)]
-                  hover:from-white/12 hover:border-white/18
-                  focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-              >
-                <Avatar avatarKey={profile.avatar_key} name={profile.given_name} seed={profile.id} className="h-8 w-8 ring-2 ring-transparent dark:ring-amber-500/20" />
-                <span className="absolute bottom-0.5 h-2.5 w-2.5 rtl:left-0.5 ltr:right-0.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" aria-hidden="true" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#0d1117]" aria-hidden="true" />
-                </span>
-              </button>
-            )}
             <RequestAlertBell profile={profile} locale={locale} />
             {/* Hide bell on mobile for customer pages — it lives in the bottom bar there */}
             {userId && <span className={isCustomerNav ? 'hidden sm:inline-flex' : undefined}><NotificationBell userId={userId} locale={locale} channelSuffix="hdr" /></span>}
@@ -236,6 +218,24 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
                 {LOCALE_META.find((meta) => meta.code !== locale)?.nativeName}
               </span>
             </button>
+            {profile && (
+              <button
+                type="button"
+                onClick={() => setProfileOpen(true)}
+                aria-label={t('profileDrawer.title')}
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 active:scale-90
+                  bg-gradient-to-b from-white/8 to-white/3 border border-white/10
+                  shadow-[0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.10)]
+                  hover:from-white/12 hover:border-white/18
+                  focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+              >
+                <Avatar avatarKey={profile.avatar_key} name={profile.given_name} seed={profile.id} className="h-8 w-8 ring-2 ring-transparent dark:ring-amber-500/20" />
+                <span className="absolute bottom-0.5 h-2.5 w-2.5 rtl:left-0.5 ltr:right-0.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" aria-hidden="true" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#0d1117]" aria-hidden="true" />
+                </span>
+              </button>
+            )}
           </div>
         </div>
       </header>
