@@ -21,17 +21,27 @@ export async function subscribeToPush(userId) {
   const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   if (!vapidKey) throw new Error('VAPID_NOT_CONFIGURED');
 
-  const registration = await navigator.serviceWorker.register('/sw.js');
-  await navigator.serviceWorker.ready;
+  let registration;
+  try {
+    registration = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+  } catch (err) {
+    throw new Error(`SW_FAILED: ${err?.message ?? err}`);
+  }
 
   const permission = await Notification.requestPermission();
   if (permission === 'denied') throw new Error('PERMISSION_DENIED');
   if (permission !== 'granted') throw new Error('PERMISSION_DISMISSED');
 
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(vapidKey),
-  });
+  let subscription;
+  try {
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidKey),
+    });
+  } catch (err) {
+    throw new Error(`SUBSCRIBE_FAILED: ${err?.message ?? err}`);
+  }
 
   const raw = subscription.toJSON();
   const { error } = await supabaseClient.from('push_subscriptions').upsert(
@@ -43,7 +53,7 @@ export async function subscribeToPush(userId) {
     },
     { onConflict: 'endpoint' }
   );
-  if (error) throw error;
+  if (error) throw new Error(`DB_FAILED: ${error.message}`);
 
   return subscription;
 }

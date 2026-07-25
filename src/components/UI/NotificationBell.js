@@ -118,12 +118,21 @@ export default function NotificationBell({ userId, locale, dropUp = false, navVa
       setPushEnabled(true);
     } catch (err) {
       const code = err?.message ?? '';
+      console.error('[Push] subscribe failed:', code);
       if (code === 'PERMISSION_DENIED') {
         setPushError(t('notifications.pushErrorDenied'));
       } else if (code === 'PERMISSION_DISMISSED') {
         setPushError('');
+      } else if (code === 'VAPID_NOT_CONFIGURED') {
+        setPushError('مفتاح VAPID غير مضبوط — يرجى التواصل مع المسؤول');
+      } else if (code.startsWith('SW_FAILED')) {
+        setPushError('فشل تسجيل خدمة الإشعارات — ' + code.replace('SW_FAILED: ', ''));
+      } else if (code.startsWith('SUBSCRIBE_FAILED')) {
+        setPushError('فشل الاشتراك بالإشعارات — تأكد من دعم المتصفح');
+      } else if (code.startsWith('DB_FAILED')) {
+        setPushError('خطأ في حفظ الاشتراك — ' + code.replace('DB_FAILED: ', ''));
       } else {
-        setPushError(t('notifications.pushError'));
+        setPushError(t('notifications.pushError') + ': ' + code.slice(0, 80));
       }
     }
   }
