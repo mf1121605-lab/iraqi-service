@@ -26,29 +26,6 @@ export default function Document() {
         <meta name="description" content="منصة متكاملة لتقديم وطلب الخدمات المتنوعة في العراق بكل سهولة ويسر" />
       </Head>
       <body>
-        {/* Logo watermark — pure HTML, outside React, cannot scroll */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/brand/logo-icon-512.png"
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-          style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '480px',
-            maxWidth: '85vw',
-            height: 'auto',
-            objectFit: 'contain',
-            opacity: 0.18,
-            mixBlendMode: 'overlay',
-            pointerEvents: 'none',
-            userSelect: 'none',
-            zIndex: -5,
-          }}
-        />
         <Main />
         <NextScript />
       </body>
