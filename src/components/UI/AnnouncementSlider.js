@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Pencil } from 'lucide-react';
 import SafeImage from './SafeImage';
@@ -6,9 +6,19 @@ import LazyVideo from './LazyVideo';
 import SparkOverlay from './SparkOverlay';
 import MotionGraphicsBanner from './MotionGraphicsBanner';
 import { translate } from '../../utils/i18n';
+import { supabaseClient } from '../../lib/supabaseClient';
 
 const AUTOPLAY_MS = 6000;
 const SWIPE_CONFIDENCE_THRESHOLD = 10000;
+
+// Columns fetched when the slider self-manages its data (customer page).
+const BANNER_SELECT =
+  'id, title_ar, title_ckb, description_ar, description_ckb, image_url, mobile_image_url, video_url, badge_ar, badge_ckb, button_text_ar, button_text_ckb, button_link, background_color, text_color, display_order, motion_graphic_key';
+
+// Single source of truth for container height — used on both the skeleton
+// and the live slider so the browser never changes layout height between
+// states (zero CLS during fetch, transition, and polling refresh).
+const HEIGHT_CLS = 'h-52 md:h-[17rem] lg:h-80';
 
 function bilingualText(row, base, locale) {
   return (locale === 'ckb' ? row[`${base}_ckb`] : row[`${base}_ar`]) || row[`${base}_ar`] || '';
@@ -24,17 +34,33 @@ const slideVariants = {
   exit: (direction) => ({ x: direction < 0 ? 60 : -60, opacity: 0, scale: 0.98 }),
 };
 
-// A dedicated slider so the hero's autoplay/swipe/motion logic isn't
-// tangled into the dashboard page itself. Framer Motion drives the slide
-// transition (spring physics) and the drag-to-swipe gesture; plain CSS
-// handles everything that doesn't need to be interrupted mid-animation
-// (the glass panel, the glow, the dots' resting state).
-export default function AnnouncementSlider({ banners, locale, canEdit, onEdit }) {
+// ─── Component ────────────────────────────────────────────────────────────────
+// Two usage modes:
+//   1. Self-managed (customer page):  <AnnouncementSlider locale={locale} />
+//      — fetches its own data, polls every 3 min, completely isolated from
+//        the parent's state so parent re-renders never touch the slider.
+//   2. Controlled (founder preview):  <AnnouncementSlider banners={...} canEdit onEdit={...} />
+//      — receives banners from the parent (live edit preview stays consistent).
+//
+// `fallback` is an optional ReactNode rendered when self-managed fetch returns
+// zero rows — lets the caller show a branded empty-state card.
+function AnnouncementSlider({ banners: bannersProp, locale, canEdit, onEdit, fallback }) {
+  const selfManaged = bannersProp === undefined;
+
+  // ── Self-managed fetch state (hooks must be unconditional) ──────────────
+  const [selfBanners, setSelfBanners] = useState([]);
+  // Controlled mode is always "ready"; self-managed starts false until first load.
+  const [ready, setReady] = useState(!selfManaged);
+
+  // ── Slide navigation state ──────────────────────────────────────────────
   const [[index, direction], setSlide] = useState([0, 0]);
   const [paused, setPaused] = useState(false);
-  const t = (path) => translate(locale, path);
-  const count = banners.length;
   const timerRef = useRef(null);
+
+  // ── Derived values (not hooks) ──────────────────────────────────────────
+  const banners = selfManaged ? selfBanners : (bannersProp ?? []);
+  const count = banners.length;
+  const t = (path) => translate(locale, path);
 
   function paginate(newDirection) {
     setSlide(([current]) => {
@@ -47,6 +73,37 @@ export default function AnnouncementSlider({ banners, locale, canEdit, onEdit })
     setSlide(([current]) => [targetIndex, targetIndex > current ? 1 : -1]);
   }
 
+  // ── Effect 1: self-managed data fetch + 3-min poll ─────────────────────
+  useEffect(() => {
+    if (!selfManaged) return undefined;
+
+    function load() {
+      supabaseClient
+        .from('announcements')
+        .select(BANNER_SELECT)
+        .eq('is_active', true)
+        .order('display_order')
+        .then(({ data }) => {
+          setSelfBanners(data ?? []);
+          setReady(true);
+        });
+    }
+
+    load();
+    const poll = setInterval(load, 3 * 60 * 1000);
+
+    function onVisibility() {
+      if (!document.hidden) load();
+    }
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      clearInterval(poll);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [selfManaged]);
+
+  // ── Effect 2: autoplay timer ────────────────────────────────────────────
   useEffect(() => {
     if (count < 2 || paused) return undefined;
     timerRef.current = setInterval(() => paginate(1), AUTOPLAY_MS);
@@ -54,17 +111,28 @@ export default function AnnouncementSlider({ banners, locale, canEdit, onEdit })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [count, paused, index]);
 
-  if (count === 0) return null;
+  // ── Diagnostic re-render log (stripped in production) ──────────────────
+  if (process.env.NODE_ENV !== 'production') {
+    // eslint-disable-next-line no-console
+    console.log('[AnnouncementSlider] render', { count, ready, selfManaged });
+  }
+
+  // ── Conditional renders — ALL hooks above this line ─────────────────────
+  // Skeleton: same dimensions as the live container → zero height change on swap.
+  if (!ready) {
+    return <div className={`${HEIGHT_CLS} animate-pulse overflow-hidden rounded-[1.75rem] bg-white/[0.05]`} />;
+  }
+  if (count === 0) return fallback ?? null;
+
   const banner = banners[index];
 
   return (
-    /* Outer container has explicit height so the browser reserves space
-       before the slide's content paints — prevents CLS on initial render
+    /* Outer container: explicit height (HEIGHT_CLS) so the browser reserves
+       space before slide content paints — prevents CLS on initial render
        and during AnimatePresence exit→enter transitions. The dots are
-       absolutely positioned within this container so they don't add to
-       the layout flow height. */
+       absolutely positioned so they don't add to the layout-flow height. */
     <div
-      className="relative h-52 overflow-hidden rounded-[1.75rem] border border-gold-400/20 bg-white/[0.03] shadow-[0_0_50px_-15px_rgba(230,171,44,0.35)] backdrop-blur-xl md:h-[17rem] lg:h-80"
+      className={`relative ${HEIGHT_CLS} overflow-hidden rounded-[1.75rem] border border-gold-400/20 bg-white/[0.03] shadow-[0_0_50px_-15px_rgba(230,171,44,0.35)] backdrop-blur-xl`}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -199,3 +267,5 @@ export default function AnnouncementSlider({ banners, locale, canEdit, onEdit })
     </div>
   );
 }
+
+export default memo(AnnouncementSlider);

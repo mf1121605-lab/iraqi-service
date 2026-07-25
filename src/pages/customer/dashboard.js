@@ -36,6 +36,10 @@ function bilingualText(row, base, locale) {
 // performance fix (lazy IntersectionObserver playback in LazyVideo) is
 // never duplicated or re-implemented, only reused.
 const CategoryGrid = memo(function CategoryGrid({ categories, locale }) {
+  if (process.env.NODE_ENV !== 'production') {
+    // eslint-disable-next-line no-console
+    console.log('[CategoryGrid] render', categories.length);
+  }
   return (
     <StaggerList className="mt-4 grid grid-cols-2 gap-3 sm:mt-5 sm:gap-4 lg:grid-cols-4">
       {categories.map((category) => {
@@ -106,8 +110,6 @@ export default function CustomerDashboard() {
   const locale = useLocale();
   const t = (path) => translate(locale, path);
 
-  const [banners, setBanners] = useState([]);
-  const [bannersReady, setBannersReady] = useState(false);
   const [products, setProducts] = useState([]);
   const [newsLinks, setNewsLinks] = useState([]);
   const [urgentItems, setUrgentItems] = useState([]);
@@ -144,20 +146,6 @@ export default function CustomerDashboard() {
   useEffect(() => {
     if (!profile) return undefined;
 
-    function loadBanners() {
-      supabaseClient
-        .from('announcements')
-        .select(
-          'id, title_ar, title_ckb, description_ar, description_ckb, image_url, mobile_image_url, video_url, badge_ar, badge_ckb, button_text_ar, button_text_ckb, button_link, background_color, text_color, display_order, motion_graphic_key'
-        )
-        .eq('is_active', true)
-        .order('display_order')
-        .then(({ data }) => {
-          setBanners(data ?? []);
-          setBannersReady(true);
-        });
-    }
-
     function loadProducts() {
       supabaseClient
         .from('products')
@@ -185,7 +173,6 @@ export default function CustomerDashboard() {
     }
 
     function loadAll() {
-      loadBanners();
       loadProducts();
       loadNewsLinks();
       loadUrgentNews();
@@ -240,23 +227,30 @@ export default function CustomerDashboard() {
 
   if (loading || !profile) return null;
 
+  if (process.env.NODE_ENV !== 'production') {
+    // eslint-disable-next-line no-console
+    console.log('[Dashboard] render', { productsCount: products.length, urgentCount: urgentItems.length, newsCount: newsLinks.length });
+  }
+
   return (
     <StaggerList>
       <StaggerItem>
-        {!bannersReady ? (
-          <div className="h-52 animate-pulse overflow-hidden rounded-[1.75rem] bg-white/[0.05] md:h-[17rem] lg:h-80" />
-        ) : banners.length > 0 ? (
-          <AnnouncementSlider banners={banners} locale={locale} />
-        ) : (
-          <section className="cinematic-card relative h-52 overflow-hidden p-5 text-ink-light dark:text-white sm:p-8 md:h-[17rem] md:p-10 lg:h-80">
-            <div className="iraq-flag-watermark pointer-events-none absolute inset-y-0 start-0 w-1/2 opacity-[0.05]" />
-            <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-xl [will-change:transform]" />
-            <div className="relative">
-              <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl md:text-2xl">{t('customerHub.heroFallbackTitle')}</h2>
-              <p className="mt-2 text-sm text-ink-muted dark:text-white/70 sm:text-base">{t('customerHub.heroFallbackSubtitle')}</p>
-            </div>
-          </section>
-        )}
+        {/* AnnouncementSlider is self-managed: it fetches, polls, and shows
+            its own skeleton — zero banner state in the parent means zero
+            parent re-renders caused by banner polling. */}
+        <AnnouncementSlider
+          locale={locale}
+          fallback={
+            <section className="cinematic-card relative h-52 overflow-hidden p-5 text-ink-light dark:text-white sm:p-8 md:h-[17rem] md:p-10 lg:h-80">
+              <div className="iraq-flag-watermark pointer-events-none absolute inset-y-0 start-0 w-1/2 opacity-[0.05]" />
+              <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-xl [will-change:transform]" />
+              <div className="relative">
+                <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl md:text-2xl">{t('customerHub.heroFallbackTitle')}</h2>
+                <p className="mt-2 text-sm text-ink-muted dark:text-white/70 sm:text-base">{t('customerHub.heroFallbackSubtitle')}</p>
+              </div>
+            </section>
+          }
+        />
       </StaggerItem>
 
       {urgentItems.length > 0 && (
