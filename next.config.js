@@ -26,7 +26,7 @@ const csp = [
   `connect-src 'self' ${supabaseHttps} ${supabaseWss} https://api.anthropic.com`,
   `media-src 'self' blob: ${supabaseHttps}`,
   "font-src 'self' data:",
-  "worker-src blob:",
+  "worker-src 'self' blob:",
   "frame-src https://accounts.google.com",
   "frame-ancestors 'none'",
   "object-src 'none'",
