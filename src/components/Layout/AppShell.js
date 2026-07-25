@@ -15,7 +15,7 @@ import { useSiteSettings } from '../../utils/useSiteSettings';
 import { useNavBadges } from '../../utils/useNavBadges';
 import NotificationBell from '../UI/NotificationBell';
 import RequestAlertBell from '../UI/RequestAlertBell';
-import BottomNavBar from './BottomNavBar';
+import BottomNavBar, { BOTTOM_NAV_HREFS } from './BottomNavBar';
 import Avatar from '../Chat/Avatar';
 import ProfileDrawer from '../UI/ProfileDrawer';
 
@@ -45,6 +45,12 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
   const badges = {
     '/customer/requests': requestsBadge,
   };
+
+  const isCustomerNav = (navItems ?? []).some((item) => item.href === '/customer/dashboard');
+  // Items NOT in the bottom bar slots — shown in mobile header secondary row
+  const mobileSecondaryItems = isCustomerNav
+    ? (navItems ?? []).filter((item) => !BOTTOM_NAV_HREFS.includes(item.href))
+    : [];
 
   useEffect(() => {
     document.documentElement.classList.add('dark');
@@ -152,6 +158,29 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
             </nav>
           )}
 
+          {/* Mobile-only secondary nav: items not in the 3-slot bottom bar */}
+          {mobileSecondaryItems.length > 0 && (
+            <nav className="flex flex-wrap items-center gap-1 sm:hidden order-last w-full mt-1.5 pb-1 border-t border-white/8">
+              {mobileSecondaryItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-all
+                      ${item.active
+                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/35'
+                        : 'bg-white/5 text-white/60 hover:bg-white/8 hover:text-white'
+                      }`}
+                  >
+                    {Icon && <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />}
+                    {item.label}
+                  </a>
+                );
+              })}
+            </nav>
+          )}
+
           {/* RIGHT SIDE: actions — each button gets a subtle 3D depth effect */}
           <div className="flex items-center gap-1 text-sm">
             {profile && (
@@ -173,7 +202,8 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
               </button>
             )}
             <RequestAlertBell profile={profile} locale={locale} />
-            {userId && <NotificationBell userId={userId} locale={locale} />}
+            {/* Hide bell on mobile for customer pages — it lives in the bottom bar there */}
+            {userId && <span className={isCustomerNav ? 'hidden sm:inline-flex' : undefined}><NotificationBell userId={userId} locale={locale} /></span>}
             {siteSettings?.site_ambient_audio_url && (
               <button
                 type="button"
@@ -213,7 +243,7 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
       </header>
       {/* Extra bottom padding on mobile so content clears the fixed bottom nav */}
       <main id="main-content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:pb-8 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] animate-fade-up">{children}</main>
-      <BottomNavBar navItems={navItems} badges={badges} />
+      <BottomNavBar navItems={navItems} badges={badges} userId={userId} locale={locale} />
       {profile && (
         <ProfileDrawer
           open={profileOpen}

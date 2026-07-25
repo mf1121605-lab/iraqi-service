@@ -11,7 +11,38 @@ function displayNameFor(sender) {
   return [sender.given_name, sender.family_name].filter(Boolean).join(' ') || sender.role;
 }
 
-export default function NotificationBell({ userId, locale }) {
+function Bell3DSvg({ hasUnread }) {
+  return (
+    <svg viewBox="0 0 28 28" fill="none" className="h-7 w-7" aria-hidden="true">
+      <defs>
+        <linearGradient id="bell3d-body" x1="0.2" y1="0" x2="0.8" y2="1">
+          <stop offset="0%" stopColor="#fde68a"/>
+          <stop offset="55%" stopColor="#f59e0b"/>
+          <stop offset="100%" stopColor="#b45309"/>
+        </linearGradient>
+        <linearGradient id="bell3d-shine" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="white" stopOpacity="0.55"/>
+          <stop offset="100%" stopColor="white" stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+      {/* Bell body */}
+      <path d="M14 4C14 4 12 4 10.5 5.5C9 7 8.5 9 8.5 11.5L7 19H21L19.5 11.5C19.5 9 19 7 17.5 5.5C16 4 14 4 14 4Z" fill="url(#bell3d-body)"/>
+      {/* Shine */}
+      <ellipse cx="11" cy="9.5" rx="2" ry="3.5" fill="url(#bell3d-shine)" transform="rotate(-20 11 9.5)" opacity="0.8"/>
+      {/* Rim */}
+      <rect x="5.5" y="19" width="17" height="2.5" rx="1.25" fill="#d97706"/>
+      {/* Top stem */}
+      <rect x="12.8" y="2" width="2.4" height="3" rx="1.2" fill="#92400e"/>
+      {/* Clapper */}
+      <circle cx="14" cy="23.5" r="2.2" fill="#92400e"/>
+      <circle cx="14" cy="23.5" r="1.2" fill="#b45309"/>
+      {/* Unread dot */}
+      {hasUnread && <circle cx="20.5" cy="5.5" r="3.5" fill="#ef4444" stroke="#0d1117" strokeWidth="1.5"/>}
+    </svg>
+  );
+}
+
+export default function NotificationBell({ userId, locale, dropUp = false, navVariant = false }) {
   const router = useRouter();
   const t = (path) => translate(locale, path);
   const [open, setOpen] = useState(false);
@@ -106,29 +137,54 @@ export default function NotificationBell({ userId, locale }) {
     if (threadId) router.push(`/chat/dm/${threadId}`);
   }
 
+  const dropdownPositionClass = dropUp
+    ? 'absolute end-0 z-[60] bottom-full mb-2 [transform-origin:bottom_right] rtl:[transform-origin:bottom_left]'
+    : 'absolute end-0 z-20 mt-2 [transform-origin:top_right] rtl:[transform-origin:top_left]';
+
   return (
     <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        className="relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
-        aria-label={t('notifications.title')}
-        aria-expanded={open}
-      >
-        {totalBadge > 0 ? (
-          <BellRing className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden="true" />
-        ) : (
-          <Bell className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden="true" />
-        )}
-        {totalBadge > 0 && (
-          <span className="absolute -top-0.5 -end-0.5 flex h-4 w-4 animate-pulse-soft items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-surface-dark-alt">
-            {totalBadge > 9 ? '9+' : totalBadge}
-          </span>
-        )}
-      </button>
+      {navVariant ? (
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          className={`relative flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-200 active:scale-90 focus:outline-none
+            bg-gradient-to-b from-amber-500/20 to-amber-800/15 border border-amber-400/35
+            shadow-[0_0_16px_-4px_rgba(245,158,11,0.55),0_4px_12px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.15)]
+            ${totalBadge > 0 ? 'animate-icon-bounce' : ''}`}
+          aria-label={t('notifications.title')}
+          aria-expanded={open}
+        >
+          <span className="pointer-events-none absolute inset-x-3 top-0 h-px rounded-full bg-white/25" aria-hidden="true" />
+          <Bell3DSvg hasUnread={totalBadge > 0} />
+          {totalBadge > 0 && (
+            <span className="animate-scale-in absolute -top-1.5 -end-1.5 flex min-w-[18px] h-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-[#0d1117]">
+              {totalBadge > 9 ? '9+' : totalBadge}
+            </span>
+          )}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          className="relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:hover:bg-white/10"
+          aria-label={t('notifications.title')}
+          aria-expanded={open}
+        >
+          {totalBadge > 0 ? (
+            <BellRing className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden="true" />
+          ) : (
+            <Bell className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden="true" />
+          )}
+          {totalBadge > 0 && (
+            <span className="absolute -top-0.5 -end-0.5 flex h-4 w-4 animate-pulse-soft items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-surface-dark-alt">
+              {totalBadge > 9 ? '9+' : totalBadge}
+            </span>
+          )}
+        </button>
+      )}
 
       {open && (
-        <div className="absolute end-0 z-20 mt-2 w-80 animate-scale-in rounded-2xl border border-white/10 bg-[#0d1117]/95 p-3 text-white shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-xl [transform-origin:top_right] rtl:[transform-origin:top_left]">
+        <div className={`${dropdownPositionClass} w-80 animate-scale-in rounded-2xl border border-white/10 bg-[#0d1117]/95 p-3 text-white shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-xl`}>
           <div className="flex items-center justify-between px-1">
             <span className="text-sm font-semibold">{t('notifications.title')}</span>
             {unreadCount > 0 && (
