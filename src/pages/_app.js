@@ -110,15 +110,6 @@ export default function App({ Component, pageProps }) {
           <div className="fixed inset-0 -z-10 pointer-events-none" style={{ backgroundColor: 'var(--color-bg, #0d1117)' }}>
             <InteractiveBackground3D />
           </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/brand/logo-icon-512.png"
-            alt=""
-            aria-hidden="true"
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] max-w-[85vw] select-none object-contain pointer-events-none opacity-[0.18] [mix-blend-mode:overlay]"
-            style={{ zIndex: -5 }}
-            draggable={false}
-          />
           {transitioning && (
             <div className="fixed inset-0 z-[150] flex items-center justify-center" style={{ backgroundColor: 'var(--color-bg, #0d1117)' }}>
               <LoadingSpinner />
