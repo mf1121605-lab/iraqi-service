@@ -2,6 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabaseClient } from '../lib/supabaseClient';
 
+// Module-level cache — survives client-side navigations (component remounts)
+// so useSession() on a newly-mounted page doesn't show a loading spinner
+// when the session/profile is already known. Resets on hard browser refresh
+// automatically since JS module state is cleared with the page.
+let _session = undefined; // undefined = never fetched; null = signed out
+let _profile = null;
+let _ready = false; // true once getSession() + loadProfile() both complete
+
 export function dashboardPathForRole(roleOrProfile) {
   const role = typeof roleOrProfile === 'string' ? roleOrProfile : roleOrProfile?.role;
   const adminLevel = typeof roleOrProfile === 'string' ? null : roleOrProfile?.admin_level;
@@ -11,19 +19,20 @@ export function dashboardPathForRole(roleOrProfile) {
 }
 
 export function useSession() {
-  const [session, setSession] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Start immediately with cached values — no loading flash on navigation
+  const [session, setSession] = useState(_session !== undefined ? _session : null);
+  const [profile, setProfile] = useState(_profile);
+  const [loading, setLoading] = useState(!_ready);
 
   const loadProfile = useCallback(async (userId, attempt = 0) => {
     if (!userId) {
+      _profile = null;
       setProfile(null);
       return;
     }
     // Explicit column list (not '*') — recovery_answer_hash is
     // intentionally excluded from the authenticated role's SELECT grant
-    // (see 20260718140000_restrict_recovery_hash_select.sql), so a
-    // wildcard select would fail with "permission denied for column".
+    // (see 20260718140000_restrict_recovery_hash_select.sql).
     const { data } = await supabaseClient
       .from('profiles')
       .select(
@@ -32,35 +41,40 @@ export function useSession() {
       .eq('id', userId)
       .single();
     if (!data && attempt < 5) {
-      // A profile row is created by a DB trigger right after signup (e.g. a
-      // fresh Google OAuth account); it can lag a moment behind the redirect
-      // back to the app, so retry briefly instead of treating it as "signed out".
+      // Profile row is created by a DB trigger after signup and can lag
+      // briefly behind the redirect — retry instead of treating as signed out.
       await new Promise((resolve) => setTimeout(resolve, 400));
       return loadProfile(userId, attempt + 1);
     }
-    // Derive onboarding_complete from existing columns so the app works
-    // even before the migration that adds the real DB column is applied.
     const profile = data ? {
       ...data,
       onboarding_complete:
         data.role !== 'customer' ||
         (!!data.avatar_key && !!data.given_name && data.given_name !== ''),
     } : null;
+    _profile = profile;
     setProfile(profile);
   }, []);
 
   useEffect(() => {
     let active = true;
 
-    supabaseClient.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      setSession(data.session);
-      loadProfile(data.session?.user?.id).finally(() => {
-        if (active) setLoading(false);
+    if (!_ready) {
+      // First mount ever — resolve session from Supabase storage
+      supabaseClient.auth.getSession().then(({ data }) => {
+        if (!active) return;
+        _session = data.session;
+        setSession(data.session);
+        loadProfile(data.session?.user?.id).finally(() => {
+          _ready = true;
+          if (active) setLoading(false);
+        });
       });
-    });
+    }
 
+    // Always subscribe so token refreshes + sign-in/out update the cache
     const { data: subscription } = supabaseClient.auth.onAuthStateChange((_event, newSession) => {
+      _session = newSession;
       setSession(newSession);
       loadProfile(newSession?.user?.id);
     });
