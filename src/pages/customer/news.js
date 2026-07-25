@@ -8,6 +8,8 @@ import { audioFX } from '../../utils/audioFX';
 import { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Avatar from '../../components/Chat/Avatar';
+import StaggerList from '../../components/UI/StaggerList';
+import StaggerItem from '../../components/UI/StaggerItem';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { translate } from '../../utils/i18n';
@@ -743,23 +745,24 @@ export default function CustomerNews() {
           </p>
         </div>
       ) : (
-        <div className="mt-4 space-y-4">
+        <StaggerList className="mt-4 space-y-4">
           {filteredPosts.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              profile={profile}
-              locale={locale}
-              t={t}
-              onReact={handleReact}
-              onDelete={handleDeletePost}
-              onComment={handleComment}
-              onDeleteComment={handleDeleteComment}
-              onReply={handleReply}
-              onPin={handlePin}
-            />
+            <StaggerItem key={post.id}>
+              <PostCard
+                post={post}
+                profile={profile}
+                locale={locale}
+                t={t}
+                onReact={handleReact}
+                onDelete={handleDeletePost}
+                onComment={handleComment}
+                onDeleteComment={handleDeleteComment}
+                onReply={handleReply}
+                onPin={handlePin}
+              />
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerList>
       )}
     </>
   );

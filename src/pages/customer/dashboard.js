@@ -8,6 +8,8 @@ import AnnouncementSlider from '../../components/UI/AnnouncementSlider';
 import LazyVideo from '../../components/UI/LazyVideo';
 import SparkOverlay from '../../components/UI/SparkOverlay';
 import { MotionLink, buttonTap, cardLift } from '../../components/UI/Motion';
+import StaggerList from '../../components/UI/StaggerList';
+import StaggerItem from '../../components/UI/StaggerItem';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { useLocale } from '../../components/Layout/AppShell';
@@ -35,7 +37,7 @@ function bilingualText(row, base, locale) {
 // never duplicated or re-implemented, only reused.
 function CategoryGrid({ categories, locale }) {
   return (
-    <div className="mt-4 grid grid-cols-2 gap-3 sm:mt-5 sm:gap-4 lg:grid-cols-4">
+    <StaggerList className="mt-4 grid grid-cols-2 gap-3 sm:mt-5 sm:gap-4 lg:grid-cols-4">
       {categories.map((category) => {
         const visual = CATEGORY_3D[category.key] ?? CATEGORY_3D.general;
         // Every video uploaded through the Media Studio is now
@@ -47,53 +49,54 @@ function CategoryGrid({ categories, locale }) {
         const showImage = !showVideo && Boolean(category.icon_path);
         const hasMedia = showVideo || showImage;
         return (
-          <MotionLink
-            key={category.key}
-            href={`/customer/requests/new?category=${category.key}`}
-            {...cardLift}
-            className={
-              hasMedia
-                ? 'group relative flex h-32 flex-col items-center justify-end overflow-hidden rounded-2xl border border-gold-400/20 text-center font-semibold text-white shadow-[0_0_30px_-12px_rgba(230,171,44,0.35)] sm:h-40 sm:rounded-[1.5rem] md:h-48'
-                : 'metal-panel group flex flex-col items-center gap-2 p-4 text-center font-semibold text-ink-light dark:text-white sm:gap-3 sm:p-6'
-            }
-          >
-            {hasMedia ? (
-              <>
-                {/* The card itself is the frame — media fills it edge to
-                    edge instead of sitting inside a small icon circle. */}
-                {showVideo ? (
-                  <LazyVideo
-                    src={category.icon_video_url}
-                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                ) : (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={category.icon_path}
-                      alt=""
+          <StaggerItem key={category.key}>
+            <MotionLink
+              href={`/customer/requests/new?category=${category.key}`}
+              {...cardLift}
+              className={
+                hasMedia
+                  ? 'group relative flex h-32 w-full flex-col items-center justify-end overflow-hidden rounded-2xl border border-gold-400/20 text-center font-semibold text-white shadow-[0_0_30px_-12px_rgba(230,171,44,0.35)] sm:h-40 sm:rounded-[1.5rem] md:h-48'
+                  : 'metal-panel group flex w-full flex-col items-center gap-2 p-4 text-center font-semibold text-ink-light dark:text-white sm:gap-3 sm:p-6'
+              }
+            >
+              {hasMedia ? (
+                <>
+                  {/* The card itself is the frame — media fills it edge to
+                      edge instead of sitting inside a small icon circle. */}
+                  {showVideo ? (
+                    <LazyVideo
+                      src={category.icon_video_url}
                       className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
-                    <SparkOverlay />
-                  </>
-                )}
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
-                <span className="relative z-10 p-2.5 text-sm drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] sm:p-4 sm:text-base">
-                  {categoryLabel(category, locale)}
-                </span>
-              </>
-            ) : (
-              <>
-                <div className="icon-medallion h-16 w-16 sm:h-24 sm:w-24" style={{ '--medallion-glow': visual.glow }}>
-                  <Icon3D variant={category.key} color={visual.color} className="h-14 w-14 sm:h-20 sm:w-20" />
-                </div>
-                <span className="text-sm sm:text-base">{categoryLabel(category, locale)}</span>
-              </>
-            )}
-          </MotionLink>
+                  ) : (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={category.icon_path}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <SparkOverlay />
+                    </>
+                  )}
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+                  <span className="relative z-10 p-2.5 text-sm drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] sm:p-4 sm:text-base">
+                    {categoryLabel(category, locale)}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div className="icon-medallion h-16 w-16 sm:h-24 sm:w-24" style={{ '--medallion-glow': visual.glow }}>
+                    <Icon3D variant={category.key} color={visual.color} className="h-14 w-14 sm:h-20 sm:w-20" />
+                  </div>
+                  <span className="text-sm sm:text-base">{categoryLabel(category, locale)}</span>
+                </>
+              )}
+            </MotionLink>
+          </StaggerItem>
         );
       })}
-    </div>
+    </StaggerList>
   );
 }
 

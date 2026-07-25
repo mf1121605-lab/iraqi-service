@@ -4,6 +4,8 @@ import { ChevronLeft, ClipboardList, Inbox } from 'lucide-react';
 import { useLocale } from '../../../components/Layout/AppShell';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import StatusBadge from '../../../components/UI/StatusBadge';
+import StaggerList from '../../../components/UI/StaggerList';
+import StaggerItem from '../../../components/UI/StaggerItem';
 import { supabaseClient } from '../../../lib/supabaseClient';
 import { useRequireRole } from '../../../utils/useSession';
 import { translate } from '../../../utils/i18n';
@@ -111,9 +113,9 @@ export default function CustomerRequests() {
           <p className="text-sm text-ink-muted dark:text-ink-dark-muted">{t('common.noResults')}</p>
         </div>
       ) : (
-        <ul className="mt-3 space-y-2">
-          {filtered.map((request, index) => (
-            <li key={request.id} style={{ animationDelay: `${index * 40}ms` }} className="animate-slide-up">
+        <StaggerList className="mt-3 space-y-2">
+          {filtered.map((request) => (
+            <StaggerItem key={request.id}>
               <Link
                 href={`/customer/requests/${request.id}`}
                 className="flex items-center justify-between rounded-xl2 border border-black/5 p-4 shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:shadow-elevate dark:border-white/10"
@@ -129,9 +131,9 @@ export default function CustomerRequests() {
                   <ChevronLeft className="h-4 w-4 text-ink-muted opacity-40 rtl:rotate-180 dark:text-ink-dark-muted" aria-hidden="true" />
                 </div>
               </Link>
-            </li>
+            </StaggerItem>
           ))}
-        </ul>
+        </StaggerList>
       )}
     </>
   );

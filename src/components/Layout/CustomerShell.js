@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import AppShell from './AppShell';
 import { useSession } from '../../utils/useSession';
 import { useSyncedLocale } from '../../utils/i18n';
@@ -18,9 +19,14 @@ export default function CustomerShell({ pathname, children }) {
       profile={profile ?? undefined}
       onProfileUpdated={refreshProfile}
     >
-      <div key={pathname} className="animate-fade-up">
+      <motion.div
+        key={pathname}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+      >
         {children}
-      </div>
+      </motion.div>
     </AppShell>
   );
 }

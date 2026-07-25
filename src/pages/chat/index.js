@@ -7,6 +7,8 @@ import { supabaseClient } from '../../lib/supabaseClient';
 import { useRequireRole } from '../../utils/useSession';
 import { translate } from '../../utils/i18n';
 import { MotionLink, cardLift } from '../../components/UI/Motion';
+import StaggerList from '../../components/UI/StaggerList';
+import StaggerItem from '../../components/UI/StaggerItem';
 
 function displayNameFor(profile) {
   if (!profile) return '';
@@ -97,13 +99,12 @@ export default function ChatRooms() {
 
   if (loading || !profile) return null;
 
-  function RoomCard({ room, index }) {
+  function RoomCard({ room }) {
     return (
       <MotionLink
         href={`/chat/${room.slug}`}
-        style={{ animationDelay: `${index * 60}ms` }}
         {...cardLift}
-        className="group relative flex animate-slide-up items-center gap-3 rounded-2xl border border-white/[0.08] bg-[#202c33] p-3.5 text-white shadow-soft transition-all duration-300 hover:bg-[#2a3942] hover:shadow-elevate"
+        className="group relative flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-[#202c33] p-3.5 text-white shadow-soft transition-all duration-300 hover:bg-[#2a3942] hover:shadow-elevate"
       >
         <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#005c4b] text-emerald-100 ring-1 ring-inset ring-emerald-300/20 transition-transform duration-300 group-hover:scale-105">
           {room.icon_url ? (
@@ -148,11 +149,13 @@ export default function ChatRooms() {
           <LoadingSpinner inline locale={locale} className="mt-4" />
         ) : (
           <>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {filteredRooms.map((room, index) => (
-                <RoomCard key={room.id} room={room} index={index} />
+            <StaggerList className="mt-4 grid gap-2 sm:grid-cols-2">
+              {filteredRooms.map((room) => (
+                <StaggerItem key={room.id}>
+                  <RoomCard room={room} />
+                </StaggerItem>
               ))}
-            </div>
+            </StaggerList>
 
             {dmThreads.length > 0 && (
               <div className="mt-8">
@@ -160,27 +163,28 @@ export default function ChatRooms() {
                   <MessageCircleMore className="h-3.5 w-3.5 text-gold-300" aria-hidden="true" />
                   {t('chat.dmThreadsTitle')}
                 </h3>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <StaggerList className="grid gap-2 sm:grid-cols-2">
                   {visibleDmThreads.map((thread) => (
-                    <MotionLink
-                      key={thread.id}
-                      href={`/chat/dm/${thread.id}`}
-                      {...cardLift}
-                      className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-[#202c33] p-3.5 text-white shadow-soft transition-colors duration-300 hover:bg-[#2a3942] hover:shadow-elevate"
-                    >
-                      <Avatar
-                        avatarKey={thread.otherUser?.avatar_key}
-                        name={thread.otherUser?.given_name}
-                        seed={thread.otherUser?.id}
-                        className="h-10 w-10"
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-bold">{displayNameFor(thread.otherUser)}</span>
-                        <span className="block truncate text-xs font-normal text-white/50">محادثة خاصة</span>
-                      </span>
-                    </MotionLink>
+                    <StaggerItem key={thread.id}>
+                      <MotionLink
+                        href={`/chat/dm/${thread.id}`}
+                        {...cardLift}
+                        className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-[#202c33] p-3.5 text-white shadow-soft transition-colors duration-300 hover:bg-[#2a3942] hover:shadow-elevate"
+                      >
+                        <Avatar
+                          avatarKey={thread.otherUser?.avatar_key}
+                          name={thread.otherUser?.given_name}
+                          seed={thread.otherUser?.id}
+                          className="h-10 w-10"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-bold">{displayNameFor(thread.otherUser)}</span>
+                          <span className="block truncate text-xs font-normal text-white/50">محادثة خاصة</span>
+                        </span>
+                      </MotionLink>
+                    </StaggerItem>
                   ))}
-                </div>
+                </StaggerList>
               </div>
             )}
           </>
