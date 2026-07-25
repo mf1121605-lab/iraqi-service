@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
@@ -35,7 +35,7 @@ function bilingualText(row, base, locale) {
 // icon), just filtered to a different section_type, so the recent video
 // performance fix (lazy IntersectionObserver playback in LazyVideo) is
 // never duplicated or re-implemented, only reused.
-function CategoryGrid({ categories, locale }) {
+const CategoryGrid = memo(function CategoryGrid({ categories, locale }) {
   return (
     <StaggerList className="mt-4 grid grid-cols-2 gap-3 sm:mt-5 sm:gap-4 lg:grid-cols-4">
       {categories.map((category) => {
@@ -98,7 +98,7 @@ function CategoryGrid({ categories, locale }) {
       })}
     </StaggerList>
   );
-}
+});
 
 export default function CustomerDashboard() {
   const { profile, loading, signOut, refreshProfile } = useRequireRole(['customer']);
@@ -107,6 +107,7 @@ export default function CustomerDashboard() {
   const t = (path) => translate(locale, path);
 
   const [banners, setBanners] = useState([]);
+  const [bannersReady, setBannersReady] = useState(false);
   const [products, setProducts] = useState([]);
   const [newsLinks, setNewsLinks] = useState([]);
   const [urgentItems, setUrgentItems] = useState([]);
@@ -151,7 +152,10 @@ export default function CustomerDashboard() {
         )
         .eq('is_active', true)
         .order('display_order')
-        .then(({ data }) => setBanners(data ?? []));
+        .then(({ data }) => {
+          setBanners(data ?? []);
+          setBannersReady(true);
+        });
     }
 
     function loadProducts() {
@@ -238,10 +242,12 @@ export default function CustomerDashboard() {
 
   return (
     <>
-      {banners.length > 0 ? (
+      {!bannersReady ? (
+        <div className="h-52 animate-pulse overflow-hidden rounded-[1.75rem] bg-white/[0.05] md:h-[17rem] lg:h-80" />
+      ) : banners.length > 0 ? (
         <AnnouncementSlider banners={banners} locale={locale} />
       ) : (
-        <section className="cinematic-card relative overflow-hidden p-5 text-ink-light dark:text-white sm:p-8 md:p-10">
+        <section className="cinematic-card relative h-52 overflow-hidden p-5 text-ink-light dark:text-white sm:p-8 md:h-[17rem] md:p-10 lg:h-80">
           <div className="iraq-flag-watermark pointer-events-none absolute inset-y-0 start-0 w-1/2 opacity-[0.05]" />
           <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float rounded-full bg-gold-300/10 blur-xl [will-change:transform]" />
           <div className="relative">

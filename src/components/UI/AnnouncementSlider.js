@@ -58,12 +58,17 @@ export default function AnnouncementSlider({ banners, locale, canEdit, onEdit })
   const banner = banners[index];
 
   return (
+    /* Outer container has explicit height so the browser reserves space
+       before the slide's content paints — prevents CLS on initial render
+       and during AnimatePresence exit→enter transitions. The dots are
+       absolutely positioned within this container so they don't add to
+       the layout flow height. */
     <div
-      className="relative overflow-hidden rounded-[1.75rem] border border-gold-400/20 bg-white/[0.03] shadow-[0_0_50px_-15px_rgba(230,171,44,0.35)] backdrop-blur-xl"
+      className="relative h-52 overflow-hidden rounded-[1.75rem] border border-gold-400/20 bg-white/[0.03] shadow-[0_0_50px_-15px_rgba(230,171,44,0.35)] backdrop-blur-xl md:h-[17rem] lg:h-80"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <AnimatePresence initial={false} custom={direction} mode="wait">
+      <AnimatePresence initial={false} custom={direction} mode="popLayout">
         <motion.div
           key={banner.id}
           custom={direction}
@@ -71,7 +76,7 @@ export default function AnnouncementSlider({ banners, locale, canEdit, onEdit })
           initial="enter"
           animate="center"
           exit="exit"
-          transition={{ x: { type: 'spring', stiffness: 300, damping: 32 }, opacity: { duration: 0.25 } }}
+          transition={{ x: { type: 'spring', stiffness: 300, damping: 32 }, opacity: { duration: 0.2 } }}
           drag={count > 1 ? 'x' : false}
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.6}
@@ -82,7 +87,7 @@ export default function AnnouncementSlider({ banners, locale, canEdit, onEdit })
             else if (power > SWIPE_CONFIDENCE_THRESHOLD) paginate(-1);
             setPaused(false);
           }}
-          className="relative h-44 text-white md:h-60 lg:h-72"
+          className="absolute inset-0 text-white"
           style={{ backgroundColor: banner.background_color, color: banner.text_color, touchAction: count > 1 ? 'pan-y' : undefined }}
         >
           {/* Motion graphic takes priority — no file download needed, works
@@ -171,7 +176,7 @@ export default function AnnouncementSlider({ banners, locale, canEdit, onEdit })
       </AnimatePresence>
 
       {count > 1 && (
-        <div className="relative z-10 flex justify-center gap-2 pb-5">
+        <div className="absolute bottom-3 inset-x-0 z-20 flex justify-center gap-2">
           {banners.map((item, i) => (
             <button
               key={item.id}
