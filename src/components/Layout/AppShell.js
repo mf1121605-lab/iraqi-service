@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Globe, Moon, Sun, Volume2, VolumeX } from 'lucide-react';
+import { Globe, Volume2, VolumeX } from 'lucide-react';
 import { audioFX } from '../../utils/audioFX';
 import {
   LOCALE_META,
@@ -19,7 +19,6 @@ import BottomNavBar from './BottomNavBar';
 import Avatar from '../Chat/Avatar';
 import ProfileDrawer from '../UI/ProfileDrawer';
 
-const THEME_KEY = 'iraqi-services:theme';
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
 
 // Fixed positions (not Math.random()) so server/client markup matches on
@@ -36,14 +35,8 @@ const HEADER_STARS = [
   { top: '62%', left: '91%', size: 1.5, delay: '1.2s' },
 ];
 
-function getStoredTheme() {
-  if (typeof window === 'undefined') return 'light';
-  return window.localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
-}
-
 export default function AppShell({ title, navItems, onSignOut, userId, profile, onProfileUpdated, children }) {
   const locale = useSyncedLocale();
-  const [theme, setTheme] = useState('light');
   const [profileOpen, setProfileOpen] = useState(false);
   const siteSettings = useSiteSettings();
   const ambientPlaying = useAmbientAudioPlaying();
@@ -54,17 +47,13 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
   };
 
   useEffect(() => {
-    setTheme(getStoredTheme());
+    document.documentElement.classList.add('dark');
   }, []);
 
   useEffect(() => {
     document.documentElement.dir = getDirection(locale);
     document.documentElement.lang = locale;
   }, [locale]);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-  }, [theme]);
 
   // Powers the founder's online/offline presence badge — a light
   // periodic ping while this authenticated page is open, not a full
@@ -91,12 +80,6 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
   function toggleLocale() {
     const next = LOCALE_META.find((meta) => meta.code !== locale)?.code ?? defaultLocale;
     setStoredLocale(next);
-  }
-
-  function toggleTheme() {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
-    if (typeof window !== 'undefined') window.localStorage.setItem(THEME_KEY, next);
   }
 
   const t = (path) => translate(locale, path);
@@ -225,33 +208,6 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
                 {LOCALE_META.find((meta) => meta.code !== locale)?.nativeName}
               </span>
             </button>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 active:scale-90
-                bg-gradient-to-b from-white/8 to-white/3 border border-white/10
-                shadow-[0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.10)]
-                hover:from-white/12 hover:border-white/18
-                focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-              aria-label={theme === 'dark' ? t('common.lightMode') : t('common.darkMode')}
-            >
-              <span className="relative block h-4 w-4">
-                <Sun
-                  className={`absolute inset-0 h-4 w-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] transition-all duration-300 ${
-                    theme === 'dark' ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'
-                  }`}
-                  strokeWidth={2}
-                  aria-hidden="true"
-                />
-                <Moon
-                  className={`absolute inset-0 h-4 w-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] transition-all duration-300 ${
-                    theme === 'dark' ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0'
-                  }`}
-                  strokeWidth={2}
-                  aria-hidden="true"
-                />
-              </span>
-            </button>
           </div>
         </div>
       </header>
@@ -265,8 +221,6 @@ export default function AppShell({ title, navItems, onSignOut, userId, profile, 
           profile={profile}
           locale={locale}
           onProfileUpdated={onProfileUpdated}
-          theme={theme}
-          onToggleTheme={toggleTheme}
           onToggleLocale={toggleLocale}
           onSignOut={onSignOut}
         />

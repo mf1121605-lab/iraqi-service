@@ -8,9 +8,7 @@ import {
   Loader as Loader2,
   Lock,
   LogOut,
-  Moon,
   Settings as SettingsIcon,
-  Sun,
   User,
   X,
   XCircle,
@@ -40,8 +38,6 @@ export default function ProfileDrawer({
   profile,
   locale,
   onProfileUpdated,
-  theme,
-  onToggleTheme,
   onToggleLocale,
   onSignOut,
 }) {
@@ -418,20 +414,6 @@ export default function ProfileDrawer({
                   <Globe className="h-4 w-4 shrink-0 text-gold-300" aria-hidden="true" />
                   <span className="flex-1 text-start">{t('profileDrawer.settingsLanguageCta')}</span>
                   <span className="text-xs text-white/50">{LOCALE_META.find((meta) => meta.code !== locale)?.nativeName}</span>
-                </button>
-              )}
-              {onToggleTheme && (
-                <button
-                  type="button"
-                  onClick={onToggleTheme}
-                  className="flex w-full items-center gap-3 rounded-xl2 border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-gold-400"
-                >
-                  {theme === 'dark' ? (
-                    <Moon className="h-4 w-4 shrink-0 text-gold-300" aria-hidden="true" />
-                  ) : (
-                    <Sun className="h-4 w-4 shrink-0 text-gold-300" aria-hidden="true" />
-                  )}
-                  <span className="flex-1 text-start">{t('profileDrawer.settingsThemeCta')}</span>
                 </button>
               )}
               <Link
