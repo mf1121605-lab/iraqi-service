@@ -95,13 +95,27 @@ function FloatingShapes() {
 
 function LogoWatermark() {
   const texture = useTexture('/brand/logo-icon-512.png');
+  const meshRef = useRef();
+  const { camera } = useThree();
+  const offset = useRef(new THREE.Vector3());
+
+  useFrame(() => {
+    if (!meshRef.current) return;
+    // Re-compute camera-space offset every frame so the logo stays
+    // perfectly centred on screen regardless of camera drift or rotation.
+    offset.current.set(0, 0, -4);
+    offset.current.applyQuaternion(camera.quaternion);
+    meshRef.current.position.copy(camera.position).add(offset.current);
+    meshRef.current.quaternion.copy(camera.quaternion);
+  });
+
   return (
-    <mesh position={[0, 0, -3]} renderOrder={-1}>
-      <planeGeometry args={[3.6, 3.6]} />
+    <mesh ref={meshRef}>
+      <planeGeometry args={[4, 4]} />
       <meshBasicMaterial
         map={texture}
         transparent
-        opacity={0.09}
+        opacity={0.11}
         depthWrite={false}
         depthTest={false}
       />
