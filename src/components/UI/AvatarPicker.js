@@ -106,7 +106,7 @@ export default function AvatarPicker({ value, onSelect, profileId }) {
           ref={fileInputRef}
           type="file"
           accept="image/png,image/jpeg,image/webp"
-          capture="user"
+
           className="hidden"
           onChange={handleCameraFile}
           disabled={uploading}
