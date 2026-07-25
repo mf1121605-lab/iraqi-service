@@ -105,7 +105,7 @@ export default function App({ Component, pageProps }) {
 
   return (
     <div className={`${tajawal.variable} ${notoSansArabic.variable} ${cairo.variable} contents`}>
-      <MotionConfig reducedMotion="user">
+      <MotionConfig reducedMotion="never">
         <ErrorBoundary>
           <div className="fixed inset-0 -z-10 pointer-events-none" style={{ backgroundColor: 'var(--color-bg, #0d1117)' }}>
             <InteractiveBackground3D />
