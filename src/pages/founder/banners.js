@@ -26,6 +26,7 @@ const emptyForm = {
   mobileImageUrl: '',
   backgroundColor: '#0f172a',
   textColor: '#ffffff',
+  motionGraphicKey: '',
 };
 
 function loadAnnouncements(setBanners) {
@@ -82,6 +83,7 @@ export default function FounderBanners() {
       mobile_image_url: form.mobileImageUrl || null,
       background_color: form.backgroundColor,
       text_color: form.textColor,
+      motion_graphic_key: form.motionGraphicKey || null,
       display_order: banners?.length ?? 0,
       is_active: true,
       created_by: profile.id,
@@ -111,6 +113,7 @@ export default function FounderBanners() {
       descriptionCkb: banner.description_ckb ?? '',
       imageUrl: banner.image_url || null,
       videoUrl: banner.video_url || null,
+      motionGraphicKey: banner.motion_graphic_key || '',
     });
   }
 
@@ -126,6 +129,7 @@ export default function FounderBanners() {
         description_ckb: editForm.descriptionCkb || null,
         image_url: editForm.imageUrl || null,
         video_url: editForm.videoUrl || null,
+        motion_graphic_key: editForm.motionGraphicKey || null,
       })
       .eq('id', editingId);
     setSaving(false);
@@ -243,6 +247,22 @@ export default function FounderBanners() {
           />
         </div>
 
+        <div>
+          <label className="mb-1 block text-xs text-white/60">{t('founderBanners.motionGraphicLabel')}</label>
+          <select
+            value={form.motionGraphicKey}
+            onChange={(e) => setField('motionGraphicKey', e.target.value)}
+            className="input-cinematic w-full text-sm"
+          >
+            <option value="">— {t('founderBanners.noMotionGraphic')} —</option>
+            <option value="welcome">{t('founderBanners.mgWelcome')}</option>
+            <option value="military">{t('founderBanners.mgMilitary')}</option>
+            <option value="education">{t('founderBanners.mgEducation')}</option>
+            <option value="welfare">{t('founderBanners.mgWelfare')}</option>
+            <option value="general">{t('founderBanners.mgGeneral')}</option>
+          </select>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs text-white/60">{t('founderBanners.backgroundColorLabel')}</label>
@@ -352,22 +372,39 @@ export default function FounderBanners() {
         maxVideoSeconds={15}
         extraFields={
           editForm && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs text-white/60">{t('founderBanners.descriptionArLabel')}</label>
-                <input
-                  value={editForm.descriptionAr}
-                  onChange={(e) => setEditForm({ ...editForm, descriptionAr: e.target.value })}
-                  className="input-cinematic text-sm"
-                />
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs text-white/60">{t('founderBanners.descriptionArLabel')}</label>
+                  <input
+                    value={editForm.descriptionAr}
+                    onChange={(e) => setEditForm({ ...editForm, descriptionAr: e.target.value })}
+                    className="input-cinematic text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-white/60">{t('founderBanners.descriptionCkbLabel')}</label>
+                  <input
+                    value={editForm.descriptionCkb}
+                    onChange={(e) => setEditForm({ ...editForm, descriptionCkb: e.target.value })}
+                    className="input-cinematic text-sm"
+                  />
+                </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-white/60">{t('founderBanners.descriptionCkbLabel')}</label>
-                <input
-                  value={editForm.descriptionCkb}
-                  onChange={(e) => setEditForm({ ...editForm, descriptionCkb: e.target.value })}
-                  className="input-cinematic text-sm"
-                />
+                <label className="mb-1 block text-xs text-white/60">{t('founderBanners.motionGraphicLabel')}</label>
+                <select
+                  value={editForm.motionGraphicKey}
+                  onChange={(e) => setEditForm({ ...editForm, motionGraphicKey: e.target.value })}
+                  className="input-cinematic w-full text-sm"
+                >
+                  <option value="">— {t('founderBanners.noMotionGraphic')} —</option>
+                  <option value="welcome">{t('founderBanners.mgWelcome')}</option>
+                  <option value="military">{t('founderBanners.mgMilitary')}</option>
+                  <option value="education">{t('founderBanners.mgEducation')}</option>
+                  <option value="welfare">{t('founderBanners.mgWelfare')}</option>
+                  <option value="general">{t('founderBanners.mgGeneral')}</option>
+                </select>
               </div>
             </div>
           )

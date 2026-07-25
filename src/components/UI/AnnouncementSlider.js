@@ -4,6 +4,7 @@ import { Pencil } from 'lucide-react';
 import SafeImage from './SafeImage';
 import LazyVideo from './LazyVideo';
 import SparkOverlay from './SparkOverlay';
+import MotionGraphicsBanner from './MotionGraphicsBanner';
 import { translate } from '../../utils/i18n';
 
 const AUTOPLAY_MS = 6000;
@@ -84,12 +85,16 @@ export default function AnnouncementSlider({ banners, locale, canEdit, onEdit })
           className="relative h-44 text-white md:h-60 lg:h-72"
           style={{ backgroundColor: banner.background_color, color: banner.text_color, touchAction: count > 1 ? 'pan-y' : undefined }}
         >
-          {/* Video wins over image when both are set — the founder picks one
-              or the other in the Media Studio, this is just a safe order.
-              Every video is auto-compressed to well under 1MB at upload
-              time (compressVideo.js), so there's no longer a reason to
-              skip it on a slow connection. */}
-          {banner.video_url ? (
+          {/* Motion graphic takes priority — no file download needed, works
+              on any connection. Falls back to video, then image, then plain bg. */}
+          {banner.motion_graphic_key ? (
+            <MotionGraphicsBanner
+              type={banner.motion_graphic_key}
+              titleAr={banner.title_ar}
+              titleCkb={banner.title_ckb}
+              locale={locale}
+            />
+          ) : banner.video_url ? (
             <LazyVideo src={banner.video_url} className="absolute inset-0 h-full w-full object-cover" />
           ) : (
             (banner.mobile_image_url || banner.image_url) && (
@@ -112,7 +117,7 @@ export default function AnnouncementSlider({ banners, locale, canEdit, onEdit })
               </>
             )
           )}
-          {(banner.video_url || banner.image_url || banner.mobile_image_url) && (
+          {(banner.motion_graphic_key || banner.video_url || banner.image_url || banner.mobile_image_url) && (
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
           )}
 

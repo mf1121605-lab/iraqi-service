@@ -608,6 +608,39 @@ select:focus-visible {
   50%       { opacity: 0.55; }
 }
 
+/* ─── Motion-graphic banner keyframes ───────────────────────────── */
+@keyframes mg-pulse-scale {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.12); }
+}
+@keyframes mg-sway {
+  0%, 100% { transform: rotate(-8deg); }
+  50%       { transform: rotate(8deg); }
+}
+@keyframes mg-float-y {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-14px); }
+}
+@keyframes mg-heartbeat {
+  0%   { transform: scale(1); }
+  14%  { transform: scale(1.18); }
+  28%  { transform: scale(1); }
+  42%  { transform: scale(1.10); }
+  70%  { transform: scale(1); }
+  100% { transform: scale(1); }
+}
+@keyframes mg-spin-slow {
+  to { transform: rotate(360deg); }
+}
+@keyframes mg-slide-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes mg-shimmer-sweep {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
 .pro-bg {
   background: linear-gradient(
     -45deg,
