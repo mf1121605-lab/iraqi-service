@@ -108,6 +108,17 @@ export default function App({ Component, pageProps }) {
       <MotionConfig reducedMotion="never">
         <ErrorBoundary>
           <div className="fixed inset-0 -z-10 pointer-events-none" style={{ backgroundColor: 'var(--color-bg, #0d1117)' }}>
+            {/* Pure-CSS logo watermark — lives outside Three.js so it never drifts */}
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: 'url(/brand/logo-icon-512.png)',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'center',
+                backgroundSize: '260px 260px',
+                opacity: 0.09,
+              }}
+            />
             <InteractiveBackground3D />
           </div>
           {transitioning && (

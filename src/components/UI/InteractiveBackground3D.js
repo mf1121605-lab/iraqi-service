@@ -1,7 +1,7 @@
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Float, useTexture } from '@react-three/drei';
+import { Float } from '@react-three/drei';
 
 function MouseTracker({ mouse }) {
   const { camera } = useThree();
@@ -93,36 +93,6 @@ function FloatingShapes() {
   );
 }
 
-function LogoWatermark() {
-  const texture = useTexture('/brand/logo-icon-512.png');
-  const meshRef = useRef();
-  const { camera } = useThree();
-  const offset = useRef(new THREE.Vector3());
-
-  useFrame(() => {
-    if (!meshRef.current) return;
-    // Re-compute camera-space offset every frame so the logo stays
-    // perfectly centred on screen regardless of camera drift or rotation.
-    offset.current.set(0, 0, -4);
-    offset.current.applyQuaternion(camera.quaternion);
-    meshRef.current.position.copy(camera.position).add(offset.current);
-    meshRef.current.quaternion.copy(camera.quaternion);
-  });
-
-  return (
-    <mesh ref={meshRef}>
-      <planeGeometry args={[4, 4]} />
-      <meshBasicMaterial
-        map={texture}
-        transparent
-        opacity={0.11}
-        depthWrite={false}
-        depthTest={false}
-      />
-    </mesh>
-  );
-}
-
 function Starfield() {
   const pointsRef = useRef();
   const count = 180;
@@ -194,9 +164,6 @@ export default function InteractiveBackground3D() {
         <directionalLight position={[-5, 5, 2]} intensity={0.8} color="#ffffff" />
         <directionalLight position={[5, -5, -2]} intensity={0.4} color="#e6ab2c" />
         
-        <Suspense fallback={null}>
-          <LogoWatermark />
-        </Suspense>
         <MouseTracker mouse={mouse} />
         <FloatingShapes />
         <Starfield />
