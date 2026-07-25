@@ -62,12 +62,17 @@ export default function App({ Component, pageProps }) {
   }, [siteSettings]);
 
   useEffect(() => {
-    const start = () => setTransitioning(true);
-    const end = () => setTransitioning(false);
+    let timer;
+    // Only show the overlay if navigation takes longer than 150 ms.
+    // Pre-rendered/prefetched pages complete in <50 ms so the spinner
+    // never flashes for them; genuinely slow routes still get it.
+    const start = () => { timer = setTimeout(() => setTransitioning(true), 150); };
+    const end = () => { clearTimeout(timer); setTransitioning(false); };
     router.events.on('routeChangeStart', start);
     router.events.on('routeChangeComplete', end);
     router.events.on('routeChangeError', end);
     return () => {
+      clearTimeout(timer);
       router.events.off('routeChangeStart', start);
       router.events.off('routeChangeComplete', end);
       router.events.off('routeChangeError', end);
