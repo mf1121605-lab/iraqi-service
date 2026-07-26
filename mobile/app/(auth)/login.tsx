@@ -148,6 +148,12 @@ export default function LoginScreen() {
               />
               {error ? <Text style={styles.error}>{error}</Text> : null}
               <GoldButton label="دخول" onPress={handleLogin} loading={loading} />
+              <Pressable
+                style={styles.forgotBtn}
+                onPress={() => router.push('/(auth)/forgot-password')}
+              >
+                <Text style={styles.forgotText}>نسيت كلمة المرور؟</Text>
+              </Pressable>
             </View>
 
             {/* Divider */}
@@ -262,4 +268,7 @@ const styles = StyleSheet.create({
   linkRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   linkText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.muted },
   link:     { fontFamily: FONTS.bold,    fontSize: 14, color: COLORS.gold },
+
+  forgotBtn: { alignSelf: 'center', paddingVertical: 4 },
+  forgotText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
 });
