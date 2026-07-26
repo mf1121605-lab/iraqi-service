@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       profile:
-        description: 'Build profile'
+        description: 'EAS Build Profile'
         required: true
         default: 'preview'
         type: choice
@@ -33,16 +33,15 @@ jobs:
           cache: 'npm'
           cache-dependency-path: mobile/package-lock.json
 
+      - name: Install EAS CLI
+        run: npm install -g eas-cli@latest
+
       - name: Install dependencies
         run: npm install
         working-directory: mobile
 
-      - name: Setup EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
       - name: Build APK with EAS
         run: eas build --platform android --profile ${{ github.event.inputs.profile }} --non-interactive
         working-directory: mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
