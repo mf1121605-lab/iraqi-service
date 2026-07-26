@@ -10,6 +10,7 @@ interface Profile {
   role: 'customer' | 'employee' | 'founder';
   account_status: string;
   avatar_key: string | null;
+  is_verified?: boolean;
 }
 
 interface AuthState {
@@ -56,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function loadProfile(userId: string) {
     const { data } = await supabase
       .from('profiles')
-      .select('id, given_name, family_name, phone, role, account_status, avatar_key')
+      .select('id, given_name, family_name, phone, role, account_status, avatar_key, is_verified')
       .eq('id', userId)
       .single();
     setProfile(data);

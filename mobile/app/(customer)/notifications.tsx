@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -84,12 +85,20 @@ export default function NotificationsScreen() {
     return () => { supabase.removeChannel(channel); };
   }, [load, session?.user.id]);
 
-  async function markAsRead(notif: Notification) {
-    if (notif.is_read) return;
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n))
-    );
-    await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
+  async function handleNotifPress(notif: Notification) {
+    if (!notif.is_read) {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n))
+      );
+      await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
+    }
+    if (notif.link) {
+      // Parse links like /customer/requests/{id} → navigate to request detail
+      const match = notif.link.match(/requests\/([0-9a-f-]{36})/i);
+      if (match) {
+        router.push({ pathname: '/(customer)/requests/[id]', params: { id: match[1] } });
+      }
+    }
   }
 
   async function markAllRead() {
@@ -168,7 +177,7 @@ export default function NotificationsScreen() {
                     !notif.is_read && styles.cardUnread,
                     pressed && styles.cardPressed,
                   ]}
-                  onPress={() => markAsRead(notif)}
+                  onPress={() => handleNotifPress(notif)}
                 >
                   {/* Left accent */}
                   <View style={[styles.accentBar, { backgroundColor: notif.is_read ? 'transparent' : meta.color }]} />
