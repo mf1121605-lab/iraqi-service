@@ -4,12 +4,16 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
+import * as WebBrowser from 'expo-web-browser';
 import {
   useFonts,
   Cairo_400Regular,
   Cairo_700Bold,
 } from '@expo-google-fonts/cairo';
 import { AuthProvider } from '@/hooks/useAuth';
+
+// Required to dismiss the OAuth browser session when the app is foregrounded
+WebBrowser.maybeCompleteAuthSession();
 
 SplashScreen.preventAutoHideAsync();
 

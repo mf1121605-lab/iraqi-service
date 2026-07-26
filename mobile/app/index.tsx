@@ -15,5 +15,6 @@ export default function Index() {
   }
 
   if (!session) return <Redirect href="/(auth)/login" />;
-  return <Redirect href="/webview" />;
+  if (profile?.role === 'employee' || profile?.role === 'founder') return <Redirect href="/(employee)" />;
+  return <Redirect href="/(customer)" />;
 }

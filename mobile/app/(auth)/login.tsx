@@ -2,25 +2,28 @@ import { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  Image,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
 import { GoldButton } from '@/components/ui/GoldButton';
 import { GoldInput } from '@/components/ui/GoldInput';
 import { GoldCard } from '@/components/ui/GoldCard';
-import { COLORS, FONTS } from '@/constants/theme';
+import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 export default function LoginScreen() {
   const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [password, setPassword]     = useState('');
+  const [loading, setLoading]       = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [error, setError]           = useState('');
 
   async function handleLogin() {
     if (!identifier.trim() || !password.trim()) {
@@ -30,21 +33,16 @@ export default function LoginScreen() {
     setLoading(true);
     setError('');
 
-    let authResult;
     const trimmed = identifier.trim();
+    let authResult;
 
-    // Username login: lowercase letters/digits/underscores
     if (/^[a-z][a-z0-9_]{2,}$/i.test(trimmed) && !/^\d/.test(trimmed)) {
       const email = `${trimmed.toLowerCase()}@iraqi-service.vercel.app`;
       authResult = await supabase.auth.signInWithPassword({ email, password });
-    }
-    // Phone login
-    else if (/^07\d{9}$/.test(trimmed)) {
+    } else if (/^07\d{9}$/.test(trimmed)) {
       const e164 = `+964${trimmed.slice(1)}`;
       authResult = await supabase.auth.signInWithPassword({ phone: e164, password });
-    }
-    // Email login (founder/employee)
-    else {
+    } else {
       authResult = await supabase.auth.signInWithPassword({ email: trimmed, password });
     }
 
@@ -58,22 +56,71 @@ export default function LoginScreen() {
     }
   }
 
+  async function handleGoogleSignIn() {
+    setGoogleLoading(true);
+    setError('');
+    try {
+      const redirectUrl = Linking.createURL('/');
+
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: redirectUrl, skipBrowserRedirect: true },
+      });
+
+      if (oauthError || !data.url) {
+        setError('فشل تسجيل الدخول بـ Google. تأكد من تفعيل Google في لوحة Supabase.');
+        setGoogleLoading(false);
+        return;
+      }
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+
+      if (result.type === 'success') {
+        const fragment = result.url.split('#')[1] ?? result.url.split('?')[1] ?? '';
+        const params   = new URLSearchParams(fragment);
+        const at       = params.get('access_token');
+        const rt       = params.get('refresh_token');
+
+        if (at && rt) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: at,
+            refresh_token: rt,
+          });
+          if (sessionError) {
+            setError(sessionError.message);
+          } else {
+            router.replace('/');
+          }
+        } else {
+          setError('لم يتم استلام رمز الدخول. حاول مرة أخرى.');
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`خطأ: ${msg}`);
+    }
+    setGoogleLoading(false);
+  }
+
   return (
-    <LinearGradient colors={['#0d1117', '#161b22', '#0d1117']} style={styles.bg}>
+    <LinearGradient colors={['#0a0e14', '#111720', '#0a0e14']} style={styles.bg}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          {/* Header */}
+
+          {/* Logo + Title */}
           <View style={styles.header}>
-            <View style={styles.logoCircle}>
+            <View style={styles.logoWrap}>
               <Text style={styles.logoEmoji}>🏛️</Text>
+              <View style={styles.logoBadge} />
             </View>
             <Text style={styles.appName}>خدماتي</Text>
             <Text style={styles.subtitle}>منصة الخدمات العراقية</Text>
           </View>
 
-          {/* Card */}
+          {/* Login Card */}
           <GoldCard style={styles.card}>
-            <Text style={styles.title}>تسجيل الدخول</Text>
+            <Text style={styles.cardTitle}>تسجيل الدخول</Text>
+
             <View style={styles.fields}>
               <GoldInput
                 label="رقم الهاتف أو اسم المستخدم"
@@ -93,6 +140,25 @@ export default function LoginScreen() {
               {error ? <Text style={styles.error}>{error}</Text> : null}
               <GoldButton label="دخول" onPress={handleLogin} loading={loading} />
             </View>
+
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>أو</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Google Sign-In */}
+            <Pressable
+              style={({ pressed }) => [styles.googleBtn, pressed && styles.googleBtnPressed]}
+              onPress={handleGoogleSignIn}
+              disabled={googleLoading}
+            >
+              <Text style={styles.googleIcon}>G</Text>
+              <Text style={styles.googleText}>
+                {googleLoading ? 'جاري الاتصال...' : 'الدخول بحساب Google'}
+              </Text>
+            </Pressable>
           </GoldCard>
 
           {/* Register link */}
@@ -102,6 +168,7 @@ export default function LoginScreen() {
               <Text style={styles.link}>إنشاء حساب</Text>
             </Link>
           </View>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -109,39 +176,81 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  bg: { flex: 1 },
+  bg:   { flex: 1 },
   flex: { flex: 1 },
-  scroll: { flexGrow: 1, padding: 20, justifyContent: 'center', gap: 24 },
-  header: { alignItems: 'center', gap: 8 },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(230,171,44,0.15)',
+  scroll: { flexGrow: 1, padding: 24, justifyContent: 'center', gap: 28 },
+
+  header: { alignItems: 'center', gap: 10 },
+  logoWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'rgba(230,171,44,0.12)',
     borderWidth: 2,
-    borderColor: 'rgba(230,171,44,0.4)',
+    borderColor: 'rgba(230,171,44,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#e6ab2c',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  logoBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#22c55e',
+    borderWidth: 2,
+    borderColor: '#0a0e14',
   },
   logoEmoji: { fontSize: 36 },
-  appName: { fontFamily: FONTS.bold, fontSize: 28, color: COLORS.gold },
+  appName:  { fontFamily: FONTS.bold,    fontSize: 30, color: COLORS.gold,  letterSpacing: 0.5 },
   subtitle: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.muted },
-  card: { gap: 4 },
-  title: {
+
+  card:      { gap: 0 },
+  cardTitle: {
     fontFamily: FONTS.bold,
     fontSize: 20,
     color: COLORS.white,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
   },
   fields: { gap: 14 },
-  error: {
-    fontFamily: FONTS.regular,
-    fontSize: 13,
-    color: COLORS.red,
-    textAlign: 'center',
+
+  error: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.red, textAlign: 'center' },
+
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 16 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
+  dividerText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
+
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 13,
+    borderRadius: RADIUS.md,
+    backgroundColor: '#ffffff',
+    borderWidth: 0,
   },
+  googleBtnPressed: { opacity: 0.85 },
+  googleIcon: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#4285F4',
+    fontFamily: 'System',
+  },
+  googleText: {
+    fontFamily: FONTS.bold,
+    fontSize: 15,
+    color: '#1a1a1a',
+  },
+
   linkRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   linkText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.muted },
-  link: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.gold },
+  link:     { fontFamily: FONTS.bold,    fontSize: 14, color: COLORS.gold },
 });
