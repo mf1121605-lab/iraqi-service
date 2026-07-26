@@ -13,8 +13,11 @@ import { AuthProvider } from '@/hooks/useAuth';
 
 SplashScreen.preventAutoHideAsync();
 
-// Force RTL for Arabic/Kurdish
-I18nManager.forceRTL(true);
+// Force RTL for Arabic/Kurdish — only set once to avoid restart loop on Android
+if (!I18nManager.isRTL) {
+  I18nManager.allowRTL(true);
+  I18nManager.forceRTL(true);
+}
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
