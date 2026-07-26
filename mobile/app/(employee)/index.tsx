@@ -74,7 +74,7 @@ export default function EmployeeDashboard() {
       .in('status', ['pending', 'in_progress', 'completed'])
       .order('created_at', { ascending: false })
       .limit(50);
-    if (data) setRequests(data as RequestItem[]);
+    if (data) setRequests(data as unknown as RequestItem[]);
     setLoadingList(false);
     setRefreshing(false);
   }, [session?.user.id]);

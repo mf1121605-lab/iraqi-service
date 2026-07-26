@@ -14,14 +14,13 @@ export function GoldInput({ label, error, secureToggle, ...props }: Props) {
   return (
     <View style={styles.wrapper}>
       {label && <Text style={styles.label}>{label}</Text>}
-      <View style={[styles.inputRow, error && styles.inputError]}>
+      <View style={[styles.inputRow, error ? styles.inputError : undefined]}>
         <TextInput
           {...props}
           secureTextEntry={secureToggle ? !revealed : props.secureTextEntry}
           style={[styles.input, props.style]}
           placeholderTextColor={COLORS.white40}
           textAlign="right"
-          writingDirection="rtl"
         />
         {secureToggle && (
           <Pressable onPress={() => setRevealed((v) => !v)} style={styles.eyeBtn}>
