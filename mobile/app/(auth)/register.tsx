@@ -37,6 +37,8 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
+      // Auto-generate username from phone: "u" + digits (e.g. u07740338378)
+      const username = `u${form.phone.trim()}`;
       const res = await fetch(`${process.env.EXPO_PUBLIC_APP_URL}/api/customer/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -45,6 +47,7 @@ export default function RegisterScreen() {
           password: form.password,
           fullName: form.fullName.trim(),
           surname: form.surname.trim(),
+          username,
         }),
       });
       const data = await res.json();
