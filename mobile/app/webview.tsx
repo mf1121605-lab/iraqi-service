@@ -29,10 +29,11 @@ export default function WebScreen() {
     }, [])
   );
 
-  const startUrl =
-    profile?.role === 'employee' || profile?.role === 'founder'
+  const startUrl = session
+    ? profile?.role === 'employee' || profile?.role === 'founder'
       ? `${APP_URL}/employee/dashboard`
-      : `${APP_URL}/customer/dashboard`;
+      : `${APP_URL}/customer/dashboard`
+    : APP_URL;
 
   // Inject Supabase session into localStorage before page scripts run
   // so the website recognises the user as logged in immediately
