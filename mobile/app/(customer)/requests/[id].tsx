@@ -176,6 +176,16 @@ export default function RequestDetail() {
                   <Text style={styles.employeeChipEmoji}>👤</Text>
                   <Text style={styles.employeeChipName}>{employeeName}</Text>
                 </View>
+              ) : req.status === 'pending' ? (
+                <Pressable
+                  style={({ pressed }) => [styles.findEmployeeBtn, pressed && { opacity: 0.7 }]}
+                  onPress={() => router.push({
+                    pathname: '/(customer)/requests/matching',
+                    params: { requestId: req.id, category: req.category },
+                  })}
+                >
+                  <Text style={styles.findEmployeeBtnText}>🔍 البحث عن موظف</Text>
+                </Pressable>
               ) : (
                 <Text style={styles.noEmployee}>لم يُعيَّن موظف بعد</Text>
               )}
@@ -336,6 +346,17 @@ const styles = StyleSheet.create({
   employeeChipEmoji: { fontSize: 13 },
   employeeChipName: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
   noEmployee: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted },
+  findEmployeeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(230,171,44,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(230,171,44,0.4)',
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  findEmployeeBtnText: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
 
   msgList: { padding: 12, paddingBottom: 8 },
   emptyChat: { alignItems: 'center', paddingVertical: 60, gap: 8 },

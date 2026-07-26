@@ -92,6 +92,7 @@ export default function CustomerLayout() {
       {/* Hidden screens — accessible via navigation but not in tab bar */}
       <Tabs.Screen name="requests/new" options={{ href: null }} />
       <Tabs.Screen name="requests/[id]" options={{ href: null }} />
+      <Tabs.Screen name="requests/matching" options={{ href: null }} />
     </Tabs>
   );
 }
