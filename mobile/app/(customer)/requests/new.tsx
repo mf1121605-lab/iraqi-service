@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -17,22 +17,39 @@ import { supabase } from '@/lib/supabase';
 import { GoldInput } from '@/components/ui/GoldInput';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
-const CATEGORIES = [
-  { key: 'military',  label: 'الخدمات\nالعسكرية',   emoji: '🪖', colors: ['#1c2a38', '#0f1c28'] as const, accent: '#7da9cc' },
-  { key: 'education', label: 'الخدمات\nالدراسية',    emoji: '🎓', colors: ['#1a2640', '#0d1a33'] as const, accent: '#4f8bff' },
-  { key: 'welfare',   label: 'الرعاية\nالاجتماعية',  emoji: '❤️', colors: ['#2a1a1a', '#1f0f0f'] as const, accent: '#e14b6a' },
-  { key: 'general',   label: 'خدمات\nأخرى',           emoji: '⭐', colors: ['#28220d', '#1c180a'] as const, accent: '#e6ab2c' },
-];
+const CAT_THEMES: Record<string, { emoji: string; accent: string; colors: [string, string] }> = {
+  military:  { emoji: '🪖', accent: '#7da9cc', colors: ['#1c2a38', '#0f1c28'] },
+  education: { emoji: '🎓', accent: '#4f8bff', colors: ['#1a2640', '#0d1a33'] },
+  welfare:   { emoji: '❤️', accent: '#e14b6a', colors: ['#2a1a1a', '#1f0f0f'] },
+  general:   { emoji: '⭐', accent: '#e6ab2c', colors: ['#28220d', '#1c180a'] },
+};
+const DEFAULT_THEME = { emoji: '🔹', accent: '#e6ab2c', colors: ['#1a1a2e', '#0f0f1a'] as [string, string] };
+
+type Category = { id: string; key: string; label_ar: string };
 
 export default function NewRequest() {
   const { session } = useAuth();
   const params = useLocalSearchParams<{ category?: string }>();
 
   const [category, setCategory] = useState(params.category ?? '');
+  const [categories, setCategories] = useState<Category[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingCats, setLoadingCats] = useState(true);
   const [error, setError] = useState('');
+
+  const loadCategories = useCallback(async () => {
+    const { data } = await supabase
+      .from('categories')
+      .select('id, key, label_ar')
+      .eq('is_active', true)
+      .order('display_order', { ascending: true });
+    if (data) setCategories(data as Category[]);
+    setLoadingCats(false);
+  }, []);
+
+  useEffect(() => { loadCategories(); }, [loadCategories]);
 
   async function handleSubmit() {
     setError('');
@@ -85,38 +102,46 @@ export default function NewRequest() {
               <Text style={styles.sectionTitle}>نوع الخدمة</Text>
               <Text style={styles.sectionIcon}>🗂️</Text>
             </View>
-            <View style={styles.catGrid}>
-              {CATEGORIES.map((cat) => {
-                const selected = category === cat.key;
-                return (
-                  <Pressable
-                    key={cat.key}
-                    style={[styles.catCard, selected && { borderColor: cat.accent, borderWidth: 2 }]}
-                    onPress={() => setCategory(cat.key)}
-                  >
-                    <LinearGradient
-                      colors={cat.colors}
-                      style={styles.catGradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
+
+            {loadingCats ? (
+              <View style={styles.catsLoader}>
+                <ActivityIndicator color={COLORS.gold} size="small" />
+              </View>
+            ) : (
+              <View style={styles.catGrid}>
+                {categories.map((cat) => {
+                  const theme = CAT_THEMES[cat.key] ?? DEFAULT_THEME;
+                  const selected = category === cat.key;
+                  return (
+                    <Pressable
+                      key={cat.key}
+                      style={[styles.catCard, selected && { borderColor: theme.accent, borderWidth: 2 }]}
+                      onPress={() => setCategory(cat.key)}
                     >
-                      {selected && (
-                        <View style={[styles.selectedGlow, { backgroundColor: cat.accent + '18' }]} />
-                      )}
-                      <Text style={styles.catEmoji}>{cat.emoji}</Text>
-                      <Text style={[styles.catLabel, { color: selected ? cat.accent : COLORS.white70 }]}>
-                        {cat.label}
-                      </Text>
-                      {selected && (
-                        <View style={[styles.checkBadge, { backgroundColor: cat.accent }]}>
-                          <Text style={styles.checkIcon}>✓</Text>
-                        </View>
-                      )}
-                    </LinearGradient>
-                  </Pressable>
-                );
-              })}
-            </View>
+                      <LinearGradient
+                        colors={theme.colors}
+                        style={styles.catGradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                      >
+                        {selected && (
+                          <View style={[styles.selectedGlow, { backgroundColor: theme.accent + '18' }]} />
+                        )}
+                        <Text style={styles.catEmoji}>{theme.emoji}</Text>
+                        <Text style={[styles.catLabel, { color: selected ? theme.accent : COLORS.white70 }]}>
+                          {cat.label_ar}
+                        </Text>
+                        {selected && (
+                          <View style={[styles.checkBadge, { backgroundColor: theme.accent }]}>
+                            <Text style={styles.checkIcon}>✓</Text>
+                          </View>
+                        )}
+                      </LinearGradient>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
           </View>
 
           {/* Form section */}
@@ -204,6 +229,8 @@ const styles = StyleSheet.create({
   sectionTitle: { fontFamily: FONTS.bold, fontSize: 15, color: COLORS.gold },
   sectionIcon: { fontSize: 16 },
 
+  catsLoader: { height: 80, alignItems: 'center', justifyContent: 'center' },
+
   catGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -220,12 +247,11 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     gap: 8,
-    minHeight: 110,
+    minHeight: 100,
     justifyContent: 'center',
   },
   selectedGlow: {
     position: 'absolute',
-    inset: 0,
     top: 0, left: 0, right: 0, bottom: 0,
   },
   catEmoji: { fontSize: 32 },

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { supabase } from '@/lib/supabase';
 import { GoldButton } from '@/components/ui/GoldButton';
 import { GoldInput } from '@/components/ui/GoldInput';
 import { GoldCard } from '@/components/ui/GoldCard';
@@ -125,9 +126,6 @@ export default function RegisterScreen() {
     </LinearGradient>
   );
 }
-
-// Need to import supabase here
-import { supabase } from '@/lib/supabase';
 
 const styles = StyleSheet.create({
   bg: { flex: 1 },
