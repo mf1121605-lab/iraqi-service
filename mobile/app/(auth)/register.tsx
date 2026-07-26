@@ -71,10 +71,11 @@ export default function RegisterScreen() {
         return;
       }
 
-      // Sign in after successful registration
-      const e164 = `+964${form.phone.trim().slice(1)}`;
+      // Sign in after successful registration using the same email alias the
+      // API created (u+phone@domain), never phone auth (account has no phone identity)
+      const loginEmail = `${username.toLowerCase()}@iraqi-service.vercel.app`;
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        phone: e164,
+        email: loginEmail,
         password: form.password,
       });
       setLoading(false);
