@@ -39,7 +39,13 @@ export default function RegisterScreen() {
     try {
       // Auto-generate username from phone: "u" + digits (e.g. u07740338378)
       const username = `u${form.phone.trim()}`;
-      const res = await fetch(`${process.env.EXPO_PUBLIC_APP_URL}/api/customer/register`, {
+      const appUrl = process.env.EXPO_PUBLIC_APP_URL;
+      if (!appUrl) {
+        setError('خطأ: EXPO_PUBLIC_APP_URL غير محدد');
+        setLoading(false);
+        return;
+      }
+      const res = await fetch(`${appUrl}/api/customer/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -50,9 +56,17 @@ export default function RegisterScreen() {
           username,
         }),
       });
-      const data = await res.json();
+      let data: Record<string, unknown> = {};
+      try {
+        data = await res.json();
+      } catch {
+        setError(`خطأ ${res.status}: استجابة غير صالحة من الخادم`);
+        setLoading(false);
+        return;
+      }
       if (!res.ok) {
-        setError(data.error || 'حدث خطأ، يرجى المحاولة مجدداً');
+        const msg = (data.error as string) || (data.message as string) || `خطأ ${res.status}`;
+        setError(msg);
         setLoading(false);
         return;
       }
@@ -65,13 +79,14 @@ export default function RegisterScreen() {
       });
       setLoading(false);
       if (signInError) {
-        setError(signInError.message || 'تم التسجيل، يرجى تسجيل الدخول');
+        setError(`تم التسجيل. خطأ تسجيل الدخول: ${signInError.message}`);
         router.replace('/(auth)/login');
       } else {
         router.replace('/');
       }
-    } catch {
-      setError('حدث خطأ في الاتصال');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`خطأ في الاتصال: ${msg}`);
       setLoading(false);
     }
   }
