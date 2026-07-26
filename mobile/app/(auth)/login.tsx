@@ -37,11 +37,20 @@ export default function LoginScreen() {
     let authResult;
 
     if (/^[a-z][a-z0-9_]{2,}$/i.test(trimmed) && !/^\d/.test(trimmed)) {
+      // Username → email alias (same domain used at registration)
       const email = `${trimmed.toLowerCase()}@iraqi-service.vercel.app`;
       authResult = await supabase.auth.signInWithPassword({ email, password });
     } else if (/^07\d{9}$/.test(trimmed)) {
-      const e164 = `+964${trimmed.slice(1)}`;
-      authResult = await supabase.auth.signInWithPassword({ phone: e164, password });
+      // Phone number: customers are registered with email alias u+phone@domain.
+      // Try that first; fall back to native phone auth for employees who were
+      // created without a username.
+      const derivedEmail = `u${trimmed}@iraqi-service.vercel.app`;
+      authResult = await supabase.auth.signInWithPassword({ email: derivedEmail, password });
+      if (authResult.error) {
+        const e164 = `+964${trimmed.slice(1)}`;
+        const fallback = await supabase.auth.signInWithPassword({ phone: e164, password });
+        if (!fallback.error) authResult = fallback;
+      }
     } else {
       authResult = await supabase.auth.signInWithPassword({ email: trimmed, password });
     }

@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+import AnnouncementBanner from '@/components/ui/AnnouncementBanner';
 
 const CATEGORIES = [
   {
@@ -45,14 +46,6 @@ const CATEGORIES = [
     accent: '#e6ab2c',
   },
 ];
-
-const BANNER_EMOJI: Record<string, string> = {
-  welcome:   '🌟',
-  military:  '🪖',
-  education: '🎓',
-  welfare:   '❤️',
-  general:   '⭐',
-};
 
 type Announcement = {
   id: string;
@@ -169,21 +162,13 @@ export default function CustomerDashboard() {
         {/* ── Announcement Carousel ── */}
         {banner ? (
           <View style={styles.bannerWrap}>
-            <Animated.View style={[styles.bannerCard, { opacity: fadeAnim }]}>
-              <LinearGradient
-                colors={['rgba(230,171,44,0.18)', 'rgba(230,171,44,0.04)', 'transparent']}
-                style={styles.bannerGrad}
-              >
-                <Text style={styles.bannerEmoji}>
-                  {BANNER_EMOJI[banner.motion_graphic_key ?? ''] ?? '🌟'}
-                </Text>
-                <Text style={styles.bannerTitle}>{banner.title_ar}</Text>
-                {banner.description_ar ? (
-                  <Text style={styles.bannerDesc}>{banner.description_ar}</Text>
-                ) : null}
-              </LinearGradient>
-              {/* Gold shimmer top border */}
-              <View style={styles.bannerTopLine} />
+            <Animated.View style={{ opacity: fadeAnim }}>
+              <AnnouncementBanner
+                key={banner.id}
+                titleAr={banner.title_ar}
+                descriptionAr={banner.description_ar}
+                motionGraphicKey={banner.motion_graphic_key}
+              />
             </Animated.View>
 
             {announcements.length > 1 && (
@@ -329,44 +314,6 @@ const styles = StyleSheet.create({
   greeting:  { fontFamily: FONTS.regular, fontSize: 15, color: COLORS.white70, textAlign: 'right' },
 
   bannerWrap: { gap: 10 },
-  bannerCard: {
-    borderRadius: RADIUS.lg,
-    overflow: 'hidden',
-    backgroundColor: '#161b22',
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.3)',
-    shadowColor: '#e6ab2c',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 14,
-    elevation: 6,
-  },
-  bannerTopLine: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0,
-    height: 2,
-    backgroundColor: 'rgba(230,171,44,0.6)',
-  },
-  bannerGrad: {
-    padding: 28,
-    alignItems: 'center',
-    gap: 10,
-  },
-  bannerEmoji: { fontSize: 60 },
-  bannerTitle: {
-    fontFamily: FONTS.bold,
-    fontSize: 20,
-    color: COLORS.white,
-    textAlign: 'center',
-    lineHeight: 30,
-  },
-  bannerDesc: {
-    fontFamily: FONTS.regular,
-    fontSize: 13,
-    color: COLORS.white70,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
   dot: {
     width: 6,
