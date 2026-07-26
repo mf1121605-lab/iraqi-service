@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -16,36 +17,21 @@ import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import AnnouncementBanner from '@/components/ui/AnnouncementBanner';
 
-const CATEGORIES = [
-  {
-    key: 'military',
-    label: 'الخدمات\nالعسكرية',
-    emoji: '🪖',
-    colors: ['#1c2a38', '#0f1c28'] as [string, string],
-    accent: '#7da9cc',
-  },
-  {
-    key: 'education',
-    label: 'الخدمات\nالدراسية',
-    emoji: '🎓',
-    colors: ['#1a2640', '#0d1a33'] as [string, string],
-    accent: '#4f8bff',
-  },
-  {
-    key: 'welfare',
-    label: 'الرعاية\nالاجتماعية',
-    emoji: '❤️',
-    colors: ['#2a1a1a', '#1f0f0f'] as [string, string],
-    accent: '#e14b6a',
-  },
-  {
-    key: 'general',
-    label: 'خدمات\nأخرى',
-    emoji: '⭐',
-    colors: ['#28220d', '#1c180a'] as [string, string],
-    accent: '#e6ab2c',
-  },
-];
+// Emoji + color theme per category key — fallback for unknown keys
+const CAT_THEMES: Record<string, { emoji: string; accent: string; colors: [string, string] }> = {
+  military:  { emoji: '🪖', accent: '#7da9cc', colors: ['#1c2a38', '#0f1c28'] },
+  education: { emoji: '🎓', accent: '#4f8bff', colors: ['#1a2640', '#0d1a33'] },
+  welfare:   { emoji: '❤️', accent: '#e14b6a', colors: ['#2a1a1a', '#1f0f0f'] },
+  general:   { emoji: '⭐', accent: '#e6ab2c', colors: ['#28220d', '#1c180a'] },
+};
+const DEFAULT_THEME = { emoji: '🔹', accent: '#e6ab2c', colors: ['#1a1a2e', '#0f0f1a'] as [string, string] };
+
+type Category = {
+  id: string;
+  key: string;
+  label_ar: string;
+  section_type: string | null;
+};
 
 type Announcement = {
   id: string;
@@ -63,11 +49,13 @@ type UrgentNews = {
 type NewsLink = {
   id: string;
   title_ar: string;
-  url: string;
+  source: string | null;
+  url: string | null;
 };
 
 export default function CustomerDashboard() {
   const { profile } = useAuth();
+  const [categories, setCategories]     = useState<Category[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [urgentNews, setUrgentNews]       = useState<UrgentNews[]>([]);
   const [newsLinks, setNewsLinks]         = useState<NewsLink[]>([]);
@@ -77,7 +65,12 @@ export default function CustomerDashboard() {
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const loadData = useCallback(async () => {
-    const [ann, urgent, links] = await Promise.all([
+    const [cats, ann, urgent, links] = await Promise.all([
+      supabase
+        .from('categories')
+        .select('id, key, label_ar, section_type')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true }),
       supabase
         .from('announcements')
         .select('id, title_ar, description_ar, motion_graphic_key')
@@ -92,11 +85,12 @@ export default function CustomerDashboard() {
         .limit(5),
       supabase
         .from('news_links')
-        .select('id, title_ar, url')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true })
+        .select('id, title_ar, source, url')
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
         .limit(10),
     ]);
+    if (cats.data)   setCategories(cats.data);
     if (ann.data)    setAnnouncements(ann.data);
     if (urgent.data) setUrgentNews(urgent.data);
     if (links.data)  setNewsLinks(links.data);
@@ -104,11 +98,9 @@ export default function CustomerDashboard() {
     setRefreshing(false);
   }, []);
 
-  // Auto-advance banner with fade transition
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
+  // Auto-advance banner with fade transition
   useEffect(() => {
     if (announcements.length <= 1) return;
     const timer = setInterval(() => {
@@ -133,16 +125,16 @@ export default function CustomerDashboard() {
     );
   }
 
-  const banner  = announcements[bannerIdx] ?? null;
-  const greeting = profile?.given_name ? `أهلاً، ${profile.given_name} 👋` : 'أهلاً بك 👋';
+  const banner    = announcements[bannerIdx] ?? null;
+  const greeting  = profile?.given_name ? `أهلاً، ${profile.given_name} 👋` : 'أهلاً بك 👋';
+  const services  = categories.filter((c) => c.section_type !== 'tools');
+  const tools     = categories.filter((c) => c.section_type === 'tools');
 
   return (
     <LinearGradient colors={['#080c12', '#0d1117', '#080c12']} style={styles.bg}>
       <ScrollView
         contentContainerStyle={styles.scroll}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.gold} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.gold} />}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Header ── */}
@@ -170,7 +162,6 @@ export default function CustomerDashboard() {
                 motionGraphicKey={banner.motion_graphic_key}
               />
             </Animated.View>
-
             {announcements.length > 1 && (
               <View style={styles.dots}>
                 {announcements.map((_, i) => (
@@ -205,59 +196,61 @@ export default function CustomerDashboard() {
                   <Text style={styles.urgentBadge}>عاجل</Text>
                 </View>
                 <Text style={styles.urgentTitle}>{item.title_ar}</Text>
-                {item.content_ar ? (
-                  <Text style={styles.urgentBody}>{item.content_ar}</Text>
-                ) : null}
+                {item.content_ar ? <Text style={styles.urgentBody}>{item.content_ar}</Text> : null}
               </View>
             ))}
           </View>
         )}
 
-        {/* ── Service Categories ── */}
-        <View style={styles.section}>
-          <SectionHeader title="الخدمات المتاحة" icon="🛠️" />
-          <View style={styles.catGrid}>
-            {CATEGORIES.map((cat) => (
-              <Pressable
-                key={cat.key}
-                style={({ pressed }) => [styles.catTouchable, pressed && styles.catPressed]}
-                onPress={() =>
-                  router.push({
-                    pathname: '/(customer)/requests/new',
-                    params: { category: cat.key },
-                  })
-                }
-              >
-                <LinearGradient colors={cat.colors} style={styles.catCard}>
-                  <View style={[styles.catAccentDot, { backgroundColor: cat.accent + '40' }]} />
-                  <Text style={styles.catEmoji}>{cat.emoji}</Text>
-                  <Text style={styles.catLabel}>{cat.label}</Text>
-                  <View style={[styles.catPill, { backgroundColor: cat.accent + '22', borderColor: cat.accent + '55' }]}>
-                    <Text style={[styles.catPillText, { color: cat.accent }]}>اختر</Text>
-                  </View>
-                </LinearGradient>
-              </Pressable>
-            ))}
+        {/* ── Services ── */}
+        {services.length > 0 && (
+          <View style={styles.section}>
+            <SectionHeader title="الخدمات المتاحة" icon="🛠️" />
+            <CategoryGrid items={services} />
           </View>
-        </View>
+        )}
+
+        {/* ── Tools ── */}
+        {tools.length > 0 && (
+          <View style={styles.section}>
+            <SectionHeader title="الأدوات المهمة" icon="🔧" />
+            <CategoryGrid items={tools} />
+          </View>
+        )}
+
+        {/* ── Community shortcut ── */}
+        <Pressable
+          style={({ pressed }) => [styles.communityCard, pressed && { opacity: 0.8 }]}
+          onPress={() => router.push('/(customer)/news')}
+        >
+          <View style={styles.communityInner}>
+            <Text style={styles.communityEmoji}>💬</Text>
+            <View style={styles.communityText}>
+              <Text style={styles.communityTitle}>مجتمع المحادثات</Text>
+              <Text style={styles.communitySub}>شارك وتفاعل مع الأخبار والإعلانات</Text>
+            </View>
+            <Text style={styles.communityArrow}>←</Text>
+          </View>
+        </Pressable>
 
         {/* ── News Links ── */}
         {newsLinks.length > 0 && (
           <View style={styles.section}>
-            <SectionHeader title="روابط مفيدة" icon="🔗" />
+            <SectionHeader title="إعلانات وروابط مفيدة" icon="📌" />
             <View style={styles.linkList}>
               {newsLinks.map((item, idx) => (
-                <View
+                <Pressable
                   key={item.id}
-                  style={[
-                    styles.linkRow,
-                    idx < newsLinks.length - 1 && styles.linkRowBorder,
-                  ]}
+                  style={[styles.linkRow, idx < newsLinks.length - 1 && styles.linkRowBorder]}
+                  onPress={() => item.url ? Linking.openURL(item.url) : undefined}
                 >
-                  <Text style={styles.linkArrow}>←</Text>
-                  <Text style={styles.linkText} numberOfLines={1}>{item.title_ar}</Text>
                   <Text style={styles.linkBullet}>📌</Text>
-                </View>
+                  <View style={styles.linkContent}>
+                    <Text style={styles.linkText} numberOfLines={2}>{item.title_ar}</Text>
+                    {item.source ? <Text style={styles.linkSource}>{item.source}</Text> : null}
+                  </View>
+                  {item.url ? <Text style={styles.linkArrow}>←</Text> : null}
+                </Pressable>
               ))}
             </View>
           </View>
@@ -266,6 +259,32 @@ export default function CustomerDashboard() {
         <View style={{ height: 32 }} />
       </ScrollView>
     </LinearGradient>
+  );
+}
+
+function CategoryGrid({ items }: { items: Category[] }) {
+  return (
+    <View style={styles.catGrid}>
+      {items.map((cat) => {
+        const theme = CAT_THEMES[cat.key] ?? DEFAULT_THEME;
+        return (
+          <Pressable
+            key={cat.key}
+            style={({ pressed }) => [styles.catTouchable, pressed && styles.catPressed]}
+            onPress={() => router.push({ pathname: '/(customer)/requests/new', params: { category: cat.key } })}
+          >
+            <LinearGradient colors={theme.colors} style={styles.catCard}>
+              <View style={[styles.catAccentDot, { backgroundColor: theme.accent + '40' }]} />
+              <Text style={styles.catEmoji}>{theme.emoji}</Text>
+              <Text style={styles.catLabel}>{cat.label_ar}</Text>
+              <View style={[styles.catPill, { backgroundColor: theme.accent + '22', borderColor: theme.accent + '55' }]}>
+                <Text style={[styles.catPillText, { color: theme.accent }]}>اختر</Text>
+              </View>
+            </LinearGradient>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
@@ -291,22 +310,15 @@ const styles = StyleSheet.create({
   center: { flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: 16, gap: 20 },
 
-  header: { gap: 12, paddingTop: 8 },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  header:   { gap: 12, paddingTop: 8 },
+  logoRow:  { flexDirection: 'row', alignItems: 'center', gap: 12 },
   logoBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 52, height: 52, borderRadius: 26,
     backgroundColor: 'rgba(230,171,44,0.12)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(230,171,44,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#e6ab2c',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
+    borderWidth: 1.5, borderColor: 'rgba(230,171,44,0.4)',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#e6ab2c', shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35, shadowRadius: 10, elevation: 6,
   },
   logoEmoji: { fontSize: 24 },
   appName:   { fontFamily: FONTS.bold, fontSize: 22, color: COLORS.gold, letterSpacing: 0.5 },
@@ -315,22 +327,14 @@ const styles = StyleSheet.create({
 
   bannerWrap: { gap: 10 },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.2)' },
   dotActive: { backgroundColor: COLORS.gold, width: 20, borderRadius: 3 },
 
-  ctaBtn: { borderRadius: RADIUS.md, overflow: 'hidden', elevation: 6 },
+  ctaBtn:        { borderRadius: RADIUS.md, overflow: 'hidden', elevation: 6 },
   ctaBtnPressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
   ctaGrad: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 10, paddingVertical: 16,
   },
   ctaIcon:  { fontSize: 22, color: '#1a1000', fontFamily: FONTS.bold },
   ctaLabel: { fontFamily: FONTS.bold, fontSize: 17, color: '#1a1000' },
@@ -339,110 +343,62 @@ const styles = StyleSheet.create({
 
   urgentCard: {
     backgroundColor: 'rgba(239,68,68,0.07)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(239,68,68,0.5)',
-    borderRadius: RADIUS.md,
-    padding: 14,
-    gap: 6,
-    shadowColor: '#ef4444',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 1.5, borderColor: 'rgba(239,68,68,0.5)',
+    borderRadius: RADIUS.md, padding: 14, gap: 6,
+    shadowColor: '#ef4444', shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2, shadowRadius: 8, elevation: 3,
   },
   urgentHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  urgentPulse: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#ef4444',
-  },
+  urgentPulse:  { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444' },
   urgentBadge: {
-    fontFamily: FONTS.bold,
-    fontSize: 11,
-    color: '#ef4444',
-    backgroundColor: 'rgba(239,68,68,0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+    fontFamily: FONTS.bold, fontSize: 11, color: '#ef4444',
+    backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10,
   },
-  urgentTitle: {
-    fontFamily: FONTS.bold,
-    fontSize: 15,
-    color: COLORS.white,
-    textAlign: 'right',
-    lineHeight: 24,
-  },
-  urgentBody: {
-    fontFamily: FONTS.regular,
-    fontSize: 13,
-    color: COLORS.white70,
-    textAlign: 'right',
-    lineHeight: 22,
-  },
+  urgentTitle: { fontFamily: FONTS.bold, fontSize: 15, color: COLORS.white, textAlign: 'right', lineHeight: 24 },
+  urgentBody:  { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white70, textAlign: 'right', lineHeight: 22 },
 
-  catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  catGrid:      { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   catTouchable: { flexBasis: '47%', flexGrow: 1, borderRadius: RADIUS.md, overflow: 'hidden' },
   catPressed:   { opacity: 0.75, transform: [{ scale: 0.96 }] },
   catCard: {
-    padding: 18,
-    alignItems: 'center',
-    gap: 8,
-    minHeight: 120,
-    justifyContent: 'center',
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    position: 'relative',
-    overflow: 'hidden',
+    padding: 18, alignItems: 'center', gap: 8, minHeight: 120,
+    justifyContent: 'center', borderRadius: RADIUS.md,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+    position: 'relative', overflow: 'hidden',
   },
-  catAccentDot: {
-    position: 'absolute',
-    top: -20,
-    right: -20,
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
-  catEmoji: { fontSize: 36 },
+  catAccentDot: { position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: 40 },
+  catEmoji:     { fontSize: 36 },
   catLabel: {
-    fontFamily: FONTS.bold,
-    fontSize: 13,
-    color: COLORS.white,
-    textAlign: 'center',
-    lineHeight: 20,
+    fontFamily: FONTS.bold, fontSize: 13, color: COLORS.white,
+    textAlign: 'center', lineHeight: 20,
   },
-  catPill: {
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    marginTop: 2,
-  },
+  catPill:     { borderRadius: 12, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 3, marginTop: 2 },
   catPillText: { fontFamily: FONTS.bold, fontSize: 11 },
 
-  linkList: {
-    backgroundColor: '#161b22',
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.15)',
+  communityCard: {
+    backgroundColor: '#161b22', borderRadius: RADIUS.md,
+    borderWidth: 1, borderColor: 'rgba(230,171,44,0.2)',
     overflow: 'hidden',
   },
-  linkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+  communityInner: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    padding: 16,
   },
+  communityEmoji: { fontSize: 32 },
+  communityText:  { flex: 1 },
+  communityTitle: { fontFamily: FONTS.bold, fontSize: 15, color: COLORS.white, textAlign: 'right' },
+  communitySub:   { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted, textAlign: 'right', marginTop: 2 },
+  communityArrow: { fontFamily: FONTS.regular, fontSize: 18, color: COLORS.gold },
+
+  linkList: {
+    backgroundColor: '#161b22', borderRadius: RADIUS.md,
+    borderWidth: 1, borderColor: 'rgba(230,171,44,0.15)', overflow: 'hidden',
+  },
+  linkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 13 },
   linkRowBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
-  linkBullet: { fontSize: 14 },
-  linkText: {
-    flex: 1,
-    fontFamily: FONTS.regular,
-    fontSize: 14,
-    color: COLORS.white70,
-    textAlign: 'right',
-  },
+  linkBullet:  { fontSize: 14 },
+  linkContent: { flex: 1 },
+  linkText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.white70, textAlign: 'right' },
+  linkSource: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.muted, textAlign: 'right', marginTop: 2 },
   linkArrow: { fontFamily: FONTS.regular, fontSize: 16, color: COLORS.gold },
 });
