@@ -11,6 +11,7 @@
     "submit": "eas submit -p android"
   },
   "dependencies": {
+    "@expo-google-fonts/cairo": "^0.2.3",
     "@expo/vector-icons": "^14.0.0",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@supabase/supabase-js": "^2.45.0",
