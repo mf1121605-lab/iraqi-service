@@ -2,11 +2,12 @@ import { StyleSheet, Text, View } from 'react-native';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 interface Props {
-  content: string;
+  body: string;
   isMine: boolean;
   senderName?: string;
   timestamp?: string;
   messageType?: string;
+  bundled?: boolean;
 }
 
 function formatTime(iso: string) {
@@ -18,10 +19,10 @@ function formatTime(iso: string) {
   });
 }
 
-export function MessageBubble({ content, isMine, senderName, timestamp, messageType }: Props) {
+export function MessageBubble({ body, isMine, senderName, timestamp, messageType }: Props) {
   if (messageType === 'payment_proposal') {
     let parsed = { method: '', amount: '', notes: '' };
-    try { parsed = JSON.parse(content); } catch {}
+    try { parsed = JSON.parse(body); } catch {}
     return (
       <View style={[styles.row, isMine ? styles.rowMine : styles.rowTheirs]}>
         <View style={styles.paymentBubble}>
@@ -41,7 +42,7 @@ export function MessageBubble({ content, isMine, senderName, timestamp, messageT
           <Text style={styles.sender}>{senderName}</Text>
         )}
         <Text style={[styles.text, isMine ? styles.textMine : styles.textTheirs]}>
-          {content}
+          {body}
         </Text>
         {timestamp && (
           <Text style={styles.time}>{formatTime(timestamp)}</Text>

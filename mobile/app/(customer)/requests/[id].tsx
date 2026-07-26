@@ -70,7 +70,7 @@ export default function RequestDetail() {
         .order('created_at', { ascending: true })
         .limit(200),
     ]);
-    if (rRes.data) setReq(rRes.data as RequestDetail);
+    if (rRes.data) setReq(rRes.data as unknown as RequestDetail);
     if (mRes.data) setMessages(mRes.data);
     setLoading(false);
   }, [id]);

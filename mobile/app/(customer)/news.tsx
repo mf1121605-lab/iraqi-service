@@ -50,7 +50,7 @@ export default function NewsScreen() {
       .eq('approved', true)
       .order('created_at', { ascending: false })
       .limit(30);
-    if (data) setPosts(data as Post[]);
+    if (data) setPosts(data as unknown as Post[]);
     setLoading(false);
     setRefreshing(false);
   }, []);
