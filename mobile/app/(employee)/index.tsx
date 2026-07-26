@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ScreenBg } from '@/components/ui/ScreenBg';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { MessageBubble } from '@/components/chat/MessageBubble';
@@ -191,7 +192,7 @@ export default function EmployeeDashboard() {
     const isClosed = selected.status === 'completed' || selected.status === 'cancelled';
 
     return (
-      <LinearGradient colors={['#080c12', '#0d1117', '#080c12']} style={styles.bg}>
+      <ScreenBg noTopPad>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.flex}
@@ -308,7 +309,7 @@ export default function EmployeeDashboard() {
             </View>
           )}
         </KeyboardAvoidingView>
-      </LinearGradient>
+      </ScreenBg>
     );
   }
 
@@ -328,7 +329,7 @@ export default function EmployeeDashboard() {
   const activeCount = pending + inProgress;
 
   return (
-    <LinearGradient colors={['#080c12', '#0d1117', '#080c12']} style={styles.bg}>
+    <ScreenBg noTopPad>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -432,12 +433,11 @@ export default function EmployeeDashboard() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </LinearGradient>
+    </ScreenBg>
   );
 }
 
 const styles = StyleSheet.create({
-  bg: { flex: 1 },
   flex: { flex: 1 },
   center: { flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: 16, gap: 16 },

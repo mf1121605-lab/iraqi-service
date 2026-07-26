@@ -9,8 +9,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { ScreenBg } from '@/components/ui/ScreenBg';
 import { GoldButton } from '@/components/ui/GoldButton';
 import { GoldInput } from '@/components/ui/GoldInput';
 import { GoldCard } from '@/components/ui/GoldCard';
@@ -90,7 +90,7 @@ export default function ForgotPasswordScreen() {
 
   if (step === 'success') {
     return (
-      <LinearGradient colors={['#0a0e14', '#111720', '#0a0e14']} style={styles.bg}>
+      <ScreenBg>
         <View style={styles.center}>
           <View style={styles.successCard}>
             <Text style={styles.successEmoji}>✅</Text>
@@ -104,12 +104,12 @@ export default function ForgotPasswordScreen() {
             </Pressable>
           </View>
         </View>
-      </LinearGradient>
+      </ScreenBg>
     );
   }
 
   return (
-    <LinearGradient colors={['#0a0e14', '#111720', '#0a0e14']} style={styles.bg}>
+    <ScreenBg>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
@@ -182,12 +182,11 @@ export default function ForgotPasswordScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </ScreenBg>
   );
 }
 
 const styles = StyleSheet.create({
-  bg: { flex: 1 },
   flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   scroll: { flexGrow: 1, padding: 24, gap: 24 },

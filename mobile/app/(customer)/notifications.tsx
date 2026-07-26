@@ -8,8 +8,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { ScreenBg } from '@/components/ui/ScreenBg';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -125,7 +125,7 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <LinearGradient colors={['#080c12', '#0d1117', '#080c12']} style={styles.bg}>
+    <ScreenBg noTopPad>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -208,7 +208,7 @@ export default function NotificationsScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
-    </LinearGradient>
+    </ScreenBg>
   );
 }
 

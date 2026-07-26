@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ScreenBg } from '@/components/ui/ScreenBg';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -67,7 +68,7 @@ export default function MatchingScreen() {
   }
 
   return (
-    <LinearGradient colors={['#080c12', '#0d1117', '#080c12']} style={styles.bg}>
+    <ScreenBg noTopPad>
       {/* Header */}
       <View style={styles.navHeader}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
@@ -158,12 +159,11 @@ export default function MatchingScreen() {
           }}
         />
       )}
-    </LinearGradient>
+    </ScreenBg>
   );
 }
 
 const styles = StyleSheet.create({
-  bg: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
 
   navHeader: {

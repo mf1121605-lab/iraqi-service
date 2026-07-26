@@ -10,7 +10,9 @@ import {
   Cairo_400Regular,
   Cairo_700Bold,
 } from '@expo-google-fonts/cairo';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/hooks/useAuth';
+import { CinematicFrame } from '@/components/ui/CinematicFrame';
 
 // Required to dismiss the OAuth browser session when the app is foregrounded
 WebBrowser.maybeCompleteAuthSession();
@@ -58,10 +60,13 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <StatusBar style="light" backgroundColor="#0d1117" />
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0d1117' } }} />
-      </AuthProvider>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <StatusBar style="light" backgroundColor="#0d1117" />
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />
+          <CinematicFrame />
+        </AuthProvider>
+      </SafeAreaProvider>
     </ErrorBoundary>
   );
 }

@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ScreenBg } from '@/components/ui/ScreenBg';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { GoldInput } from '@/components/ui/GoldInput';
@@ -151,7 +152,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <LinearGradient colors={['#080c12', '#0d1117', '#080c12']} style={styles.bg}>
+    <ScreenBg noTopPad>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -336,7 +337,7 @@ export default function ProfileScreen() {
           <View style={{ height: 32 }} />
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </ScreenBg>
   );
 }
 

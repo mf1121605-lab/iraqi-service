@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { ScreenBg } from '@/components/ui/ScreenBg';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -171,7 +171,7 @@ export default function NewsScreen() {
   }
 
   return (
-    <LinearGradient colors={['#080c12', '#0d1117', '#080c12']} style={styles.bg}>
+    <ScreenBg noTopPad>
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id}
@@ -342,7 +342,7 @@ export default function NewsScreen() {
           );
         }}
       />
-    </LinearGradient>
+    </ScreenBg>
   );
 }
 

@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ScreenBg } from '@/components/ui/ScreenBg';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -140,7 +141,7 @@ export default function RequestDetail() {
   const isClosed = req.status === 'completed' || req.status === 'cancelled';
 
   return (
-    <LinearGradient colors={['#080c12', '#0d1117', '#080c12']} style={styles.bg}>
+    <ScreenBg noTopPad>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}
@@ -263,12 +264,11 @@ export default function RequestDetail() {
           </View>
         )}
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </ScreenBg>
   );
 }
 
 const styles = StyleSheet.create({
-  bg: { flex: 1 },
   flex: { flex: 1 },
   center: { flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center' },
   notFoundText: { fontFamily: FONTS.regular, fontSize: 15, color: COLORS.muted },
