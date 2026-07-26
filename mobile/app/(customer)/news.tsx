@@ -12,9 +12,14 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import { GoldCard } from '@/components/ui/GoldCard';
-import { GoldButton } from '@/components/ui/GoldButton';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+
+type Comment = {
+  id: string;
+  content: string;
+  author: { given_name: string; family_name: string } | null;
+  created_at: string;
+};
 
 type Post = {
   id: string;
@@ -22,21 +27,51 @@ type Post = {
   created_at: string;
   author: { given_name: string; family_name: string } | null;
   reactions: { reaction_type: string; user_id: string }[];
-  comments: { id: string; content: string; author: { given_name: string } | null }[];
+  comments: Comment[];
 };
 
 const REACTIONS = [
-  { type: 'like',    emoji: '👍' },
-  { type: 'dislike', emoji: '👎' },
+  { type: 'like',    emoji: '👍', label: 'مفيد' },
+  { type: 'dislike', emoji: '👎', label: 'غير مفيد' },
 ];
 
+function getInitials(given?: string, family?: string) {
+  const a = given?.[0] ?? '';
+  const b = family?.[0] ?? '';
+  return (a + b).toUpperCase() || '?';
+}
+
+function AvatarCircle({ name, size = 38 }: { name: string; size?: number }) {
+  const initials = name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase() || '?';
+  const hue = (name.charCodeAt(0) ?? 0) * 37 % 360;
+  return (
+    <View style={[avatarStyles.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: `hsl(${hue},40%,22%)`, borderColor: `hsl(${hue},40%,38%)` }]}>
+      <Text style={[avatarStyles.initials, { fontSize: size * 0.38 }]}>{initials}</Text>
+    </View>
+  );
+}
+
+const avatarStyles = StyleSheet.create({
+  circle: { alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  initials: { fontFamily: 'Cairo_700Bold', color: '#fff' },
+});
+
 export default function NewsScreen() {
-  const { session, profile } = useAuth();
+  const { session } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [newPost, setNewPost] = useState('');
   const [posting, setPosting] = useState(false);
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
+  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
+  const [sendingComment, setSendingComment] = useState<string | null>(null);
 
   const loadPosts = useCallback(async () => {
     const { data } = await supabase
@@ -45,7 +80,7 @@ export default function NewsScreen() {
         id, content, created_at,
         author:profiles!author_id(given_name, family_name),
         reactions:social_reactions(reaction_type, user_id),
-        comments:social_comments(id, content, author:profiles!author_id(given_name))
+        comments:social_comments(id, content, created_at, author:profiles!author_id(given_name, family_name))
       `)
       .eq('approved', true)
       .order('created_at', { ascending: false })
@@ -92,13 +127,39 @@ export default function NewsScreen() {
           .eq('post_id', postId).eq('user_id', session.user.id);
       }
     } else {
-      await supabase.from('social_reactions').insert({ post_id: postId, user_id: session.user.id, reaction_type: type });
+      await supabase.from('social_reactions').insert({
+        post_id: postId, user_id: session.user.id, reaction_type: type,
+      });
     }
     loadPosts();
   }
 
+  async function sendComment(postId: string) {
+    const body = commentInputs[postId]?.trim();
+    if (!body || !session?.user.id) return;
+    setSendingComment(postId);
+    await supabase.from('social_comments').insert({
+      post_id: postId,
+      author_id: session.user.id,
+      content: body,
+    });
+    setCommentInputs((prev) => ({ ...prev, [postId]: '' }));
+    setSendingComment(null);
+    loadPosts();
+  }
+
+  function toggleComments(postId: string) {
+    setExpandedComments((prev) => {
+      const next = new Set(prev);
+      next.has(postId) ? next.delete(postId) : next.add(postId);
+      return next;
+    });
+  }
+
   function formatDate(iso: string) {
-    return new Date(iso).toLocaleDateString('ar', { day: 'numeric', month: 'short', timeZone: 'Asia/Baghdad' });
+    return new Date(iso).toLocaleDateString('ar', {
+      day: 'numeric', month: 'short', timeZone: 'Asia/Baghdad',
+    });
   }
 
   if (loading) {
@@ -110,44 +171,64 @@ export default function NewsScreen() {
   }
 
   return (
-    <LinearGradient colors={['#0d1117', '#161b22', '#0d1117']} style={styles.bg}>
+    <LinearGradient colors={['#080c12', '#0d1117', '#080c12']} style={styles.bg}>
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadPosts(); }} tintColor={COLORS.gold} />}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); loadPosts(); }}
+            tintColor={COLORS.gold}
+          />
+        }
         ListHeaderComponent={
-          <View style={styles.header}>
+          <View style={styles.headerSection}>
             <Text style={styles.pageTitle}>آخر الأخبار</Text>
-            <GoldCard style={styles.composer}>
-              <TextInput
-                value={newPost}
-                onChangeText={setNewPost}
-                placeholder="شاركنا ما يدور في ذهنك..."
-                placeholderTextColor={COLORS.white40}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-                style={styles.composerInput}
-                textAlign="right"
-              />
-              <GoldButton
-                label="نشر"
-                onPress={submitPost}
-                loading={posting}
-                style={styles.postBtn}
-                small
-              />
-              {newPost.trim() && (
-                <Text style={styles.pendingNote}>سيظهر بعد موافقة الإدارة</Text>
-              )}
-            </GoldCard>
+
+            {/* Composer card */}
+            <View style={styles.composerCard}>
+              <View style={styles.composerTop}>
+                <TextInput
+                  value={newPost}
+                  onChangeText={setNewPost}
+                  placeholder="شاركنا ما يدور في ذهنك..."
+                  placeholderTextColor={COLORS.white40}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  style={styles.composerInput}
+                  textAlign="right"
+                />
+              </View>
+              <View style={styles.composerActions}>
+                {newPost.trim() ? (
+                  <Text style={styles.pendingNote}>سيظهر بعد موافقة الإدارة</Text>
+                ) : (
+                  <View style={{ flex: 1 }} />
+                )}
+                <Pressable
+                  style={({ pressed }) => [styles.postBtn, !newPost.trim() && styles.postBtnDisabled, pressed && { opacity: 0.8 }]}
+                  onPress={submitPost}
+                  disabled={posting || !newPost.trim()}
+                >
+                  {posting ? (
+                    <ActivityIndicator color="#000" size="small" />
+                  ) : (
+                    <Text style={styles.postBtnText}>نشر</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
           </View>
         }
         ListEmptyComponent={
-          <View style={styles.empty}>
+          <View style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>📰</Text>
-            <Text style={styles.emptyText}>لا توجد منشورات بعد</Text>
+            <Text style={styles.emptyTitle}>لا توجد منشورات بعد</Text>
+            <Text style={styles.emptySub}>كن أول من يشارك!</Text>
           </View>
         }
         renderItem={({ item }) => {
@@ -155,34 +236,109 @@ export default function NewsScreen() {
           const authorName = item.author
             ? `${item.author.given_name} ${item.author.family_name}`
             : 'مجهول';
+          const commentsExpanded = expandedComments.has(item.id);
+          const commentText = commentInputs[item.id] ?? '';
+
           return (
-            <GoldCard style={styles.postCard}>
+            <View style={styles.postCard}>
+              {/* Post header */}
               <View style={styles.postHeader}>
-                <Text style={styles.authorName}>{authorName}</Text>
-                <Text style={styles.postDate}>{formatDate(item.created_at)}</Text>
+                <View style={styles.postMeta}>
+                  <Text style={styles.postDate}>{formatDate(item.created_at)}</Text>
+                </View>
+                <View style={styles.authorRow}>
+                  <Text style={styles.authorName}>{authorName}</Text>
+                  <AvatarCircle name={authorName} size={38} />
+                </View>
               </View>
+
+              {/* Content */}
               {item.content ? (
                 <Text style={styles.postContent}>{item.content}</Text>
               ) : null}
-              {/* Reactions */}
-              <View style={styles.reactRow}>
-                {REACTIONS.map((r) => {
-                  const count = item.reactions.filter((x) => x.reaction_type === r.type).length;
-                  const active = myReaction?.reaction_type === r.type;
-                  return (
-                    <Pressable
-                      key={r.type}
-                      style={[styles.reactBtn, active && styles.reactBtnActive]}
-                      onPress={() => handleReaction(item.id, r.type)}
-                    >
-                      <Text style={styles.reactEmoji}>{r.emoji}</Text>
-                      {count > 0 && <Text style={[styles.reactCount, active && styles.reactCountActive]}>{count}</Text>}
-                    </Pressable>
-                  );
-                })}
-                <Text style={styles.commentCount}>{item.comments.length} تعليق</Text>
+
+              {/* Divider */}
+              <View style={styles.divider} />
+
+              {/* Reactions + comment toggle */}
+              <View style={styles.actionsRow}>
+                <Pressable
+                  style={styles.commentToggle}
+                  onPress={() => toggleComments(item.id)}
+                >
+                  <Text style={styles.commentToggleText}>
+                    💬 {item.comments.length > 0 ? item.comments.length : ''} {item.comments.length === 1 ? 'تعليق' : 'تعليقات'}
+                  </Text>
+                </Pressable>
+                <View style={styles.reactionsGroup}>
+                  {REACTIONS.map((r) => {
+                    const count = item.reactions.filter((x) => x.reaction_type === r.type).length;
+                    const active = myReaction?.reaction_type === r.type;
+                    return (
+                      <Pressable
+                        key={r.type}
+                        style={[styles.reactBtn, active && styles.reactBtnActive]}
+                        onPress={() => handleReaction(item.id, r.type)}
+                      >
+                        <Text style={styles.reactEmoji}>{r.emoji}</Text>
+                        {count > 0 && (
+                          <Text style={[styles.reactCount, active && styles.reactCountActive]}>{count}</Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
-            </GoldCard>
+
+              {/* Comments section */}
+              {commentsExpanded && (
+                <View style={styles.commentsSection}>
+                  {item.comments.length === 0 ? (
+                    <Text style={styles.noComments}>لا توجد تعليقات بعد</Text>
+                  ) : (
+                    item.comments.map((c) => {
+                      const cName = c.author
+                        ? `${c.author.given_name} ${c.author.family_name}`
+                        : 'مجهول';
+                      return (
+                        <View key={c.id} style={styles.commentRow}>
+                          <AvatarCircle name={cName} size={28} />
+                          <View style={styles.commentBubble}>
+                            <Text style={styles.commentAuthor}>{cName}</Text>
+                            <Text style={styles.commentContent}>{c.content}</Text>
+                          </View>
+                        </View>
+                      );
+                    })
+                  )}
+
+                  {/* Comment input */}
+                  <View style={styles.commentInputRow}>
+                    <Pressable
+                      style={[styles.commentSendBtn, !commentText.trim() && styles.commentSendBtnDisabled]}
+                      onPress={() => sendComment(item.id)}
+                      disabled={!commentText.trim() || sendingComment === item.id}
+                    >
+                      {sendingComment === item.id ? (
+                        <ActivityIndicator color="#000" size="small" />
+                      ) : (
+                        <Text style={styles.commentSendIcon}>↑</Text>
+                      )}
+                    </Pressable>
+                    <TextInput
+                      value={commentText}
+                      onChangeText={(t) => setCommentInputs((prev) => ({ ...prev, [item.id]: t }))}
+                      placeholder="أضف تعليقاً..."
+                      placeholderTextColor={COLORS.white40}
+                      style={styles.commentInput}
+                      textAlign="right"
+                      multiline
+                      maxLength={500}
+                    />
+                  </View>
+                </View>
+              )}
+            </View>
           );
         }}
       />
@@ -193,10 +349,19 @@ export default function NewsScreen() {
 const styles = StyleSheet.create({
   bg: { flex: 1 },
   center: { flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: 16, gap: 12 },
-  header: { gap: 12, marginBottom: 4 },
-  pageTitle: { fontFamily: FONTS.bold, fontSize: 22, color: COLORS.white },
-  composer: { gap: 10 },
+  list: { padding: 16, gap: 14 },
+
+  headerSection: { gap: 12, marginBottom: 4 },
+  pageTitle: { fontFamily: FONTS.bold, fontSize: 24, color: COLORS.white, textAlign: 'right' },
+
+  composerCard: {
+    backgroundColor: '#161b22',
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(230,171,44,0.2)',
+    overflow: 'hidden',
+  },
+  composerTop: { padding: 14 },
   composerInput: {
     color: COLORS.white,
     fontFamily: FONTS.regular,
@@ -204,17 +369,71 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: 'top',
   },
-  postBtn: { alignSelf: 'flex-end' },
-  pendingNote: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.muted, textAlign: 'right' },
-  empty: { alignItems: 'center', paddingVertical: 60, gap: 12 },
-  emptyEmoji: { fontSize: 48 },
-  emptyText: { fontFamily: FONTS.regular, fontSize: 15, color: COLORS.muted },
-  postCard: { gap: 10 },
-  postHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  composerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+  },
+  pendingNote: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.muted },
+  postBtn: {
+    backgroundColor: COLORS.gold,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  postBtnDisabled: { backgroundColor: 'rgba(230,171,44,0.3)' },
+  postBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: '#000' },
+
+  emptyState: { alignItems: 'center', paddingVertical: 60, gap: 10 },
+  emptyEmoji: { fontSize: 52 },
+  emptyTitle: { fontFamily: FONTS.bold, fontSize: 16, color: COLORS.white },
+  emptySub: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
+
+  postCard: {
+    backgroundColor: '#161b22',
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(230,171,44,0.15)',
+    overflow: 'hidden',
+  },
+  postHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 14,
+    paddingBottom: 10,
+  },
+  postMeta: { gap: 2 },
+  postDate: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.muted },
+  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   authorName: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.gold },
-  postDate: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted },
-  postContent: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.white, lineHeight: 22, textAlign: 'right' },
-  reactRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+
+  postContent: {
+    fontFamily: FONTS.regular,
+    fontSize: 14,
+    color: COLORS.white,
+    lineHeight: 23,
+    textAlign: 'right',
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+  },
+
+  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginHorizontal: 14 },
+
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  commentToggle: { paddingVertical: 4 },
+  commentToggleText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
+  reactionsGroup: { flexDirection: 'row', gap: 6 },
   reactBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -230,8 +449,58 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(230,171,44,0.15)',
     borderColor: 'rgba(230,171,44,0.5)',
   },
-  reactEmoji: { fontSize: 16 },
+  reactEmoji: { fontSize: 15 },
   reactCount: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted },
   reactCountActive: { color: COLORS.gold },
-  commentCount: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted, marginLeft: 'auto' },
+
+  commentsSection: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+    padding: 12,
+    gap: 10,
+    backgroundColor: '#0d1117',
+  },
+  noComments: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted, textAlign: 'center', paddingVertical: 8 },
+  commentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, justifyContent: 'flex-end' },
+  commentBubble: {
+    flex: 1,
+    backgroundColor: '#161b22',
+    borderRadius: RADIUS.md,
+    padding: 10,
+    gap: 3,
+    alignItems: 'flex-end',
+  },
+  commentAuthor: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold },
+  commentContent: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white, lineHeight: 18, textAlign: 'right' },
+
+  commentInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+    marginTop: 4,
+  },
+  commentInput: {
+    flex: 1,
+    backgroundColor: '#161b22',
+    borderWidth: 1,
+    borderColor: 'rgba(230,171,44,0.2)',
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: COLORS.white,
+    fontFamily: FONTS.regular,
+    fontSize: 13,
+    maxHeight: 80,
+    minHeight: 38,
+  },
+  commentSendBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  commentSendBtnDisabled: { backgroundColor: 'rgba(230,171,44,0.3)' },
+  commentSendIcon: { fontSize: 18, color: '#000', fontFamily: FONTS.bold },
 });
