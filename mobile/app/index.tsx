@@ -2,6 +2,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { COLORS } from '@/constants/theme';
+// v1.0.1
 
 export default function Index() {
   const { session, profile, loading } = useAuth();
