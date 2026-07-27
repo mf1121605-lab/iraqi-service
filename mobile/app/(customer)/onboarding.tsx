@@ -29,9 +29,14 @@ export default function Onboarding() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (profile?.given_name) setGivenName(profile.given_name);
-    if (profile?.family_name) setFamilyName(profile.family_name);
-    if (profile?.avatar_key) setSelected(profile.avatar_key);
+    if (!profile) return;
+    if (profile.onboarding_complete) {
+      router.replace('/(customer)/');
+      return;
+    }
+    if (profile.given_name) setGivenName(profile.given_name);
+    if (profile.family_name) setFamilyName(profile.family_name);
+    if (profile.avatar_key) setSelected(profile.avatar_key);
   }, [profile]);
 
   const needsName = !profile?.given_name;

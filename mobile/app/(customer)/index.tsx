@@ -140,14 +140,23 @@ export default function CustomerDashboard() {
       >
         {/* ── Header ── */}
         <View style={styles.header}>
-          <View style={styles.logoRow}>
-            <View style={styles.logoBadge}>
-              <Text style={styles.logoEmoji}>🏛️</Text>
+          <View style={styles.headerRow}>
+            <View style={styles.logoRow}>
+              <View style={styles.logoBadge}>
+                <Text style={styles.logoEmoji}>🏛️</Text>
+              </View>
+              <View>
+                <Text style={styles.appName}>خدماتي</Text>
+                <Text style={styles.appSub}>منصة الخدمات العراقية</Text>
+              </View>
             </View>
-            <View>
-              <Text style={styles.appName}>خدماتي</Text>
-              <Text style={styles.appSub}>منصة الخدمات العراقية</Text>
-            </View>
+            <Pressable
+              onPress={() => router.push('/(customer)/search')}
+              style={({ pressed }) => [styles.searchBtn, pressed && { opacity: 0.7 }]}
+              hitSlop={8}
+            >
+              <Text style={styles.searchIcon}>🔍</Text>
+            </Pressable>
           </View>
           <Text style={styles.greeting}>{greeting}</Text>
         </View>
@@ -313,8 +322,16 @@ const styles = StyleSheet.create({
   center: { flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: 16, gap: 20 },
 
-  header:   { gap: 12, paddingTop: 8 },
-  logoRow:  { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  header:    { gap: 12, paddingTop: 8 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  logoRow:   { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  searchBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(230,171,44,0.1)',
+    borderWidth: 1, borderColor: 'rgba(230,171,44,0.3)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  searchIcon: { fontSize: 18 },
   logoBadge: {
     width: 52, height: 52, borderRadius: 26,
     backgroundColor: 'rgba(230,171,44,0.12)',
