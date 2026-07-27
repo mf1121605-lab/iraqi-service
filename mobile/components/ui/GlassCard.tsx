@@ -27,7 +27,7 @@ export function GlassCard({
       speed={borderSpeed}
       style={style}
     >
-      {/* Dark solid background — professional dark-gold look, no native blur needed */}
+      {/* Dark solid background — no native blur module needed */}
       <View style={styles.bg} pointerEvents="none" />
 
       {/* Content */}
