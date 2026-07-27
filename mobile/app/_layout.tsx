@@ -1,5 +1,5 @@
 import '../global.css';
-import { useEffect, Component, ReactNode } from 'react';
+import { useEffect, useState, Component, ReactNode } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -13,6 +13,7 @@ import {
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/hooks/useAuth';
 import { CinematicFrame } from '@/components/ui/CinematicFrame';
+import { CinematicSplash } from '@/components/ui/CinematicSplash';
 
 // Required to dismiss the OAuth browser session when the app is foregrounded
 WebBrowser.maybeCompleteAuthSession();
@@ -44,6 +45,7 @@ export default function RootLayout() {
     Cairo_400Regular,
     Cairo_700Bold,
   });
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     if (fontsLoaded || fontError) SplashScreen.hideAsync();
@@ -65,6 +67,7 @@ export default function RootLayout() {
           <StatusBar style="light" backgroundColor="#0d1117" />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />
           <CinematicFrame />
+          {showSplash && <CinematicSplash onDone={() => setShowSplash(false)} />}
         </AuthProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
