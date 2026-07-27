@@ -25,6 +25,7 @@ interface FounderSettings {
   footer_legal_ckb: string | null;
   footer_instagram_url: string | null;
   footer_twitter_url: string | null;
+  site_ambient_audio_url: string | null;
   announcement_enabled: boolean | null;
   announcement_text_ar: string | null;
   announcement_text_ckb: string | null;
@@ -61,6 +62,7 @@ const TEXT_FIELDS: { key: keyof Omit<FounderSettings, 'id' | 'accent_color' | 'b
   { key: 'footer_legal_ckb', label: 'النص القانوني (كردي)', multiline: true },
   { key: 'footer_instagram_url', label: 'رابط انستغرام' },
   { key: 'footer_twitter_url', label: 'رابط تويتر/X' },
+  { key: 'site_ambient_audio_url', label: 'رابط الصوت المحيطي (URL)' },
   { key: 'announcement_text_ar', label: 'نص الإعلان (عربي)', multiline: true },
   { key: 'announcement_text_ckb', label: 'نص الإعلان (كردي)', multiline: true },
 ];
@@ -79,6 +81,7 @@ function emptyForm(): Omit<FounderSettings, 'id'> {
     footer_legal_ckb: '',
     footer_instagram_url: '',
     footer_twitter_url: '',
+    site_ambient_audio_url: '',
     announcement_enabled: false,
     announcement_text_ar: '',
     announcement_text_ckb: '',
@@ -126,6 +129,7 @@ export default function SettingsScreen() {
           footer_legal_ckb: s.footer_legal_ckb ?? '',
           footer_instagram_url: s.footer_instagram_url ?? '',
           footer_twitter_url: s.footer_twitter_url ?? '',
+          site_ambient_audio_url: s.site_ambient_audio_url ?? '',
           announcement_enabled: s.announcement_enabled ?? false,
           announcement_text_ar: s.announcement_text_ar ?? '',
           announcement_text_ckb: s.announcement_text_ckb ?? '',
