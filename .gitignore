@@ -9,3 +9,7 @@ npm-debug.log*
 .env
 .env.local
 .env.*.local
+
+# Expo / React Native build output
+mobile/dist/
+mobile/.expo/
