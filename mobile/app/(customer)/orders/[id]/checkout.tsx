@@ -13,6 +13,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
+const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://iraqi-service.vercel.app';
+
 interface Order {
   id: string;
   quantity: number;
@@ -52,7 +54,7 @@ export default function Checkout() {
     setProcessing(true);
     const { data: { session } } = await supabase.auth.getSession();
     try {
-      const response = await fetch('/api/payment/zaincash-init', {
+      const response = await fetch(`${APP_URL}/api/payment/zaincash-init`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -9,6 +9,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
+const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://iraqi-service.vercel.app';
+
 interface FounderSettings {
   id: string;
   accent_color: string | null;
@@ -154,7 +156,7 @@ export default function SettingsScreen() {
     setBLoading(true);
     setBMsg('');
     try {
-      const res = await fetch('/api/founder/broadcast', {
+      const res = await fetch(`${APP_URL}/api/founder/broadcast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ title: bTitle, body: bBody }),
@@ -171,7 +173,7 @@ export default function SettingsScreen() {
     setNuclearLoading(true);
     setNuclearMsg('');
     try {
-      const res = await fetch('/api/founder/nuclear', {
+      const res = await fetch(`${APP_URL}/api/founder/nuclear`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ action, passcode }),

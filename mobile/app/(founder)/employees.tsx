@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Clipboard, Modal, Pressable,
+  ActivityIndicator, Alert, Modal, Pressable,
   ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+
+const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://iraqi-service.vercel.app';
 
 interface Employee {
   id: string;
@@ -90,7 +93,7 @@ export default function EmployeesScreen() {
     if (!form.password) { setFormError('كلمة المرور مطلوبة'); return; }
     setSaving(true);
     try {
-      const res = await fetch('/api/founder/create-employee', {
+      const res = await fetch(`${APP_URL}/api/founder/create-employee`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ ...form, username: form.username.trim().toLowerCase() }),
@@ -111,7 +114,7 @@ export default function EmployeesScreen() {
     if (!session) return;
     setActionLoading(userId + action);
     try {
-      await fetch('/api/founder/manage-account', {
+      await fetch(`${APP_URL}/api/founder/manage-account`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ targetUserId: userId, action }),
@@ -121,14 +124,14 @@ export default function EmployeesScreen() {
   }
 
   function copyField(value: string, key: string) {
-    Clipboard.setString(value);
+    Clipboard.setStringAsync(value);
     setCopiedField(key);
     setTimeout(() => setCopiedField(null), 2000);
   }
 
   function copyAll(creds: Credentials) {
     const text = `بيانات الدخول:\nاسم المستخدم: ${creds.username}\nكلمة المرور: ${creds.password}\nرابط تسجيل الدخول: ${creds.loginUrl}`;
-    Clipboard.setString(text);
+    Clipboard.setStringAsync(text);
     setCopiedField('all');
     setTimeout(() => setCopiedField(null), 2000);
   }
