@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   sender: {
     fontFamily: FONTS.bold,
     fontSize: 11,
-    color: COLORS.goldLight,
+    color: COLORS.goldBright,
     marginBottom: 3,
     textAlign: 'right',
   },
