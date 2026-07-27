@@ -1,40 +1,36 @@
 /**
- * AnimatedGoldBorder — Spinning gold shine border using Reanimated + LinearGradient.
+ * AnimatedGoldBorder — GPU-driven gold shimmer border using Skia SweepGradient.
  *
- * Technique: outer container clips to borderRadius; an Animated.View inside spins
- * a LinearGradient that's 280% wide/tall (covers all corners at any rotation angle).
- * A solid inner View sits on top covering the center — revealing only the border strip.
+ * A Skia Canvas draws a stroked rounded-rect path with a SweepGradient shader.
+ * The bright highlight (white spike) sweeps around the border by animating the
+ * `start` and `end` angles of the gradient via Reanimated shared values.
+ * Everything runs on the GPU — no JS-thread animation frames.
+ *
+ * Requires @shopify/react-native-skia (included in the APK build).
  */
-import React, { useEffect } from 'react';
-import { StyleSheet, View, ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
+import React, { useEffect, useMemo, useState } from 'react';
+import { LayoutChangeEvent, StyleSheet, View, ViewStyle } from 'react-native';
+import {
+  Canvas,
+  Path,
+  Skia,
+  SweepGradient,
+  vec,
+} from '@shopify/react-native-skia';
+import {
   Easing,
-  useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
 
-// The 6-stop gradient: mostly transparent, bright gold spike at the 60-80% mark
-const SHINE_COLORS: [string, string, string, string, string, string] = [
-  'rgba(230,171,44,0.00)',
-  'rgba(230,171,44,0.08)',
-  'rgba(255,215,0,0.85)',
-  'rgba(255,248,200,1.00)',
-  'rgba(255,215,0,0.85)',
-  'rgba(230,171,44,0.00)',
-];
-
 interface Props {
   children: React.ReactNode;
   borderRadius?: number;
   borderWidth?: number;
-  /** Background color of the inner content area */
   innerBg?: string;
-  /** Rotation speed in ms (lower = faster) */
   speed?: number;
-  /** Pause the animation */
   paused?: boolean;
   style?: ViewStyle;
   innerStyle?: ViewStyle;
@@ -50,12 +46,16 @@ export function AnimatedGoldBorder({
   style,
   innerStyle,
 }: Props) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const { width, height } = size;
+
+  // Animate from 0 → 360 degrees (as radians for Skia transforms)
   const rotation = useSharedValue(0);
 
   useEffect(() => {
     if (!paused) {
       rotation.value = withRepeat(
-        withTiming(360, { duration: speed, easing: Easing.linear }),
+        withTiming(Math.PI * 2, { duration: speed, easing: Easing.linear }),
         -1,
         false,
       );
@@ -64,36 +64,71 @@ export function AnimatedGoldBorder({
     }
   }, [paused, speed]);
 
-  const spinStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
-  }));
+  // Rotate the entire path group around the card center
+  const center = useMemo(() => vec(width / 2, height / 2), [width, height]);
+  const transform = useDerivedValue(() => [{ rotate: rotation.value }]);
+
+  // Build the rounded rect path (inset by borderWidth/2 so stroke sits inside the component)
+  const borderPath = useMemo(() => {
+    if (width < 1 || height < 1) return null;
+    const inset = borderWidth / 2;
+    const path = Skia.Path.Make();
+    path.addRRect(
+      Skia.RRectXY(
+        Skia.XYWHRect(inset, inset, width - borderWidth, height - borderWidth),
+        borderRadius,
+        borderRadius,
+      ),
+    );
+    return path;
+  }, [width, height, borderRadius, borderWidth]);
+
+  function onLayout(e: LayoutChangeEvent) {
+    const { width: w, height: h } = e.nativeEvent.layout;
+    if (w !== size.width || h !== size.height) {
+      setSize({ width: w, height: h });
+    }
+  }
 
   return (
-    <View
-      style={[
-        { borderRadius, overflow: 'hidden', padding: borderWidth },
-        style,
-      ]}
-    >
-      {/* Spinning gradient — 280% ensures corners are always covered */}
-      <Animated.View
-        style={[styles.spinWrap, spinStyle]}
-        pointerEvents="none"
-      >
-        <LinearGradient
-          colors={SHINE_COLORS}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradient}
-        />
-      </Animated.View>
+    <View style={[styles.root, { borderRadius }, style]} onLayout={onLayout}>
+      {/* ── Skia: animated gold border on GPU ─────────────────── */}
+      {borderPath && width > 0 && (
+        <Canvas style={StyleSheet.absoluteFill}>
+          <Path
+            path={borderPath}
+            style="stroke"
+            strokeWidth={borderWidth}
+            strokeCap="round"
+            origin={center}
+            transform={transform}
+          >
+            {/* SweepGradient: one bright gold/white spike, rest near-transparent */}
+            <SweepGradient
+              c={center}
+              colors={[
+                'rgba(230,171,44,0.00)',
+                'rgba(230,171,44,0.05)',
+                'rgba(230,171,44,0.40)',
+                'rgba(255,215,0,0.90)',
+                'rgba(255,248,200,1.00)',
+                'rgba(255,215,0,0.90)',
+                'rgba(230,171,44,0.40)',
+                'rgba(230,171,44,0.05)',
+                'rgba(230,171,44,0.00)',
+              ]}
+            />
+          </Path>
+        </Canvas>
+      )}
 
-      {/* Inner content — covers center, leaving only the border strip visible */}
+      {/* ── Inner content area ─────────────────────────────────── */}
       <View
         style={[
           {
             flex: 1,
-            borderRadius: Math.max(0, borderRadius - borderWidth - 0.5),
+            margin: borderWidth,
+            borderRadius: Math.max(0, borderRadius - borderWidth),
             overflow: 'hidden',
             backgroundColor: innerBg,
           },
@@ -107,13 +142,7 @@ export function AnimatedGoldBorder({
 }
 
 const styles = StyleSheet.create({
-  spinWrap: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gradient: {
-    width: '280%',
-    height: '280%',
+  root: {
+    overflow: 'hidden',
   },
 });
