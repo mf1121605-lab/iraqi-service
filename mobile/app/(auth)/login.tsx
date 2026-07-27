@@ -137,10 +137,10 @@ export default function LoginScreen() {
 
             <View style={styles.fields}>
               <GoldInput
-                label="رقم الهاتف أو اسم المستخدم"
+                label="اسم المستخدم أو البريد الإلكتروني"
                 value={identifier}
                 onChangeText={setIdentifier}
-                placeholder="07XXXXXXXXX"
+                placeholder="username أو email@example.com"
                 keyboardType="default"
                 autoCapitalize="none"
               />
@@ -168,7 +168,7 @@ export default function LoginScreen() {
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Google Sign-In */}
+            {/* Google Sign-In — cinematic gold style */}
             <Pressable
               style={({ pressed }) => [styles.googleBtn, pressed && styles.googleBtnPressed]}
               onPress={handleGoogleSignIn}
@@ -264,20 +264,26 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 13,
     borderRadius: RADIUS.md,
-    backgroundColor: '#ffffff',
-    borderWidth: 0,
+    backgroundColor: 'rgba(230,171,44,0.07)',
+    borderWidth: 1,
+    borderColor: 'rgba(230,171,44,0.45)',
+    shadowColor: '#e6ab2c',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  googleBtnPressed: { opacity: 0.85 },
+  googleBtnPressed: { opacity: 0.75 },
   googleIcon: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#4285F4',
+    color: COLORS.gold,
     fontFamily: 'System',
   },
   googleText: {
     fontFamily: FONTS.bold,
     fontSize: 15,
-    color: '#1a1a1a',
+    color: COLORS.gold,
   },
 
   linkRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },

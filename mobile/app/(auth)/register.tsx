@@ -9,7 +9,7 @@ import { GoldCard } from '@/components/ui/GoldCard';
 import { COLORS, FONTS } from '@/constants/theme';
 
 export default function RegisterScreen() {
-  const [form, setForm] = useState({ phone: '', fullName: '', surname: '', password: '', confirm: '' });
+  const [form, setForm] = useState({ username: '', phone: '', fullName: '', surname: '', password: '', confirm: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -19,8 +19,12 @@ export default function RegisterScreen() {
 
   async function handleRegister() {
     setError('');
-    if (!form.phone || !form.fullName || !form.surname || !form.password || !form.confirm) {
+    if (!form.username || !form.phone || !form.fullName || !form.surname || !form.password || !form.confirm) {
       setError('يرجى تعبئة جميع الحقول');
+      return;
+    }
+    if (!/^[a-z][a-z0-9_]{2,}$/i.test(form.username.trim())) {
+      setError('اسم المستخدم يجب أن يبدأ بحرف ويحتوي على حروف وأرقام وشرطة سفلية فقط (3 محارف على الأقل)');
       return;
     }
     if (!/^07\d{9}$/.test(form.phone.trim())) {
@@ -38,8 +42,7 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      // Auto-generate username from phone: "u" + digits (e.g. u07740338378)
-      const username = `u${form.phone.trim()}`;
+      const username = form.username.trim().toLowerCase();
       const appUrl = process.env.EXPO_PUBLIC_APP_URL;
       if (!appUrl) {
         setError('خطأ: EXPO_PUBLIC_APP_URL غير محدد');
@@ -105,6 +108,7 @@ export default function RegisterScreen() {
           <GoldCard style={styles.card}>
             <Text style={styles.title}>بياناتك الشخصية</Text>
             <View style={styles.fields}>
+              <GoldInput label="اسم المستخدم" value={form.username} onChangeText={(v) => setField('username', v.toLowerCase())} placeholder="مثال: ahmad_ali" autoCapitalize="none" />
               <GoldInput label="رقم الهاتف" value={form.phone} onChangeText={(v) => setField('phone', v)} placeholder="07XXXXXXXXX" keyboardType="phone-pad" />
               <GoldInput label="الاسم الثلاثي" value={form.fullName} onChangeText={(v) => setField('fullName', v)} placeholder="الاسم الكامل" />
               <GoldInput label="اللقب / الكنية" value={form.surname} onChangeText={(v) => setField('surname', v)} placeholder="اللقب العائلي" />
