@@ -1,10 +1,5 @@
-/**
- * GlassCard — Glassmorphism card: dark semi-transparent blur + AnimatedGoldBorder.
- * Uses expo-blur BlurView for the frosted-glass effect.
- */
 import React from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { AnimatedGoldBorder } from './AnimatedGoldBorder';
 
 interface Props {
@@ -12,11 +7,7 @@ interface Props {
   style?: ViewStyle;
   contentStyle?: ViewStyle;
   borderRadius?: number;
-  /** Blur intensity 0-100; default 18 */
-  blurIntensity?: number;
-  /** Slow down or speed up the border animation (ms per rotation) */
   borderSpeed?: number;
-  /** Remove default content padding */
   noPad?: boolean;
 }
 
@@ -25,7 +16,6 @@ export function GlassCard({
   style,
   contentStyle,
   borderRadius = 20,
-  blurIntensity = 18,
   borderSpeed = 3200,
   noPad,
 }: Props) {
@@ -37,15 +27,8 @@ export function GlassCard({
       speed={borderSpeed}
       style={style}
     >
-      {/* Frosted glass layer */}
-      <BlurView
-        intensity={blurIntensity}
-        tint="dark"
-        style={StyleSheet.absoluteFill}
-      />
-
-      {/* Dark tint overlay — deepens the glass effect */}
-      <View style={styles.tint} pointerEvents="none" />
+      {/* Dark solid background — no native blur module needed */}
+      <View style={styles.bg} pointerEvents="none" />
 
       {/* Content */}
       <View style={[styles.content, !noPad && styles.pad, contentStyle]}>
@@ -56,9 +39,9 @@ export function GlassCard({
 }
 
 const styles = StyleSheet.create({
-  tint: {
+  bg: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(6,10,15,0.55)',
+    backgroundColor: 'rgba(8,12,18,0.92)',
   },
   content: {
     position: 'relative',
