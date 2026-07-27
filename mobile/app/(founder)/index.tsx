@@ -47,6 +47,9 @@ const NAV_ITEMS = [
   { label: 'سجل المراقبة', route: '/(founder)/audit-log', icon: '🔍' },
   { label: 'الطلبات السريعة', route: '/(founder)/quick-requests', icon: '⚡' },
   { label: 'بيانات الأعضاء', route: '/(founder)/users-data', icon: '🔐' },
+  { label: 'روابط الأخبار', route: '/(hq)/news-links', icon: '🔗' },
+  { label: 'أخبار عاجلة', route: '/(hq)/urgent-news', icon: '🚨' },
+  { label: 'المنشورات', route: '/(hq)/social-posts', icon: '📰' },
 ];
 
 export default function FounderDashboard() {

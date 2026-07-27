@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { router } from 'expo-router';
 import {
   ActivityIndicator,
   Alert,
@@ -458,6 +459,24 @@ export default function EmployeeDashboard() {
                   {activeServices.includes(cat.key) && <Text style={styles.checkmark}>✓</Text>}
                 </View>
                 <Text style={styles.serviceLabel}>{cat.name_ar}</Text>
+              </Pressable>
+            ))}
+          </View>
+          {/* HQ tools */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>🛠️ أدوات الموظف</Text>
+            {[
+              { label: '🔗 روابط الأخبار', route: '/(hq)/news-links' },
+              { label: '🚨 أخبار عاجلة', route: '/(hq)/urgent-news' },
+              { label: '📰 المنشورات', route: '/(hq)/social-posts' },
+            ].map((item) => (
+              <Pressable
+                key={item.route}
+                onPress={() => router.push(item.route as never)}
+                style={({ pressed }) => [styles.hqLink, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={styles.hqLinkText}>{item.label}</Text>
+                <Text style={styles.hqArrow}>›</Text>
               </Pressable>
             ))}
           </View>
@@ -1032,4 +1051,7 @@ const styles = StyleSheet.create({
   serviceCheckboxActive: { backgroundColor: COLORS.gold, borderColor: COLORS.gold },
   checkmark: { fontSize: 13, color: '#000', fontFamily: FONTS.bold },
   serviceLabel: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.white, flex: 1, textAlign: 'right' },
+  hqLink: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.white10 },
+  hqLinkText: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.white, flex: 1, textAlign: 'right' },
+  hqArrow: { fontSize: 20, color: COLORS.muted },
 });
