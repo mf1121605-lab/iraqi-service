@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
+const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://iraqi-service.vercel.app';
+
 interface UserData {
   id: string;
   given_name: string | null;
@@ -33,7 +35,7 @@ export default function FounderUsersData() {
     setFetching(true); setPasscodeError('');
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('/api/founder/users-list', {
+      const res = await fetch(`${APP_URL}/api/founder/users-list`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
         body: JSON.stringify({ passcode }),

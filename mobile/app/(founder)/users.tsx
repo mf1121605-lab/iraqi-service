@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
+const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://iraqi-service.vercel.app';
+
 interface UserProfile {
   id: string;
   given_name: string | null;
@@ -43,7 +45,7 @@ export default function UsersScreen() {
     if (!session) return;
     setActionLoading(userId + action);
     try {
-      await fetch('/api/founder/manage-account', {
+      await fetch(`${APP_URL}/api/founder/manage-account`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
         body: JSON.stringify({ userId, action }),
