@@ -219,20 +219,23 @@ export default function CustomerDashboard() {
           </View>
         )}
 
-        {/* ── Community shortcut ── */}
-        <Pressable
-          style={({ pressed }) => [styles.communityCard, pressed && { opacity: 0.8 }]}
-          onPress={() => router.push('/(customer)/news')}
-        >
-          <View style={styles.communityInner}>
-            <Text style={styles.communityEmoji}>💬</Text>
-            <View style={styles.communityText}>
-              <Text style={styles.communityTitle}>مجتمع المحادثات</Text>
-              <Text style={styles.communitySub}>شارك وتفاعل مع الأخبار والإعلانات</Text>
-            </View>
-            <Text style={styles.communityArrow}>←</Text>
-          </View>
-        </Pressable>
+        {/* ── Quick shortcuts row ── */}
+        <View style={styles.shortcutsRow}>
+          <Pressable
+            style={({ pressed }) => [styles.shortcutCard, pressed && { opacity: 0.8 }]}
+            onPress={() => router.push('/(customer)/news')}
+          >
+            <Text style={styles.shortcutEmoji}>📰</Text>
+            <Text style={styles.shortcutTitle}>آخر الأخبار</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.shortcutCard, pressed && { opacity: 0.8 }]}
+            onPress={() => router.push('/(chat)/')}
+          >
+            <Text style={styles.shortcutEmoji}>💬</Text>
+            <Text style={styles.shortcutTitle}>الرسائل الخاصة</Text>
+          </Pressable>
+        </View>
 
         {/* ── News Links ── */}
         {newsLinks.length > 0 && (
@@ -374,6 +377,20 @@ const styles = StyleSheet.create({
   },
   catPill:     { borderRadius: 12, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 3, marginTop: 2 },
   catPillText: { fontFamily: FONTS.bold, fontSize: 11 },
+
+  shortcutsRow: { flexDirection: 'row', gap: 12 },
+  shortcutCard: {
+    flex: 1,
+    backgroundColor: '#161b22',
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: 'rgba(230,171,44,0.2)',
+    padding: 16,
+    alignItems: 'center',
+    gap: 8,
+  },
+  shortcutEmoji: { fontSize: 28 },
+  shortcutTitle: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.white, textAlign: 'center' },
 
   communityCard: {
     backgroundColor: '#161b22', borderRadius: RADIUS.md,

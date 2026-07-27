@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -9,7 +10,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { ScreenBg } from '@/components/ui/ScreenBg';
+import { GlassCard } from '@/components/ui/GlassCard';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -24,6 +27,7 @@ type Comment = {
 type Post = {
   id: string;
   content: string | null;
+  image_urls: string[];
   created_at: string;
   author: { given_name: string; family_name: string } | null;
   reactions: { reaction_type: string; user_id: string }[];
@@ -51,7 +55,11 @@ function AvatarCircle({ name, size = 38 }: { name: string; size?: number }) {
     .toUpperCase() || '?';
   const hue = (name.charCodeAt(0) ?? 0) * 37 % 360;
   return (
-    <View style={[avatarStyles.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: `hsl(${hue},40%,22%)`, borderColor: `hsl(${hue},40%,38%)` }]}>
+    <View style={[avatarStyles.circle, {
+      width: size, height: size, borderRadius: size / 2,
+      backgroundColor: `hsl(${hue},40%,22%)`,
+      borderColor: `hsl(${hue},40%,38%)`,
+    }]}>
       <Text style={[avatarStyles.initials, { fontSize: size * 0.38 }]}>{initials}</Text>
     </View>
   );
@@ -62,12 +70,31 @@ const avatarStyles = StyleSheet.create({
   initials: { fontFamily: 'Cairo_700Bold', color: '#fff' },
 });
 
+async function uploadImage(uri: string, userId: string): Promise<string | null> {
+  try {
+    const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const path = `social/${userId}/${Date.now()}.${ext}`;
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const { error } = await supabase.storage.from('site-assets').upload(path, blob, {
+      contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+      upsert: false,
+    });
+    if (error) return null;
+    const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
+    return data.publicUrl;
+  } catch {
+    return null;
+  }
+}
+
 export default function NewsScreen() {
   const { session } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [newPost, setNewPost] = useState('');
+  const [pickedImage, setPickedImage] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
@@ -77,7 +104,7 @@ export default function NewsScreen() {
     const { data } = await supabase
       .from('social_posts')
       .select(`
-        id, content, created_at,
+        id, content, image_urls, created_at,
         author:profiles!author_id(given_name, family_name),
         reactions:social_reactions(reaction_type, user_id),
         comments:social_comments(id, content, created_at, author:profiles!author_id(given_name, family_name))
@@ -101,15 +128,40 @@ export default function NewsScreen() {
     return () => { supabase.removeChannel(channel); };
   }, [loadPosts]);
 
+  async function pickImage() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      allowsEditing: true,
+      aspect: [16, 9],
+    });
+    if (!result.canceled && result.assets[0]) {
+      setPickedImage(result.assets[0].uri);
+    }
+  }
+
   async function submitPost() {
-    if (!newPost.trim() || !session?.user.id) return;
+    if (!newPost.trim() && !pickedImage) return;
+    if (!session?.user.id) return;
     setPosting(true);
+
+    let imageUrls: string[] = [];
+    if (pickedImage) {
+      const url = await uploadImage(pickedImage, session.user.id);
+      if (url) imageUrls = [url];
+    }
+
     await supabase.from('social_posts').insert({
       author_id: session.user.id,
-      content: newPost.trim(),
+      content: newPost.trim() || null,
+      image_urls: imageUrls,
       approved: false,
     });
+
     setNewPost('');
+    setPickedImage(null);
     setPosting(false);
   }
 
@@ -186,33 +238,40 @@ export default function NewsScreen() {
         }
         ListHeaderComponent={
           <View style={styles.headerSection}>
-            <Text style={styles.pageTitle}>آخر الأخبار</Text>
+            <Text style={styles.pageTitle}>📰 آخر الأخبار</Text>
 
-            {/* Composer card */}
-            <View style={styles.composerCard}>
-              <View style={styles.composerTop}>
-                <TextInput
-                  value={newPost}
-                  onChangeText={setNewPost}
-                  placeholder="شاركنا ما يدور في ذهنك..."
-                  placeholderTextColor={COLORS.white40}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                  style={styles.composerInput}
-                  textAlign="right"
-                />
-              </View>
+            {/* Composer */}
+            <GlassCard style={styles.composerCard} noPad borderRadius={16} borderSpeed={5000}>
+              <TextInput
+                value={newPost}
+                onChangeText={setNewPost}
+                placeholder="شاركنا ما يدور في ذهنك..."
+                placeholderTextColor={COLORS.white40}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+                style={styles.composerInput}
+                textAlign="right"
+              />
+              {pickedImage && (
+                <View style={styles.imagePreviewWrap}>
+                  <Image source={{ uri: pickedImage }} style={styles.imagePreview} resizeMode="cover" />
+                  <Pressable style={styles.removeImage} onPress={() => setPickedImage(null)}>
+                    <Text style={styles.removeImageText}>✕</Text>
+                  </Pressable>
+                </View>
+              )}
               <View style={styles.composerActions}>
-                {newPost.trim() ? (
+                <Pressable style={styles.imagePickBtn} onPress={pickImage} disabled={posting}>
+                  <Text style={styles.imagePickIcon}>🖼️</Text>
+                </Pressable>
+                {(newPost.trim() || pickedImage) && (
                   <Text style={styles.pendingNote}>سيظهر بعد موافقة الإدارة</Text>
-                ) : (
-                  <View style={{ flex: 1 }} />
                 )}
                 <Pressable
-                  style={({ pressed }) => [styles.postBtn, !newPost.trim() && styles.postBtnDisabled, pressed && { opacity: 0.8 }]}
+                  style={[styles.postBtn, (!newPost.trim() && !pickedImage) && styles.postBtnDisabled]}
                   onPress={submitPost}
-                  disabled={posting || !newPost.trim()}
+                  disabled={posting || (!newPost.trim() && !pickedImage)}
                 >
                   {posting ? (
                     <ActivityIndicator color="#000" size="small" />
@@ -221,7 +280,7 @@ export default function NewsScreen() {
                   )}
                 </Pressable>
               </View>
-            </View>
+            </GlassCard>
           </View>
         }
         ListEmptyComponent={
@@ -238,14 +297,13 @@ export default function NewsScreen() {
             : 'مجهول';
           const commentsExpanded = expandedComments.has(item.id);
           const commentText = commentInputs[item.id] ?? '';
+          const imageUrls: string[] = Array.isArray(item.image_urls) ? item.image_urls : [];
 
           return (
-            <View style={styles.postCard}>
+            <GlassCard style={styles.postCard} noPad borderRadius={18} borderSpeed={4500 + Math.random() * 2000}>
               {/* Post header */}
               <View style={styles.postHeader}>
-                <View style={styles.postMeta}>
-                  <Text style={styles.postDate}>{formatDate(item.created_at)}</Text>
-                </View>
+                <Text style={styles.postDate}>{formatDate(item.created_at)}</Text>
                 <View style={styles.authorRow}>
                   <Text style={styles.authorName}>{authorName}</Text>
                   <AvatarCircle name={authorName} size={38} />
@@ -257,17 +315,28 @@ export default function NewsScreen() {
                 <Text style={styles.postContent}>{item.content}</Text>
               ) : null}
 
+              {/* Images */}
+              {imageUrls.length > 0 && (
+                <View style={styles.imageGrid}>
+                  {imageUrls.slice(0, 3).map((url, i) => (
+                    <Image
+                      key={i}
+                      source={{ uri: url }}
+                      style={[styles.postImage, imageUrls.length === 1 && styles.postImageFull]}
+                      resizeMode="cover"
+                    />
+                  ))}
+                </View>
+              )}
+
               {/* Divider */}
               <View style={styles.divider} />
 
               {/* Reactions + comment toggle */}
               <View style={styles.actionsRow}>
-                <Pressable
-                  style={styles.commentToggle}
-                  onPress={() => toggleComments(item.id)}
-                >
+                <Pressable style={styles.commentToggle} onPress={() => toggleComments(item.id)}>
                   <Text style={styles.commentToggleText}>
-                    💬 {item.comments.length > 0 ? item.comments.length : ''} {item.comments.length === 1 ? 'تعليق' : 'تعليقات'}
+                    💬 {item.comments.length > 0 ? item.comments.length : ''} تعليقات
                   </Text>
                 </Pressable>
                 <View style={styles.reactionsGroup}>
@@ -311,8 +380,6 @@ export default function NewsScreen() {
                       );
                     })
                   )}
-
-                  {/* Comment input */}
                   <View style={styles.commentInputRow}>
                     <Pressable
                       style={[styles.commentSendBtn, !commentText.trim() && styles.commentSendBtnDisabled]}
@@ -338,7 +405,7 @@ export default function NewsScreen() {
                   </View>
                 </View>
               )}
-            </View>
+            </GlassCard>
           );
         }}
       />
@@ -347,36 +414,47 @@ export default function NewsScreen() {
 }
 
 const styles = StyleSheet.create({
-  bg: { flex: 1 },
   center: { flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: 16, gap: 14 },
+  list: { padding: 16, gap: 14, paddingBottom: 32 },
 
   headerSection: { gap: 12, marginBottom: 4 },
-  pageTitle: { fontFamily: FONTS.bold, fontSize: 24, color: COLORS.white, textAlign: 'right' },
+  pageTitle: { fontFamily: FONTS.bold, fontSize: 22, color: COLORS.gold, textAlign: 'right' },
 
-  composerCard: {
-    backgroundColor: '#161b22',
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.2)',
-    overflow: 'hidden',
-  },
-  composerTop: { padding: 14 },
+  composerCard: { minHeight: 120 },
   composerInput: {
     color: COLORS.white,
     fontFamily: FONTS.regular,
     fontSize: 14,
-    minHeight: 80,
+    minHeight: 72,
     textAlignVertical: 'top',
+    padding: 14,
+    paddingBottom: 8,
   },
+  imagePreviewWrap: { marginHorizontal: 14, marginBottom: 8, position: 'relative' },
+  imagePreview: { width: '100%', height: 160, borderRadius: 10 },
+  removeImage: {
+    position: 'absolute', top: 6, right: 6,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    width: 26, height: 26, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  removeImageText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   composerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 14,
     paddingBottom: 12,
+    gap: 8,
   },
-  pendingNote: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.muted },
+  imagePickBtn: {
+    width: 36, height: 36,
+    backgroundColor: 'rgba(230,171,44,0.12)',
+    borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: COLORS.goldBorder,
+  },
+  imagePickIcon: { fontSize: 18 },
+  pendingNote: { flex: 1, fontFamily: FONTS.regular, fontSize: 11, color: COLORS.muted, textAlign: 'right' },
   postBtn: {
     backgroundColor: COLORS.gold,
     borderRadius: RADIUS.sm,
@@ -393,13 +471,7 @@ const styles = StyleSheet.create({
   emptyTitle: { fontFamily: FONTS.bold, fontSize: 16, color: COLORS.white },
   emptySub: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
 
-  postCard: {
-    backgroundColor: '#161b22',
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.15)',
-    overflow: 'hidden',
-  },
+  postCard: { minHeight: 60 },
   postHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -407,7 +479,6 @@ const styles = StyleSheet.create({
     padding: 14,
     paddingBottom: 10,
   },
-  postMeta: { gap: 2 },
   postDate: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.muted },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   authorName: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.gold },
@@ -419,10 +490,14 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     textAlign: 'right',
     paddingHorizontal: 14,
-    paddingBottom: 14,
+    paddingBottom: 12,
   },
 
-  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginHorizontal: 14 },
+  imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 3, paddingHorizontal: 14, paddingBottom: 12 },
+  postImage: { width: '31%', height: 100, borderRadius: 8, flex: 1 },
+  postImageFull: { width: '100%', height: 200, borderRadius: 10 },
+
+  divider: { height: 1, backgroundColor: COLORS.white06, marginHorizontal: 14 },
 
   actionsRow: {
     flexDirection: 'row',
@@ -455,16 +530,16 @@ const styles = StyleSheet.create({
 
   commentsSection: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: COLORS.white06,
     padding: 12,
     gap: 10,
-    backgroundColor: '#0d1117',
+    backgroundColor: 'rgba(0,0,0,0.25)',
   },
   noComments: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted, textAlign: 'center', paddingVertical: 8 },
   commentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, justifyContent: 'flex-end' },
   commentBubble: {
     flex: 1,
-    backgroundColor: '#161b22',
+    backgroundColor: COLORS.bgAlt,
     borderRadius: RADIUS.md,
     padding: 10,
     gap: 3,
@@ -473,17 +548,12 @@ const styles = StyleSheet.create({
   commentAuthor: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold },
   commentContent: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white, lineHeight: 18, textAlign: 'right' },
 
-  commentInputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
-    marginTop: 4,
-  },
+  commentInputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 4 },
   commentInput: {
     flex: 1,
-    backgroundColor: '#161b22',
+    backgroundColor: COLORS.bgAlt,
     borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.2)',
+    borderColor: COLORS.goldBorder,
     borderRadius: RADIUS.md,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -494,12 +564,10 @@ const styles = StyleSheet.create({
     minHeight: 38,
   },
   commentSendBtn: {
-    width: 36,
-    height: 36,
+    width: 36, height: 36,
     borderRadius: 18,
     backgroundColor: COLORS.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
   commentSendBtnDisabled: { backgroundColor: 'rgba(230,171,44,0.3)' },
   commentSendIcon: { fontSize: 18, color: '#000', fontFamily: FONTS.bold },

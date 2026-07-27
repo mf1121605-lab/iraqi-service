@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,6 +13,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -20,7 +22,8 @@ const PAGE_SIZE = 30;
 
 type Message = {
   id: string;
-  body: string;
+  body: string | null;
+  attachment_url: string | null;
   sender_id: string;
   created_at: string;
   sender?: { given_name: string; family_name: string };
@@ -28,15 +31,49 @@ type Message = {
 
 type Room = { id: string; name: string; slug: string };
 
+async function uploadCommunityImage(uri: string, userId: string): Promise<string | null> {
+  try {
+    const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const path = `community/${userId}/${Date.now()}.${ext}`;
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const { error } = await supabase.storage.from('site-assets').upload(path, blob, {
+      contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+      upsert: false,
+    });
+    if (error) return null;
+    const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
+    return data.publicUrl;
+  } catch {
+    return null;
+  }
+}
+
+async function getOrCreateDmThread(myId: string, otherId: string): Promise<string | null> {
+  const { data: existing } = await supabase
+    .from('direct_message_threads')
+    .select('id')
+    .or(`and(user_a_id.eq.${myId},user_b_id.eq.${otherId}),and(user_a_id.eq.${otherId},user_b_id.eq.${myId})`)
+    .maybeSingle();
+  if (existing?.id) return existing.id;
+  const { data: created } = await supabase
+    .from('direct_message_threads')
+    .insert({ user_a_id: myId, user_b_id: otherId })
+    .select('id')
+    .single();
+  return created?.id ?? null;
+}
+
 export default function CommunityRoomScreen() {
   const { profile } = useAuth();
   const { roomId } = useLocalSearchParams<{ roomId: string }>();
 
-  const [room, setRoom]       = useState<Room | null>(null);
+  const [room, setRoom]         = useState<Room | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [body, setBody]       = useState('');
-  const [sending, setSending] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [body, setBody]         = useState('');
+  const [sending, setSending]   = useState(false);
+  const [loading, setLoading]   = useState(true);
+  const [uploadingImg, setUploadingImg] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
 
@@ -57,7 +94,7 @@ export default function CommunityRoomScreen() {
 
       const { data: msgs } = await supabase
         .from('chat_messages')
-        .select('id, body, sender_id, created_at, sender:profiles(given_name, family_name)')
+        .select('id, body, attachment_url, sender_id, created_at, sender:profiles(given_name, family_name)')
         .eq('room_id', roomId)
         .order('created_at', { ascending: false })
         .limit(PAGE_SIZE);
@@ -85,7 +122,6 @@ export default function CommunityRoomScreen() {
         { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${roomId}` },
         (payload) => {
           const msg = payload.new as Message;
-          // Fetch sender name
           supabase
             .from('profiles')
             .select('given_name, family_name')
@@ -124,6 +160,42 @@ export default function CommunityRoomScreen() {
     });
 
     setSending(false);
+  }
+
+  async function handlePickImage() {
+    if (!profile || !roomId) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    setUploadingImg(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    const url = await uploadCommunityImage(result.assets[0].uri, profile.id);
+    if (url) {
+      await supabase.from('chat_messages').insert({
+        room_id: roomId,
+        sender_id: profile.id,
+        body: null,
+        attachment_url: url,
+        message_type: 'image',
+      });
+    }
+    setUploadingImg(false);
+  }
+
+  async function handleSenderPress(senderId: string) {
+    if (!profile || senderId === profile.id) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const threadId = await getOrCreateDmThread(profile.id, senderId);
+    if (threadId) {
+      router.push(`/(chat)/dm/${threadId}`);
+    }
   }
 
   function senderName(msg: Message) {
@@ -175,10 +247,21 @@ export default function CommunityRoomScreen() {
             <View key={msg.id} style={[styles.msgRow, mine ? styles.rowMine : styles.rowTheirs]}>
               <View>
                 {showName && (
-                  <Text style={styles.senderName}>{senderName(msg)}</Text>
+                  <Pressable onPress={() => handleSenderPress(msg.sender_id)}>
+                    <Text style={styles.senderName}>{senderName(msg)}</Text>
+                  </Pressable>
                 )}
                 <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
-                  <Text style={styles.msgText}>{msg.body}</Text>
+                  {msg.attachment_url ? (
+                    <Image
+                      source={{ uri: msg.attachment_url }}
+                      style={styles.attachmentImage}
+                      resizeMode="cover"
+                    />
+                  ) : null}
+                  {msg.body ? (
+                    <Text style={styles.msgText}>{msg.body}</Text>
+                  ) : null}
                   <Text style={styles.msgTime}>
                     {new Date(msg.created_at).toLocaleTimeString('ar', {
                       hour: '2-digit',
@@ -196,6 +279,16 @@ export default function CommunityRoomScreen() {
 
       {/* Input */}
       <View style={styles.inputRow}>
+        <Pressable
+          style={[styles.imgBtn, uploadingImg && { opacity: 0.5 }]}
+          onPress={handlePickImage}
+          disabled={uploadingImg || sending}
+        >
+          {uploadingImg
+            ? <ActivityIndicator color={COLORS.gold} size="small" />
+            : <Text style={styles.imgBtnIcon}>🖼️</Text>
+          }
+        </Pressable>
         <TextInput
           style={styles.input}
           value={body}
@@ -203,7 +296,7 @@ export default function CommunityRoomScreen() {
           placeholder="اكتب رسالتك..."
           placeholderTextColor={COLORS.muted}
           multiline
-          editable={!sending}
+          editable={!sending && !uploadingImg}
           textAlign="right"
         />
         <Pressable
@@ -222,8 +315,8 @@ export default function CommunityRoomScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex:         { flex: 1, backgroundColor: COLORS.bg },
-  loadingScreen:{ flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center' },
+  flex:          { flex: 1, backgroundColor: COLORS.bg },
+  loadingScreen: { flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center' },
 
   header: {
     flexDirection: 'row',
@@ -259,6 +352,7 @@ const styles = StyleSheet.create({
     color: COLORS.gold,
     marginBottom: 3,
     textAlign: 'right',
+    textDecorationLine: 'underline',
   },
 
   bubble: {
@@ -266,9 +360,17 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     paddingHorizontal: 12,
     paddingVertical: 8,
+    overflow: 'hidden',
   },
   bubbleMine:   { backgroundColor: 'rgba(230,171,44,0.22)', borderBottomRightRadius: 4 },
   bubbleTheirs: { backgroundColor: COLORS.bgAlt, borderBottomLeftRadius: 4 },
+
+  attachmentImage: {
+    width: 200,
+    height: 150,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
 
   msgText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.white, lineHeight: 22 },
   msgTime: { fontFamily: FONTS.regular, fontSize: 10, color: COLORS.muted, textAlign: 'right', marginTop: 3 },
@@ -276,15 +378,24 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 10,
+    gap: 8,
     margin: 12,
     backgroundColor: COLORS.bgAlt,
     borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: 'rgba(230,171,44,0.2)',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 8,
   },
+  imgBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(230,171,44,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imgBtnIcon: { fontSize: 16 },
   input: {
     flex: 1,
     fontFamily: FONTS.regular,
