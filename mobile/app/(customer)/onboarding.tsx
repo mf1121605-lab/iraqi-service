@@ -213,7 +213,10 @@ const styles = StyleSheet.create({
   },
   checkRing: {
     position: 'absolute',
-    inset: -3,
+    top: -3,
+    left: -3,
+    right: -3,
+    bottom: -3,
     borderRadius: 40,
     borderWidth: 2,
     borderColor: COLORS.gold,

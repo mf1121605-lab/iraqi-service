@@ -41,7 +41,7 @@ export default function Checkout() {
         if (fetchError || !data) {
           router.replace('/(customer)/');
         } else {
-          setOrder(data as Order);
+          setOrder(data as unknown as Order);
         }
       });
   }, [profile?.id, orderId]);
