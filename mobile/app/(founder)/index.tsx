@@ -37,6 +37,7 @@ const NAV_ITEMS = [
   { label: 'الأعضاء', route: '/(founder)/users', icon: '👥' },
   { label: 'الموظفون', route: '/(founder)/employees', icon: '🧑‍💼' },
   { label: 'التصنيفات', route: '/(founder)/categories', icon: '🗂️' },
+  { label: 'خدمات التصنيف', route: '/(founder)/category-services', icon: '📋' },
   { label: 'المدفوعات', route: '/(founder)/payments', icon: '💰' },
   { label: 'الإحصائيات', route: '/(founder)/stats', icon: '📊' },
   { label: 'الإعدادات', route: '/(founder)/settings', icon: '⚙️' },
