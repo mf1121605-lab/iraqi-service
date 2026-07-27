@@ -1,15 +1,38 @@
 import { useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS } from '@/constants/theme';
 
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
+function TabIcon({ emoji, focused, badge }: { emoji: string; focused: boolean; badge?: number }) {
   return (
-    <Text style={{ fontSize: focused ? 22 : 20, opacity: focused ? 1 : 0.6 }}>{emoji}</Text>
+    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ fontSize: focused ? 22 : 20, opacity: focused ? 1 : 0.6 }}>{emoji}</Text>
+      {badge != null && badge > 0 && (
+        <View style={badgeStyle.wrap}>
+          <Text style={badgeStyle.text}>{badge > 9 ? '9+' : badge}</Text>
+        </View>
+      )}
+    </View>
   );
 }
+
+const badgeStyle = StyleSheet.create({
+  wrap: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  text: { color: '#fff', fontSize: 9, fontFamily: FONTS.bold },
+});
 
 export default function CustomerLayout() {
   const { session } = useAuth();
@@ -67,19 +90,17 @@ export default function CustomerLayout() {
         }}
       />
       <Tabs.Screen
-        name="news"
+        name="communities/index"
         options={{
-          title: 'الأخبار',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📰" focused={focused} />,
+          title: 'المجتمعات',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🏘️" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="notifications"
         options={{
           title: 'الإشعارات',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🔔" focused={focused} />,
-          tabBarBadge: unreadCount > 0 ? (unreadCount > 9 ? '9+' : unreadCount) : undefined,
-          tabBarBadgeStyle: styles.badge,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🔔" focused={focused} badge={unreadCount} />,
         }}
       />
       <Tabs.Screen
@@ -90,6 +111,7 @@ export default function CustomerLayout() {
         }}
       />
       {/* Hidden screens — accessible via navigation but not in tab bar */}
+      <Tabs.Screen name="news" options={{ href: null }} />
       <Tabs.Screen name="requests/new" options={{ href: null }} />
       <Tabs.Screen name="requests/[id]" options={{ href: null }} />
       <Tabs.Screen name="requests/matching" options={{ href: null }} />
@@ -98,6 +120,10 @@ export default function CustomerLayout() {
       <Tabs.Screen name="employee/[id]" options={{ href: null }} />
       <Tabs.Screen name="orders/[id]/checkout" options={{ href: null }} />
       <Tabs.Screen name="orders/[id]/result" options={{ href: null }} />
+      <Tabs.Screen name="communities/[roomId]" options={{ href: null }} />
+      <Tabs.Screen name="tutor/index" options={{ href: null }} />
+      <Tabs.Screen name="tutor/[subject]" options={{ href: null }} />
+      <Tabs.Screen name="tutor/session/[sessionId]" options={{ href: null }} />
     </Tabs>
   );
 }
