@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Iraqi Service",
+    "slug": "iraqi-service-mobile",
+    "scheme": "iraqi-service",
+    "platforms": ["ios", "android"],
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": ["**/*"],
+    "extra": {
+      "eas": {
+        "projectId": "iraqi-service-mobile"
+      }
+    }
+  }
+}
