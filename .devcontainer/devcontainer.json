@@ -1,0 +1,14 @@
+{
+  "name": "iraqi-service-mobile",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "postCreateCommand": "cd mobile-app && npm install",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-azuretools.vscode-docker",
+        "dbaeumer.vscode-eslint", 
+        "msjsdiag.vscode-react-native"
+      ]
+    }
+  }
+}
