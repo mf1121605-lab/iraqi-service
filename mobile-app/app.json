@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Iraqi Service",
-    "slug": "iraqi-services",
+    "slug": "iraqi-service",
     "scheme": "iraqi-service",
     "platforms": [
       "ios",
