@@ -1,17 +1,33 @@
 {
   "expo": {
     "name": "Iraqi Service",
-    "slug": "iraqi-service-mobile",
+    "slug": "iraqi-services",
     "scheme": "iraqi-service",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.iraqiservice.app",
+      "versionCode": 1,
+      "permissions": [
+        "INTERNET"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.iraqiservice.app"
+    },
     "extra": {
       "eas": {
-        "projectId": "iraqi-service-mobile"
+        "projectId": "8fd06671-e816-4d6d-8141-90d6f8cbaa5a"
       }
-    }
+    },
+    "owner": "iraqi-services"
   }
 }
