@@ -42,8 +42,11 @@ jobs:
       - name: Configure Memory & Build Standalone Release APK
         run: |
           mkdir -p android
-          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" >> android/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=1024m" >> android/gradle.properties
           echo "org.gradle.parallel=false" >> android/gradle.properties
+          echo "org.gradle.workers.max=1" >> android/gradle.properties
+          echo "kotlin.compiler.execution.strategy=in-process" >> android/gradle.properties
+          echo "kotlin.incremental=false" >> android/gradle.properties
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon -x test -x lint
