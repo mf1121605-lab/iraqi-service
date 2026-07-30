@@ -12,7 +12,7 @@ export default function SectionTitle({ title, subtitle }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 8 },
-  title: { color: theme.colors.text, fontSize: 20, fontWeight: '800' },
-  subtitle: { color: theme.colors.muted, marginTop: 4, fontSize: 13 },
+  wrap: { marginBottom: 10 },
+  title: { color: theme.colors.text, fontSize: 20, fontWeight: '800', letterSpacing: 0.2 },
+  subtitle: { color: theme.colors.muted, marginTop: 4, fontSize: 13, lineHeight: 20 },
 });

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
 import ActionButton from '../components/ActionButton';
+import SkiaBackground from '../components/SkiaBackground';
 import { theme } from '../theme';
 import { signInWithEmail, getMyProfile, resolveDashboardRoute } from '../services/auth';
 import { supabase } from '../services/supabase';
@@ -32,6 +33,7 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <SkiaBackground />
       <View style={styles.card}>
         <Text style={styles.title}>تسجيل الدخول</Text>
         <Text style={styles.subtitle}>نفس منطق الموقع مع بيانات Supabase</Text>

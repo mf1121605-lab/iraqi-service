@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import BottomTabs from '../components/BottomTabs';
 import SectionTitle from '../components/SectionTitle';
+import SkiaBackground from '../components/SkiaBackground';
 import { theme } from '../theme';
 import { supabase } from '../services/supabase';
 
@@ -39,6 +40,7 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <SkiaBackground />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.heroCard}>
           <Text style={styles.eyebrow}>منصة الخدمات العراقية</Text>

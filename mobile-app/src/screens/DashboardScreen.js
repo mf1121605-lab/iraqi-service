@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Tex
 import BottomTabs from '../components/BottomTabs';
 import GlassCard from '../components/GlassCard';
 import StatusPill from '../components/StatusPill';
+import SkiaBackground from '../components/SkiaBackground';
 import { theme } from '../theme';
 import { supabase } from '../services/supabase';
 import { formatFullName, getMyProfile, signOut } from '../services/auth';
@@ -48,6 +49,7 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <SkiaBackground />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>لوحة المستخدم</Text>
