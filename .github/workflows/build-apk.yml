@@ -44,7 +44,6 @@ jobs:
           mkdir -p android
           echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" >> android/gradle.properties
           echo "org.gradle.parallel=false" >> android/gradle.properties
-          echo "android.enableBuildCache=true" >> android/gradle.properties
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon -x test -x lint
