@@ -5,6 +5,11 @@ import SplashScreen from './src/screens/SplashScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
+import EmployeeDashboardScreen from './src/screens/EmployeeDashboardScreen';
+import FounderDashboardScreen from './src/screens/FounderDashboardScreen';
+import AdminUsersScreen from './src/screens/AdminUsersScreen';
+import AdminCategoriesScreen from './src/screens/AdminCategoriesScreen';
+import ComingSoonScreen from './src/screens/ComingSoonScreen';
 import RequestsScreen from './src/screens/RequestsScreen';
 import ServicesScreen from './src/screens/ServicesScreen';
 import ChatScreen from './src/screens/ChatScreen';
@@ -23,6 +28,11 @@ export default function App() {
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        <Stack.Screen name="EmployeeDashboard" component={EmployeeDashboardScreen} />
+        <Stack.Screen name="FounderDashboard" component={FounderDashboardScreen} />
+        <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
+        <Stack.Screen name="AdminCategories" component={AdminCategoriesScreen} />
+        <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />
         <Stack.Screen name="Requests" component={RequestsScreen} />
         <Stack.Screen name="Services" component={ServicesScreen} />
         <Stack.Screen name="Chat" component={ChatScreen} />

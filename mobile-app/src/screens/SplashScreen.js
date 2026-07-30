@@ -1,11 +1,29 @@
 import React, { useEffect } from 'react';
 import { ActivityIndicator, Image, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../theme';
+import { getCurrentSession, getMyProfile, resolveDashboardRoute } from '../services/auth';
 
 export default function SplashScreen({ navigation }) {
   useEffect(() => {
-    const timer = setTimeout(() => navigation.replace('Home'), 1800);
-    return () => clearTimeout(timer);
+    let isMounted = true;
+
+    async function routeFromSession() {
+      const session = await getCurrentSession();
+
+      if (!session) {
+        if (isMounted) navigation.replace('Home');
+        return;
+      }
+
+      const profile = await getMyProfile();
+      if (isMounted) navigation.replace(resolveDashboardRoute(profile));
+    }
+
+    const timer = setTimeout(routeFromSession, 1200);
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, [navigation]);
 
   return (

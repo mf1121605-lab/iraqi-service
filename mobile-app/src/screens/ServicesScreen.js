@@ -1,17 +1,43 @@
-import React from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import BottomTabs from '../components/BottomTabs';
 import GlassCard from '../components/GlassCard';
 import SectionTitle from '../components/SectionTitle';
 import { theme } from '../theme';
+import { supabase } from '../services/supabase';
 
-const services = [
-  { title: 'خدمات المواطنين', desc: 'استكمال المعاملات والخدمات الحكومية' },
-  { title: 'خدمات الشركات', desc: 'إدارة الطلبات والتواصل مع المنصة' },
-  { title: 'دعم فني', desc: 'مساعدة مباشرة على مستوى الحساب والطلبات' },
+const fallbackServices = [
+  { key: 'military', title: 'الخدمات العسكرية', desc: 'استكمال المعاملات والخدمات الحكومية' },
+  { key: 'education', title: 'الخدمات الدراسية', desc: 'إدارة الطلبات والتواصل مع المنصة' },
+  { key: 'welfare', title: 'الرعاية الاجتماعية', desc: 'مساعدة مباشرة على مستوى الحساب والطلبات' },
 ];
 
 export default function ServicesScreen({ navigation }) {
+  const [loading, setLoading] = useState(true);
+  const [services, setServices] = useState(fallbackServices);
+
+  useEffect(() => {
+    async function loadCategories() {
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('categories')
+        .select('key, label_ar, is_active, sort_order')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        setServices(data.map((item) => ({ key: item.key, title: item.label_ar, desc: 'خدمة متاحة عبر نفس نظام الموقع' })));
+      }
+      setLoading(false);
+    }
+
+    loadCategories();
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -21,11 +47,13 @@ export default function ServicesScreen({ navigation }) {
         </View>
 
         <GlassCard style={styles.heroCard}>
-          <SectionTitle title="الخدمات المتاحة" subtitle="هذه هي الخدمات التي يمكن عرضها داخل التطبيق باستخدام نفس البيانات الأساسية." />
+          <SectionTitle title="الخدمات المتاحة" subtitle="نفس التصنيفات المتاحة على الموقع." />
         </GlassCard>
 
-        {services.map((service, index) => (
-          <Pressable key={`${service.title}-${index}`} onPress={() => navigation.navigate('ServiceDetail', { service })}>
+        {loading ? (
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        ) : services.map((service, index) => (
+          <Pressable key={`${service.key || service.title}-${index}`} onPress={() => navigation.navigate('ServiceDetail', { service })}>
             <GlassCard style={styles.serviceCard}>
               <Text style={styles.serviceTitle}>{service.title}</Text>
               <Text style={styles.serviceText}>{service.desc}</Text>

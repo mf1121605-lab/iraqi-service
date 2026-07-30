@@ -6,6 +6,7 @@ import SectionTitle from '../components/SectionTitle';
 import StatusPill from '../components/StatusPill';
 import { theme } from '../theme';
 import { supabase } from '../services/supabase';
+import { getMyProfile } from '../services/auth';
 
 export default function RequestsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
@@ -18,7 +19,13 @@ export default function RequestsScreen({ navigation }) {
         return;
       }
 
-      const { data, error } = await supabase.from('requests').select('*').order('created_at', { ascending: false }).limit(8);
+      const profile = await getMyProfile();
+      let query = supabase.from('requests').select('*').order('created_at', { ascending: false }).limit(8);
+      if (profile) {
+        query = query.eq('customer_id', profile.id);
+      }
+
+      const { data, error } = await query;
       if (!error) {
         setRequests(data || []);
       }

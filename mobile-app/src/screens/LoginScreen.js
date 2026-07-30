@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Alert, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
 import ActionButton from '../components/ActionButton';
 import { theme } from '../theme';
-import { signInWithEmail } from '../services/auth';
+import { signInWithEmail, getMyProfile, resolveDashboardRoute } from '../services/auth';
+import { supabase } from '../services/supabase';
 
 export default function LoginScreen({ navigation }) {
   const [identifier, setIdentifier] = useState('');
@@ -17,14 +18,16 @@ export default function LoginScreen({ navigation }) {
 
     setLoading(true);
     const { error } = await signInWithEmail(identifier, password);
-    setLoading(false);
 
     if (error) {
+      setLoading(false);
       Alert.alert('فشل تسجيل الدخول', error.message);
       return;
     }
 
-    Alert.alert('تم تسجيل الدخول', 'سيتم توجيهك إلى الشاشة المناسبة');
+    const profile = await getMyProfile();
+    setLoading(false);
+    navigation.replace(resolveDashboardRoute(profile));
   }
 
   return (
