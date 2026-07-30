@@ -1,22 +1,32 @@
-import React, { useEffect } from 'react';
-import { ActivityIndicator, Image, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Image, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../theme';
 import { getCurrentSession, getMyProfile, resolveDashboardRoute } from '../services/auth';
+import LoadingScreen from '../components/LoadingScreen';
 
 export default function SplashScreen({ navigation }) {
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     let isMounted = true;
 
     async function routeFromSession() {
-      const session = await getCurrentSession();
+      try {
+        const session = await getCurrentSession();
 
-      if (!session) {
+        if (!session) {
+          if (isMounted) navigation.replace('Home');
+          return;
+        }
+
+        const profile = await getMyProfile();
+        if (isMounted) navigation.replace(resolveDashboardRoute(profile));
+      } catch (error) {
+        console.warn('Failed to resolve session route', error);
         if (isMounted) navigation.replace('Home');
-        return;
+      } finally {
+        if (isMounted) setLoading(false);
       }
-
-      const profile = await getMyProfile();
-      if (isMounted) navigation.replace(resolveDashboardRoute(profile));
     }
 
     const timer = setTimeout(routeFromSession, 1200);
@@ -25,6 +35,10 @@ export default function SplashScreen({ navigation }) {
       clearTimeout(timer);
     };
   }, [navigation]);
+
+  if (loading) {
+    return <LoadingScreen message="جارٍ التحقق من الحساب..." />;
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -37,7 +51,6 @@ export default function SplashScreen({ navigation }) {
         </View>
         <Text style={styles.title}>منصة الخدمات العراقية</Text>
         <Text style={styles.subtitle}>تطبيق موبايل متصل بنفس المنصة</Text>
-        <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />
       </View>
     </SafeAreaView>
   );
