@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import * as Updates from 'expo-updates';
 import SplashScreen from './src/screens/SplashScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
@@ -20,7 +22,57 @@ import ServiceDetailScreen from './src/screens/ServiceDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
+function UpdateSplash({ message }) {
+  return (
+    <SafeAreaView style={styles.updateContainer}>
+      <View style={styles.updateCenter}>
+        <ActivityIndicator size="large" color="#e6ab2c" />
+        <Text style={styles.updateTitle}>جارٍ تحديث التطبيق</Text>
+        <Text style={styles.updateMessage}>{message}</Text>
+      </View>
+    </SafeAreaView>
+  );
+}
+
 export default function App() {
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(true);
+  const [updateMessage, setUpdateMessage] = useState('يُجرى البحث عن نسخة جديدة...');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function ensureLatestVersion() {
+      try {
+        if (__DEV__) {
+          if (isMounted) setIsCheckingUpdate(false);
+          return;
+        }
+
+        const { isAvailable } = await Updates.checkForUpdateAsync();
+        if (!isAvailable) {
+          if (isMounted) setIsCheckingUpdate(false);
+          return;
+        }
+
+        setUpdateMessage('يُجرى تحميل التحديث الجديد...');
+        await Updates.fetchUpdateAsync();
+        await Updates.reloadAsync();
+      } catch (error) {
+        console.warn('Auto-update failed', error);
+        if (isMounted) setIsCheckingUpdate(false);
+      }
+    }
+
+    ensureLatestVersion();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (isCheckingUpdate) {
+    return <UpdateSplash message={updateMessage} />;
+  }
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -44,3 +96,28 @@ export default function App() {
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  updateContainer: {
+    flex: 1,
+    backgroundColor: '#07111f',
+  },
+  updateCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  updateTitle: {
+    color: '#f8fafc',
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: 16,
+  },
+  updateMessage: {
+    color: '#94a3b8',
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+});

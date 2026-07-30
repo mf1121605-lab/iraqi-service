@@ -17,17 +17,25 @@
       "package": "com.iraqiservice.app",
       "versionCode": 1,
       "permissions": [
+        "INTERNET",
         "INTERNET"
-      ]
+      ],
+      "runtimeVersion": "1.0.0"
     },
     "ios": {
-      "bundleIdentifier": "com.iraqiservice.app"
+      "bundleIdentifier": "com.iraqiservice.app",
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "extra": {
       "eas": {
         "projectId": "8fd06671-e816-4d6d-8141-90d6f8cbaa5a"
       }
     },
-    "owner": "iraqi-services"
+    "owner": "iraqi-services",
+    "updates": {
+      "url": "https://u.expo.dev/8fd06671-e816-4d6d-8141-90d6f8cbaa5a"
+    }
   }
 }
