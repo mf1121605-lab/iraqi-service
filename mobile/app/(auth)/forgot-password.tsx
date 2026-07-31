@@ -14,6 +14,7 @@ import { ScreenBg } from '@/components/ui/ScreenBg';
 import { GoldButton } from '@/components/ui/GoldButton';
 import { GoldInput } from '@/components/ui/GoldInput';
 import { GoldCard } from '@/components/ui/GoldCard';
+import { CinematicEmblem } from '@/components/ui/CinematicEmblem';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 const QUESTIONS: Record<number, string> = {
@@ -120,7 +121,7 @@ export default function ForgotPasswordScreen() {
           </Pressable>
 
           <View style={styles.header}>
-            <Text style={styles.emoji}>🔑</Text>
+            <CinematicEmblem size={84} />
             <Text style={styles.title}>استعادة كلمة المرور</Text>
             <Text style={styles.subtitle}>
               {step === 'phone'
@@ -196,7 +197,6 @@ const styles = StyleSheet.create({
   backText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.gold },
 
   header: { alignItems: 'center', gap: 8 },
-  emoji: { fontSize: 48 },
   title: { fontFamily: FONTS.bold, fontSize: 24, color: COLORS.white },
   subtitle: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted, textAlign: 'center' },
 

@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase';
 import { GoldButton } from '@/components/ui/GoldButton';
 import { GoldInput } from '@/components/ui/GoldInput';
 import { GoldCard } from '@/components/ui/GoldCard';
+import { CinematicEmblem } from '@/components/ui/CinematicEmblem';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 export default function LoginScreen() {
@@ -118,15 +119,7 @@ export default function LoginScreen() {
 
           {/* Logo + Title — cinematic emblem matching web's .cinematic-emblem */}
           <View style={styles.header}>
-            {/* Outer gold ring glow */}
-            <View style={styles.emblemOuter}>
-              {/* Middle decorative ring */}
-              <View style={styles.emblemMid} />
-              {/* Core circle */}
-              <View style={styles.emblemCore}>
-                <Text style={styles.logoEmoji}>🏛️</Text>
-              </View>
-            </View>
+            <CinematicEmblem />
             <Text style={styles.appName}>خدماتي</Text>
             <Text style={styles.subtitle}>منصة الخدمات العراقية</Text>
           </View>
@@ -200,44 +193,6 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, padding: 24, justifyContent: 'center', gap: 28 },
 
   header: { alignItems: 'center', gap: 12 },
-  // cinematic-emblem: outer glow halo
-  emblemOuter: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(245,158,11,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.20)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#e6ab2c',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.55,
-    shadowRadius: 28,
-    elevation: 10,
-  },
-  // inner decorative ring
-  emblemMid: {
-    position: 'absolute',
-    width: 82,
-    height: 82,
-    borderRadius: 41,
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.35)',
-    backgroundColor: 'transparent',
-  },
-  // core filled circle
-  emblemCore: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: 'rgba(230,171,44,0.14)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(230,171,44,0.60)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoEmoji: { fontSize: 32 },
   appName:  { fontFamily: FONTS.bold,    fontSize: 30, color: COLORS.gold,  letterSpacing: 0.5 },
   subtitle: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.muted },
 
