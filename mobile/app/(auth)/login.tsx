@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -10,6 +10,15 @@ import {
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import { Audio } from 'expo-av';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
@@ -17,6 +26,9 @@ import { GoldButton } from '@/components/ui/GoldButton';
 import { GoldInput } from '@/components/ui/GoldInput';
 import { GoldCard } from '@/components/ui/GoldCard';
 import { CinematicEmblem } from '@/components/ui/CinematicEmblem';
+import { AnimatedGoldBorder } from '@/components/ui/AnimatedGoldBorder';
+import { AnimatedLoginGlow } from '@/components/ui/AnimatedLoginGlow';
+import { GoogleGLogo } from '@/components/ui/GoogleGLogo';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 export default function LoginScreen() {
@@ -25,6 +37,56 @@ export default function LoginScreen() {
   const [loading, setLoading]       = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError]           = useState('');
+
+  // ── Entrance choreography ──────────────────────────────────────────
+  const emblemOpacity = useSharedValue(0);
+  const emblemScale   = useSharedValue(0.4);
+  const titleOpacity  = useSharedValue(0);
+  const titleY        = useSharedValue(14);
+  const subOpacity    = useSharedValue(0);
+  const cardOpacity   = useSharedValue(0);
+  const cardY         = useSharedValue(28);
+
+  useEffect(() => {
+    // Eagle-cry entrance sound, synced with the logo materializing.
+    let sound: Audio.Sound | undefined;
+    (async () => {
+      try {
+        const { sound: s } = await Audio.Sound.createAsync(
+          require('@/assets/sounds/eagle-cry.m4a'),
+        );
+        sound = s;
+        await sound.setVolumeAsync(0.7);
+        await sound.playAsync();
+      } catch {
+        // Silent fallback (e.g. device audio session busy) — visuals still play.
+      }
+    })();
+
+    emblemOpacity.value = withTiming(1, { duration: 500, easing: Easing.out(Easing.ease) });
+    emblemScale.value   = withSpring(1, { damping: 8, stiffness: 90 });
+    titleOpacity.value  = withDelay(320, withTiming(1, { duration: 450 }));
+    titleY.value         = withDelay(320, withTiming(0, { duration: 450, easing: Easing.out(Easing.cubic) }));
+    subOpacity.value    = withDelay(520, withTiming(1, { duration: 400 }));
+    cardOpacity.value   = withDelay(680, withTiming(1, { duration: 550 }));
+    cardY.value          = withDelay(680, withTiming(0, { duration: 550, easing: Easing.out(Easing.cubic) }));
+
+    return () => { sound?.unloadAsync(); };
+  }, []);
+
+  const emblemStyle = useAnimatedStyle(() => ({
+    opacity: emblemOpacity.value,
+    transform: [{ scale: emblemScale.value }],
+  }));
+  const titleStyle = useAnimatedStyle(() => ({
+    opacity: titleOpacity.value,
+    transform: [{ translateY: titleY.value }],
+  }));
+  const subStyle = useAnimatedStyle(() => ({ opacity: subOpacity.value }));
+  const cardStyle = useAnimatedStyle(() => ({
+    opacity: cardOpacity.value,
+    transform: [{ translateY: cardY.value }],
+  }));
 
   async function handleLogin() {
     if (!identifier.trim() || !password.trim()) {
@@ -114,65 +176,76 @@ export default function LoginScreen() {
 
   return (
     <ScreenBg>
+      {/* Slowly drifting gold glow orbs behind everything — GPU Skia */}
+      <AnimatedLoginGlow />
+
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
-          {/* Logo + Title — cinematic emblem matching web's .cinematic-emblem */}
+          {/* Logo + Title — cinematic emblem, materializes with the eagle cry */}
           <View style={styles.header}>
-            <CinematicEmblem />
-            <Text style={styles.appName}>خدماتي</Text>
-            <Text style={styles.subtitle}>منصة الخدمات العراقية</Text>
+            <Animated.View style={emblemStyle}>
+              <CinematicEmblem />
+            </Animated.View>
+            <Animated.Text style={[styles.appName, titleStyle]}>خدماتي</Animated.Text>
+            <Animated.Text style={[styles.subtitle, subStyle]}>منصة الخدمات العراقية</Animated.Text>
           </View>
 
-          {/* Login Card */}
-          <GoldCard style={styles.card}>
-            <Text style={styles.cardTitle}>تسجيل الدخول</Text>
+          {/* Login Card — spinning gold shimmer border via Skia */}
+          <Animated.View style={cardStyle}>
+            <AnimatedGoldBorder borderRadius={RADIUS.xl} borderWidth={1.5} innerBg="transparent" speed={3200}>
+              <GoldCard style={styles.card}>
+                <Text style={styles.cardTitle}>تسجيل الدخول</Text>
 
-            <View style={styles.fields}>
-              <GoldInput
-                label="اسم المستخدم أو البريد الإلكتروني"
-                value={identifier}
-                onChangeText={setIdentifier}
-                placeholder="username أو email@example.com"
-                keyboardType="default"
-                autoCapitalize="none"
-              />
-              <GoldInput
-                label="كلمة المرور"
-                value={password}
-                onChangeText={setPassword}
-                placeholder="كلمة المرور"
-                secureToggle
-              />
-              {error ? <Text style={styles.error}>{error}</Text> : null}
-              <GoldButton label="دخول" onPress={handleLogin} loading={loading} />
-              <Pressable
-                style={styles.forgotBtn}
-                onPress={() => router.push('/(auth)/forgot-password')}
-              >
-                <Text style={styles.forgotText}>نسيت كلمة المرور؟</Text>
-              </Pressable>
-            </View>
+                <View style={styles.fields}>
+                  <GoldInput
+                    label="اسم المستخدم أو البريد الإلكتروني"
+                    value={identifier}
+                    onChangeText={setIdentifier}
+                    placeholder="username أو email@example.com"
+                    keyboardType="default"
+                    autoCapitalize="none"
+                  />
+                  <GoldInput
+                    label="كلمة المرور"
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="كلمة المرور"
+                    secureToggle
+                  />
+                  {error ? <Text style={styles.error}>{error}</Text> : null}
+                  <GoldButton label="دخول" onPress={handleLogin} loading={loading} />
+                  <Pressable
+                    style={styles.forgotBtn}
+                    onPress={() => router.push('/(auth)/forgot-password')}
+                  >
+                    <Text style={styles.forgotText}>نسيت كلمة المرور؟</Text>
+                  </Pressable>
+                </View>
 
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>أو</Text>
-              <View style={styles.dividerLine} />
-            </View>
+                {/* Divider */}
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>أو</Text>
+                  <View style={styles.dividerLine} />
+                </View>
 
-            {/* Google Sign-In — cinematic gold style */}
-            <Pressable
-              style={({ pressed }) => [styles.googleBtn, pressed && styles.googleBtnPressed]}
-              onPress={handleGoogleSignIn}
-              disabled={googleLoading}
-            >
-              <Text style={styles.googleIcon}>G</Text>
-              <Text style={styles.googleText}>
-                {googleLoading ? 'جاري الاتصال...' : 'الدخول بحساب Google'}
-              </Text>
-            </Pressable>
-          </GoldCard>
+                {/* Google Sign-In — raised 3D button with the real Google "G" mark */}
+                <Pressable
+                  style={({ pressed }) => [styles.googleBtn, pressed && styles.googleBtnPressed]}
+                  onPress={handleGoogleSignIn}
+                  disabled={googleLoading}
+                >
+                  <View style={styles.googleBadge}>
+                    <GoogleGLogo size={18} />
+                  </View>
+                  <Text style={styles.googleText}>
+                    {googleLoading ? 'جاري الاتصال...' : 'الدخول بحساب Google'}
+                  </Text>
+                </Pressable>
+              </GoldCard>
+            </AnimatedGoldBorder>
+          </Animated.View>
 
           {/* Register link */}
           <View style={styles.linkRow}>
@@ -196,7 +269,7 @@ const styles = StyleSheet.create({
   appName:  { fontFamily: FONTS.bold,    fontSize: 30, color: COLORS.gold,  letterSpacing: 0.5 },
   subtitle: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.muted },
 
-  card:      { gap: 0 },
+  card:      { gap: 0, borderWidth: 0 },
   cardTitle: {
     fontFamily: FONTS.bold,
     fontSize: 20,
@@ -217,23 +290,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    paddingVertical: 13,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
     borderRadius: RADIUS.md,
     backgroundColor: 'rgba(230,171,44,0.07)',
     borderWidth: 1,
     borderColor: 'rgba(230,171,44,0.45)',
+    borderTopColor: 'rgba(255,255,255,0.18)',
+    borderBottomWidth: 2,
+    borderBottomColor: 'rgba(0,0,0,0.30)',
     shadowColor: '#e6ab2c',
-    shadowOffset: { width: 0, height: 0 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
-    shadowRadius: 12,
+    shadowRadius: 14,
     elevation: 6,
   },
-  googleBtnPressed: { opacity: 0.75 },
-  googleIcon: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: COLORS.gold,
-    fontFamily: 'System',
+  googleBtnPressed: { opacity: 0.8, transform: [{ scale: 0.99 }] },
+  googleBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.30,
+    shadowRadius: 4,
+    elevation: 3,
   },
   googleText: {
     fontFamily: FONTS.bold,

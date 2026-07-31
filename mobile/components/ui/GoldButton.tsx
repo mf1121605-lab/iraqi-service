@@ -104,9 +104,12 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
-    // inset highlight top edge
+    // inset highlight top edge (raised surface)
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.28)',
+    borderTopColor: 'rgba(255,255,255,0.32)',
+    // dark inset edge at the base (depth)
+    borderBottomWidth: 2.5,
+    borderBottomColor: 'rgba(120,60,0,0.45)',
   },
   label: {
     fontFamily: FONTS.bold,
@@ -115,10 +118,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 0.3,
   },
-  // btn-cinematic-gold shadow
+  // btn-cinematic-gold shadow — deepened for a raised, 3D feel
   shadow: {
     borderRadius: RADIUS.md,
     ...SHADOWS.btn,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 12,
   },
   ghost: {
     paddingVertical: 15,
