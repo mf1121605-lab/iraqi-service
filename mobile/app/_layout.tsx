@@ -12,6 +12,7 @@ import {
 } from '@expo-google-fonts/cairo';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/hooks/useAuth';
+import { useAppUpdates } from '@/hooks/useAppUpdates';
 import { CinematicFrame } from '@/components/ui/CinematicFrame';
 import { CinematicSplash } from '@/components/ui/CinematicSplash';
 
@@ -46,6 +47,8 @@ export default function RootLayout() {
     Cairo_700Bold,
   });
   const [showSplash, setShowSplash] = useState(true);
+
+  useAppUpdates();
 
   useEffect(() => {
     if (fontsLoaded || fontError) SplashScreen.hideAsync();
