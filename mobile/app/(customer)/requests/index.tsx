@@ -80,7 +80,7 @@ export default function RequestsList() {
   }
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}

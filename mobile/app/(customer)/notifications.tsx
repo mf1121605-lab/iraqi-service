@@ -125,7 +125,7 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}

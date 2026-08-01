@@ -316,7 +316,7 @@ export default function ChatRoomScreen() {
   }
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>

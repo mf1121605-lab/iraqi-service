@@ -121,7 +121,7 @@ export default function ForgotPasswordScreen() {
           </Pressable>
 
           <View style={styles.header}>
-            <CinematicEmblem size={84} />
+            <CinematicEmblem size={120} />
             <Text style={styles.title}>استعادة كلمة المرور</Text>
             <Text style={styles.subtitle}>
               {step === 'phone'

@@ -418,7 +418,7 @@ export default function EmployeeDashboard() {
 
   if (view === 'profile') {
     return (
-      <ScreenBg noTopPad>
+      <ScreenBg>
         <View style={styles.navBar}>
           <Pressable onPress={() => setView('list')} style={styles.backBtn} hitSlop={12}>
             <Text style={styles.backIcon}>‹</Text>
@@ -494,7 +494,7 @@ export default function EmployeeDashboard() {
     const custName = customer?.given_name ?? 'الزبون';
 
     return (
-      <ScreenBg noTopPad>
+      <ScreenBg>
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -745,7 +745,7 @@ export default function EmployeeDashboard() {
   }
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}

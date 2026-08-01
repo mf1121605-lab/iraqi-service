@@ -81,7 +81,7 @@ export default function NewRequest() {
   }
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { padding: 16, gap: 20 },
 
-  header: { gap: 4, paddingTop: 8 },
+  header: { gap: 4 },
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
   backIcon: { fontSize: 22, color: COLORS.gold, lineHeight: 26 },
   backText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.gold },

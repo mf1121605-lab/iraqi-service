@@ -152,7 +152,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView
           contentContainerStyle={styles.scroll}

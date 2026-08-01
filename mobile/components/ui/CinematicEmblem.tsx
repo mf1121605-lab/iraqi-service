@@ -1,16 +1,16 @@
 import { Image, StyleSheet, View } from 'react-native';
 import { Canvas, Circle, Blur } from '@shopify/react-native-skia';
 
-// Real aspect ratio of assets/eagle-icon-transparent.png (829×572) — a
-// chroma-keyed crop of the app icon with the background removed, so only
-// the eagle/wings/shield render (no boxed backdrop, no baked-in text).
-const ASPECT = 829 / 572;
+// Real aspect ratio of assets/full-logo-transparent.png (900×823) — the
+// complete brand mark: eagle + wings + shield + baked-in bilingual text
+// plaque ("منصة الخدمات العراقية" / "IRAQI SERVICES PLATFORM"), background
+// chroma-keyed out so only the mark itself renders, no boxed backdrop.
+const ASPECT = 900 / 823;
 
-// Pure "motion graphic" logo — just the eagle floating on a soft ambient
-// glow, no ring/circle backdrop.
+// Full logo, floating on a soft ambient gold glow — no ring/circle backdrop.
 export function CinematicEmblem({ size = 140 }: { size?: number }) {
   const height = size / ASPECT;
-  const pad = size * 0.32;
+  const pad = size * 0.22;
   const canvasW = size + pad * 2;
   const canvasH = height + pad * 2;
 
@@ -22,7 +22,7 @@ export function CinematicEmblem({ size = 140 }: { size?: number }) {
         </Circle>
       </Canvas>
       <Image
-        source={require('@/assets/eagle-icon-transparent.png')}
+        source={require('@/assets/full-logo-transparent.png')}
         style={{ width: size, height }}
         resizeMode="contain"
       />

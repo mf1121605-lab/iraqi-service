@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Image,
   Linking,
   Pressable,
   RefreshControl,
@@ -132,7 +133,7 @@ export default function CustomerDashboard() {
   const tools     = categories.filter((c) => c.section_type === 'tools');
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.gold} />}
@@ -143,7 +144,11 @@ export default function CustomerDashboard() {
           <View style={styles.headerRow}>
             <View style={styles.logoRow}>
               <View style={styles.logoBadge}>
-                <Text style={styles.logoEmoji}>🏛️</Text>
+                <Image
+                  source={require('@/assets/eagle-icon-transparent.png')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
               </View>
               <View>
                 <Text style={styles.appName}>خدماتي</Text>
@@ -322,7 +327,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: 16, gap: 20 },
 
-  header:    { gap: 12, paddingTop: 8 },
+  header:    { gap: 12 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   logoRow:   { flexDirection: 'row', alignItems: 'center', gap: 12 },
   searchBtn: {
@@ -340,7 +345,7 @@ const styles = StyleSheet.create({
     shadowColor: '#e6ab2c', shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.35, shadowRadius: 10, elevation: 6,
   },
-  logoEmoji: { fontSize: 24 },
+  logoImage: { width: 38, height: 38 * (572 / 829) },
   appName:   { fontFamily: FONTS.bold, fontSize: 22, color: COLORS.gold, letterSpacing: 0.5 },
   appSub:    { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted },
   greeting:  { fontFamily: FONTS.regular, fontSize: 15, color: COLORS.white70, textAlign: 'right' },

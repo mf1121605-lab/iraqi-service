@@ -68,7 +68,7 @@ export default function MatchingScreen() {
   }
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
       {/* Header */}
       <View style={styles.navHeader}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>

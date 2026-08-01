@@ -141,7 +141,7 @@ export default function RequestDetail() {
   const isClosed = req.status === 'completed' || req.status === 'cancelled';
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}

@@ -223,7 +223,7 @@ export default function NewsScreen() {
   }
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id}

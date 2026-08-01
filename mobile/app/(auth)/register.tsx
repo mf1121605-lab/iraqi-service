@@ -102,7 +102,7 @@ export default function RegisterScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <CinematicEmblem size={84} />
+            <CinematicEmblem size={120} />
             <Text style={styles.appName}>خدماتي</Text>
             <Text style={styles.subtitle}>إنشاء حساب جديد</Text>
           </View>
