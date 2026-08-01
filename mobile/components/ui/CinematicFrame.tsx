@@ -23,13 +23,13 @@ const GOLD65 = 'rgba(230,171,44,0.65)';
 
 // A single fixed inset on every side (never animated, never recalculated
 // per-frame) — the frame is exactly BASE_INSET from the true screen edge on
-// left/right/bottom. The top edge additionally clears the status bar/notch
-// via the safe-area inset, so it never sits too close to it, but this value
-// is computed once per device and stays constant — the frame never grows or
-// shrinks while the app is running.
+// left/right/bottom. The top edge additionally clears the *entire* status
+// bar/notch via the full safe-area inset (not a fraction of it) plus the
+// same base margin, so it never sits close enough to overlap a screen's own
+// header content. Computed once per device and never animated.
 export function CinematicFrame() {
   const insets = useSafeAreaInsets();
-  const topInset = Math.max(BASE_INSET, insets.top * 0.5 + BASE_INSET);
+  const topInset = insets.top + BASE_INSET;
 
   return (
     <View style={styles.frame} pointerEvents="none">
