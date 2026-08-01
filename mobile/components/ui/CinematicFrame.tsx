@@ -11,39 +11,56 @@
  * We render this as an absolute overlay (pointer-events none) over all content,
  * matching the web's inset-10px / 4 corner accents design.
  */
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '@/constants/theme';
 
-const INSET  = 10;
+const BASE_INSET = 10; // fixed margin from the true screen edge
 const CORNER = 28;  // px — corner accent size
 const LINE   = 2;   // border line thickness
 const GOLD   = COLORS.gold;
 const GOLD65 = 'rgba(230,171,44,0.65)';
-const GOLD25 = 'rgba(230,171,44,0.25)';
 
+// A single fixed inset on every side (never animated, never recalculated
+// per-frame) — the frame is exactly BASE_INSET from the true screen edge on
+// left/right/bottom. The top edge additionally clears the status bar/notch
+// via the safe-area inset, so it never sits too close to it, but this value
+// is computed once per device and stays constant — the frame never grows or
+// shrinks while the app is running.
 export function CinematicFrame() {
+  const insets = useSafeAreaInsets();
+  const topInset = Math.max(BASE_INSET, insets.top * 0.5 + BASE_INSET);
+
   return (
     <View style={styles.frame} pointerEvents="none">
       {/* Main border rectangle */}
-      <View style={styles.border} />
+      <View style={[styles.border, { top: topInset, left: BASE_INSET, right: BASE_INSET, bottom: BASE_INSET }]} />
 
       {/* ── Corner accents ─────────────────────────────────────────────── */}
-      <CornerAccent pos="tl" />
-      <CornerAccent pos="tr" />
-      <CornerAccent pos="bl" />
-      <CornerAccent pos="br" />
+      <CornerAccent pos="tl" inset={BASE_INSET} topInset={topInset} />
+      <CornerAccent pos="tr" inset={BASE_INSET} topInset={topInset} />
+      <CornerAccent pos="bl" inset={BASE_INSET} topInset={topInset} />
+      <CornerAccent pos="br" inset={BASE_INSET} topInset={topInset} />
     </View>
   );
 }
 
-function CornerAccent({ pos }: { pos: 'tl' | 'tr' | 'bl' | 'br' }) {
+function CornerAccent({
+  pos,
+  inset,
+  topInset,
+}: {
+  pos: 'tl' | 'tr' | 'bl' | 'br';
+  inset: number;
+  topInset: number;
+}) {
   const isTop    = pos === 'tl' || pos === 'tr';
   const isLeft   = pos === 'tl' || pos === 'bl';
   const posStyle = {
-    top:    isTop    ? INSET - 1 : undefined,
-    bottom: !isTop   ? INSET - 1 : undefined,
-    left:   isLeft   ? INSET - 1 : undefined,
-    right:  !isLeft  ? INSET - 1 : undefined,
+    top:    isTop    ? topInset - 1 : undefined,
+    bottom: !isTop   ? inset - 1 : undefined,
+    left:   isLeft   ? inset - 1 : undefined,
+    right:  !isLeft  ? inset - 1 : undefined,
   };
   return (
     <View style={[styles.corner, posStyle]}>
@@ -79,20 +96,17 @@ function CornerAccent({ pos }: { pos: 'tl' | 'tr' | 'bl' | 'br' }) {
   );
 }
 
-const { width, height } = Dimensions.get('window');
-
 const styles = StyleSheet.create({
   frame: {
     position: 'absolute',
-    inset: 0,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     zIndex: 100,
   },
   border: {
     position: 'absolute',
-    top:    INSET,
-    left:   INSET,
-    right:  INSET,
-    bottom: INSET,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: GOLD65,

@@ -1,51 +1,38 @@
 import { Image, StyleSheet, View } from 'react-native';
+import { Canvas, Circle, Blur } from '@shopify/react-native-skia';
 
-// Circular gold-ringed logo badge — matches the web's `.cinematic-emblem` used
-// on login/register/forgot-password cards.
-export function CinematicEmblem({ size = 100 }: { size?: number }) {
-  const mid = size * 0.82;
-  const core = size * 0.68;
-  const logo = core * 0.72;
+// Real aspect ratio of assets/eagle-icon-transparent.png (829×572) — a
+// chroma-keyed crop of the app icon with the background removed, so only
+// the eagle/wings/shield render (no boxed backdrop, no baked-in text).
+const ASPECT = 829 / 572;
+
+// Pure "motion graphic" logo — just the eagle floating on a soft ambient
+// glow, no ring/circle backdrop.
+export function CinematicEmblem({ size = 140 }: { size?: number }) {
+  const height = size / ASPECT;
+  const pad = size * 0.32;
+  const canvasW = size + pad * 2;
+  const canvasH = height + pad * 2;
 
   return (
-    <View style={[styles.outer, { width: size, height: size, borderRadius: size / 2 }]}>
-      <View style={[styles.mid, { width: mid, height: mid, borderRadius: mid / 2 }]} />
-      <View style={[styles.core, { width: core, height: core, borderRadius: core / 2 }]}>
-        <Image
-          source={require('@/assets/icon.png')}
-          style={{ width: logo, height: logo, borderRadius: logo / 2 }}
-          resizeMode="cover"
-        />
-      </View>
+    <View style={[styles.wrap, { width: canvasW, height: canvasH }]}>
+      <Canvas style={StyleSheet.absoluteFill}>
+        <Circle cx={canvasW / 2} cy={canvasH / 2} r={Math.min(canvasW, canvasH) * 0.34} color="rgba(230,171,44,0.30)">
+          <Blur blur={size * 0.1} />
+        </Circle>
+      </Canvas>
+      <Image
+        source={require('@/assets/eagle-icon-transparent.png')}
+        style={{ width: size, height }}
+        resizeMode="contain"
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  outer: {
-    backgroundColor: 'rgba(245,158,11,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.20)',
+  wrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#e6ab2c',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.55,
-    shadowRadius: 28,
-    elevation: 10,
-  },
-  mid: {
-    position: 'absolute',
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.35)',
-    backgroundColor: 'transparent',
-  },
-  core: {
-    backgroundColor: 'rgba(230,171,44,0.14)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(230,171,44,0.60)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
   },
 });

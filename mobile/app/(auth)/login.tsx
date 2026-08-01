@@ -44,6 +44,7 @@ export default function LoginScreen() {
   const titleOpacity  = useSharedValue(0);
   const titleY        = useSharedValue(14);
   const subOpacity    = useSharedValue(0);
+  const lineWidth     = useSharedValue(0);
   const cardOpacity   = useSharedValue(0);
   const cardY         = useSharedValue(28);
 
@@ -68,6 +69,7 @@ export default function LoginScreen() {
     titleOpacity.value  = withDelay(320, withTiming(1, { duration: 450 }));
     titleY.value         = withDelay(320, withTiming(0, { duration: 450, easing: Easing.out(Easing.cubic) }));
     subOpacity.value    = withDelay(520, withTiming(1, { duration: 400 }));
+    lineWidth.value     = withDelay(580, withTiming(76, { duration: 550, easing: Easing.out(Easing.cubic) }));
     cardOpacity.value   = withDelay(680, withTiming(1, { duration: 550 }));
     cardY.value          = withDelay(680, withTiming(0, { duration: 550, easing: Easing.out(Easing.cubic) }));
 
@@ -83,6 +85,7 @@ export default function LoginScreen() {
     transform: [{ translateY: titleY.value }],
   }));
   const subStyle = useAnimatedStyle(() => ({ opacity: subOpacity.value }));
+  const lineStyle = useAnimatedStyle(() => ({ width: lineWidth.value }));
   const cardStyle = useAnimatedStyle(() => ({
     opacity: cardOpacity.value,
     transform: [{ translateY: cardY.value }],
@@ -189,6 +192,7 @@ export default function LoginScreen() {
             </Animated.View>
             <Animated.Text style={[styles.appName, titleStyle]}>خدماتي</Animated.Text>
             <Animated.Text style={[styles.subtitle, subStyle]}>منصة الخدمات العراقية</Animated.Text>
+            <Animated.View style={[styles.subtitleLine, lineStyle]} />
           </View>
 
           {/* Login Card — spinning gold shimmer border via Skia */}
@@ -268,6 +272,16 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', gap: 12 },
   appName:  { fontFamily: FONTS.bold,    fontSize: 30, color: COLORS.gold,  letterSpacing: 0.5 },
   subtitle: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.muted },
+  subtitleLine: {
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: COLORS.gold,
+    overflow: 'hidden',
+    shadowColor: COLORS.gold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 6,
+  },
 
   card:      { gap: 0, borderWidth: 0 },
   cardTitle: {
