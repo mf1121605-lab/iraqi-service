@@ -44,11 +44,15 @@
         }
       ]
     ],
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "01765596-0307-4934-b259-c1ae8e1c482b"
+      }
+    },
+    "owner": "boss_m.f"
   }
 }
