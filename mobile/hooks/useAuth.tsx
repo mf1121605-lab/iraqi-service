@@ -65,11 +65,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function loadProfile(userId: string) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('id, given_name, family_name, phone, role, admin_level, account_status, avatar_key, is_verified, onboarding_complete')
       .eq('id', userId)
       .single();
+    // A missing column-level grant makes Postgres reject this whole query
+    // (not just that column) — silently falling back to a null profile
+    // routes every account to the customer screens with no visible error,
+    // so this must never be swallowed again.
+    if (error) console.error('loadProfile failed:', error.message);
     setProfile(data);
     setLoading(false);
   }

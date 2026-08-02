@@ -1,0 +1,15 @@
+-- profiles.onboarding_complete (added in 20260824170000_onboarding_required.sql)
+-- was never added to the column-level SELECT allowlist for `authenticated`
+-- (see 20260718140000_restrict_recovery_hash_select.sql / 20260724120000_
+-- employee_verification_grants_fix.sql — both predate this column). Its
+-- UPDATE grant was fixed in 20260824180000_onboarding_grant.sql, but SELECT
+-- was missed the same way is_verified was missed before it.
+--
+-- Concretely: mobile's useAuth.tsx loadProfile() selects onboarding_complete
+-- alongside role/admin_level, so the *entire* query was rejected outright
+-- with "permission denied for column onboarding_complete" on every single
+-- login, for every account, regardless of its actual role — profile stayed
+-- null, hasFounderAccess(null) was always false, and the UI fell back to
+-- customer navigation with account_status showing "موقوف" (the profile?.
+-- account_status === 'active' fallback for a null profile).
+grant select (onboarding_complete) on public.profiles to authenticated;
