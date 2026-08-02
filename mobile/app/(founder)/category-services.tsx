@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
-import { useAuth } from '@/hooks/useAuth';
+import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
@@ -17,8 +17,8 @@ interface CategoryService {
 
 interface Category {
   key: string;
-  name_ar: string;
-  name_ckb: string | null;
+  label_ar: string;
+  label_ckb: string | null;
   is_active: boolean;
 }
 
@@ -34,7 +34,7 @@ export default function CategoryServicesScreen() {
 
   async function loadAll() {
     const [catRes, svcRes] = await Promise.all([
-      supabase.from('categories').select('key, name_ar, name_ckb, is_active').order('display_order'),
+      supabase.from('categories').select('key, label_ar, label_ckb, is_active').order('sort_order'),
       supabase.from('category_services').select('*').order('category_key').order('sort_order'),
     ]);
     setCategories((catRes.data ?? []) as Category[]);
@@ -84,7 +84,7 @@ export default function CategoryServicesScreen() {
   }
 
   if (loading) return <ScreenBg><View style={s.center}><ActivityIndicator color={COLORS.gold} /></View></ScreenBg>;
-  if (!profile || profile.role !== 'founder') return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
+  if (!hasFounderAccess(profile)) return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
 
   return (
     <ScreenBg>
@@ -111,7 +111,7 @@ export default function CategoryServicesScreen() {
                   onPress={() => setSelectedCategory(cat.key)}
                   style={[s.catChip, selectedCategory === cat.key && s.catChipActive]}
                 >
-                  <Text style={[s.catChipText, selectedCategory === cat.key && s.catChipTextActive]}>{cat.name_ar}</Text>
+                  <Text style={[s.catChipText, selectedCategory === cat.key && s.catChipTextActive]}>{cat.label_ar}</Text>
                 </Pressable>
               ))}
             </View>
@@ -148,7 +148,7 @@ export default function CategoryServicesScreen() {
             if (catServices.length === 0) return null;
             return (
               <View key={cat.key}>
-                <Text style={s.catHeader}>{cat.name_ar}</Text>
+                <Text style={s.catHeader}>{cat.label_ar}</Text>
                 {catServices.map((svc) => (
                   <View key={svc.id} style={s.svcRow}>
                     <Pressable onPress={() => confirmDelete(svc)} style={s.deleteBtn} hitSlop={8}>

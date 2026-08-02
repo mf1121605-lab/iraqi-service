@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
-import { useAuth } from '@/hooks/useAuth';
+import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
@@ -15,6 +15,7 @@ interface UserProfile {
   phone: string | null;
   account_status: string;
   role: string;
+  admin_level: string | null;
   created_at: string;
 }
 
@@ -33,7 +34,7 @@ export default function UsersScreen() {
   async function loadUsers() {
     const { data } = await supabase
       .from('profiles')
-      .select('id, given_name, family_name, phone, account_status, role, created_at')
+      .select('id, given_name, family_name, phone, account_status, role, admin_level, created_at')
       .in('role', ['customer', 'employee'])
       .order('created_at', { ascending: false });
     setUsers((data ?? []) as UserProfile[]);
@@ -48,7 +49,7 @@ export default function UsersScreen() {
       await fetch(`${APP_URL}/api/founder/manage-account`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-        body: JSON.stringify({ userId, action }),
+        body: JSON.stringify({ targetUserId: userId, action }),
       });
       await loadUsers();
     } finally {
@@ -57,7 +58,7 @@ export default function UsersScreen() {
   }
 
   if (loading) return <ScreenBg><View style={s.center}><ActivityIndicator color={COLORS.gold} /></View></ScreenBg>;
-  if (!profile || profile.role !== 'founder') return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
+  if (!hasFounderAccess(profile)) return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
 
   const filtered = (users ?? []).filter((u) => tab === 'customers' ? u.role === 'customer' : u.role === 'employee');
 
@@ -96,12 +97,13 @@ export default function UsersScreen() {
                 <Text style={s.userName}>{name}</Text>
               </View>
               <Text style={s.phone}>{u.phone ?? 'لا يوجد رقم'}</Text>
+              {u.admin_level === 'co_admin' && <Text style={s.coAdminTag}>مشرف مشارك</Text>}
               <View style={s.actions}>
                 {u.role === 'customer' ? (
                   <Pressable onPress={() => callAction(u.id, 'promote_employee')} style={s.actionBtn} disabled={!!actionLoading}>
                     <Text style={s.actionText}>{isLoading('promote_employee') ? '...' : 'ترقية لموظف'}</Text>
                   </Pressable>
-                ) : (
+                ) : u.admin_level !== 'co_admin' && (
                   <Pressable onPress={() => callAction(u.id, 'demote_customer')} style={[s.actionBtn, s.actionBtnRed]} disabled={!!actionLoading}>
                     <Text style={[s.actionText, { color: '#ef4444' }]}>{isLoading('demote_customer') ? '...' : 'خفض لعضو'}</Text>
                   </Pressable>
@@ -116,6 +118,18 @@ export default function UsersScreen() {
                   </Pressable>
                 )}
               </View>
+              {/* Promote employee → co_admin: opens the founder panel for them on next app launch */}
+              {u.role === 'employee' && (
+                <Pressable
+                  onPress={() => callAction(u.id, u.admin_level === 'co_admin' ? 'remove_co_admin' : 'assign_co_admin')}
+                  disabled={!!actionLoading}
+                  style={[s.coAdminBtn, u.admin_level === 'co_admin' && s.coAdminBtnActive]}
+                >
+                  <Text style={[s.coAdminBtnText, { color: u.admin_level === 'co_admin' ? COLORS.gold : COLORS.muted }]}>
+                    {isLoading('assign_co_admin') || isLoading('remove_co_admin') ? '...' : u.admin_level === 'co_admin' ? 'إلغاء الإشراف' : 'ترقية إلى مشرف'}
+                  </Text>
+                </Pressable>
+              )}
             </View>
           );
         })}
@@ -151,4 +165,8 @@ const s = StyleSheet.create({
   actionBtnRed: { backgroundColor: 'rgba(239,68,68,0.1)', borderColor: 'rgba(239,68,68,0.3)' },
   actionBtnGreen: { backgroundColor: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.3)' },
   actionText: { fontFamily: FONTS.bold, fontSize: 12, color: COLORS.gold },
+  coAdminTag: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold, textAlign: 'right' },
+  coAdminBtn: { borderRadius: RADIUS.sm, paddingVertical: 7, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.03)' },
+  coAdminBtnActive: { borderColor: COLORS.goldBorder, backgroundColor: COLORS.goldDim },
+  coAdminBtnText: { fontFamily: FONTS.bold, fontSize: 12 },
 });

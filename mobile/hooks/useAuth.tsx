@@ -8,10 +8,19 @@ interface Profile {
   family_name: string | null;
   phone: string | null;
   role: 'customer' | 'employee' | 'founder';
+  admin_level: 'founder' | 'co_admin' | null;
   account_status: string;
   avatar_key: string | null;
   is_verified?: boolean;
   onboarding_complete?: boolean | null;
+}
+
+// A co_admin is an employee granted founder-panel access by the founder —
+// same panel, same screens, gated the same way `is_co_admin()` gates RLS
+// on the web. Use this everywhere instead of checking `role === 'founder'`
+// alone so promoted admins actually get in.
+export function hasFounderAccess(profile: Profile | null): boolean {
+  return !!profile && (profile.role === 'founder' || profile.admin_level === 'co_admin');
 }
 
 interface AuthState {
@@ -58,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function loadProfile(userId: string) {
     const { data } = await supabase
       .from('profiles')
-      .select('id, given_name, family_name, phone, role, account_status, avatar_key, is_verified, onboarding_complete')
+      .select('id, given_name, family_name, phone, role, admin_level, account_status, avatar_key, is_verified, onboarding_complete')
       .eq('id', userId)
       .single();
     setProfile(data);

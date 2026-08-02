@@ -1,10 +1,27 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
-import { useAuth } from '@/hooks/useAuth';
+import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+
+async function uploadBannerMedia(uri: string, kind: 'image' | 'video'): Promise<string | null> {
+  try {
+    const ext = uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg');
+    const path = `banners/${kind}/${Date.now()}.${ext}`;
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const contentType = kind === 'video' ? `video/${ext}` : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    const { error } = await supabase.storage.from('site-assets').upload(path, blob, { contentType, upsert: false });
+    if (error) return null;
+    const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
+    return data.publicUrl;
+  } catch {
+    return null;
+  }
+}
 
 interface Banner {
   id: string;
@@ -61,6 +78,7 @@ export default function BannersScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<FormState>(EMPTY_FORM);
   const [editSaving, setEditSaving] = useState(false);
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
 
   async function load() {
     const { data } = await supabase
@@ -78,6 +96,24 @@ export default function BannersScreen() {
 
   function setEditField(key: keyof FormState, value: string) {
     setEditForm((p) => ({ ...p, [key]: value }));
+  }
+
+  async function pickAndUpload(fieldKey: 'image_url' | 'video_url' | 'mobile_image_url', setter: (k: keyof FormState, v: string) => void) {
+    const kind: 'image' | 'video' = fieldKey === 'video_url' ? 'video' : 'image';
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: kind === 'video' ? ImagePicker.MediaTypeOptions.Videos : ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      allowsEditing: kind === 'image',
+      aspect: kind === 'image' ? [16, 9] : undefined,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    setUploadingField(fieldKey);
+    const url = await uploadBannerMedia(result.assets[0].uri, kind);
+    setUploadingField(null);
+    if (!url) return;
+    setter(fieldKey, url);
   }
 
   function startEdit(b: Banner) {
@@ -163,7 +199,7 @@ export default function BannersScreen() {
   }
 
   if (loading) return <ScreenBg><View style={s.center}><ActivityIndicator color={COLORS.gold} /></View></ScreenBg>;
-  if (!profile || profile.role !== 'founder') return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
+  if (!hasFounderAccess(profile)) return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
 
   return (
     <ScreenBg>
@@ -179,7 +215,7 @@ export default function BannersScreen() {
         {showForm && (
           <View style={s.card}>
             <Text style={s.cardTitle}>إعلان جديد</Text>
-            <FormFields form={form} setField={setField} />
+            <FormFields form={form} setField={setField} uploadingField={uploadingField} onPickMedia={(k) => pickAndUpload(k, setField)} />
             <Pressable onPress={handleAdd} disabled={saving || !form.title_ar} style={[s.goldBtn, (saving || !form.title_ar) && { opacity: 0.5 }]}>
               <Text style={s.goldBtnText}>{saving ? '...' : 'حفظ'}</Text>
             </Pressable>
@@ -234,7 +270,7 @@ export default function BannersScreen() {
               <Text style={s.modalTitle}>تعديل الإعلان</Text>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <FormFields form={editForm} setField={setEditField} />
+              <FormFields form={editForm} setField={setEditField} uploadingField={uploadingField} onPickMedia={(k) => pickAndUpload(k, setEditField)} />
               <Pressable onPress={saveEdit} disabled={editSaving || !editForm.title_ar}
                 style={[s.goldBtn, (editSaving || !editForm.title_ar) && { opacity: 0.5 }, { marginTop: 8 }]}>
                 <Text style={s.goldBtnText}>{editSaving ? '...' : 'حفظ التعديلات'}</Text>
@@ -248,7 +284,14 @@ export default function BannersScreen() {
   );
 }
 
-function FormFields({ form, setField }: { form: FormState; setField: (k: keyof FormState, v: string) => void }) {
+function FormFields({
+  form, setField, uploadingField, onPickMedia,
+}: {
+  form: FormState;
+  setField: (k: keyof FormState, v: string) => void;
+  uploadingField: string | null;
+  onPickMedia: (k: 'image_url' | 'video_url' | 'mobile_image_url') => void;
+}) {
   return (
     <>
       <Text style={s.sectionLabel}>— المحتوى —</Text>
@@ -279,13 +322,30 @@ function FormFields({ form, setField }: { form: FormState; setField: (k: keyof F
 
       <Text style={s.sectionLabel}>— الصور والفيديو —</Text>
       {([
-        ['image_url', 'رابط الصورة الرئيسية'],
-        ['video_url', 'رابط الفيديو'],
-        ['mobile_image_url', 'رابط صورة الجوال'],
-      ] as [keyof FormState, string][]).map(([key, ph]) => (
-        <TextInput key={key} value={form[key]} onChangeText={(v) => setField(key, v)}
-          placeholder={ph} placeholderTextColor={COLORS.white40}
-          style={s.input} textAlign="right" autoCapitalize="none" keyboardType="url" />
+        ['image_url', 'الصورة الرئيسية', 'image'],
+        ['video_url', 'الفيديو', 'video'],
+        ['mobile_image_url', 'صورة الجوال', 'image'],
+      ] as [ 'image_url' | 'video_url' | 'mobile_image_url', string, 'image' | 'video'][]).map(([key, label, kind]) => (
+        <View key={key} style={s.mediaFieldWrap}>
+          <Text style={s.mediaFieldLabel}>{label}</Text>
+          <View style={s.mediaFieldRow}>
+            {form[key] ? (
+              kind === 'image' ? (
+                <Image source={{ uri: form[key] }} style={s.mediaFieldThumb} />
+              ) : (
+                <View style={[s.mediaFieldThumb, s.mediaFieldVideoThumb]}><Text style={{ fontSize: 16 }}>🎥</Text></View>
+              )
+            ) : null}
+            <Pressable onPress={() => onPickMedia(key)} disabled={uploadingField === key} style={s.mediaUploadBtn}>
+              {uploadingField === key ? <ActivityIndicator color={COLORS.gold} size="small" /> : (
+                <Text style={s.mediaUploadBtnText}>{form[key] ? 'استبدال' : `رفع ${kind === 'video' ? 'فيديو' : 'صورة'}`}</Text>
+              )}
+            </Pressable>
+          </View>
+          <TextInput value={form[key]} onChangeText={(v) => setField(key, v)}
+            placeholder="أو الصق رابطاً مباشراً" placeholderTextColor={COLORS.white40}
+            style={s.input} textAlign="right" autoCapitalize="none" keyboardType="url" />
+        </View>
       ))}
 
       <Text style={s.sectionLabel}>— الألوان —</Text>
@@ -369,4 +429,12 @@ const s = StyleSheet.create({
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   modalTitle: { fontFamily: FONTS.bold, fontSize: 16, color: COLORS.white },
   modalClose: { fontSize: 18, color: COLORS.muted, padding: 4 },
+  // Media upload
+  mediaFieldWrap: { gap: 6 },
+  mediaFieldLabel: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.muted, textAlign: 'right' },
+  mediaFieldRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  mediaFieldThumb: { width: 44, height: 44, borderRadius: RADIUS.sm, backgroundColor: '#0d1117' },
+  mediaFieldVideoThumb: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.goldBorder },
+  mediaUploadBtn: { flex: 1, backgroundColor: 'rgba(230,171,44,0.1)', borderWidth: 1, borderColor: COLORS.goldBorder, borderRadius: RADIUS.sm, paddingVertical: 10, alignItems: 'center' },
+  mediaUploadBtnText: { fontFamily: FONTS.bold, fontSize: 12, color: COLORS.gold },
 });
