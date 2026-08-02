@@ -31,11 +31,6 @@
         "RECEIVE_BOOT_COMPLETED",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "NOTIFICATIONS",
-        "RECEIVE_BOOT_COMPLETED",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE"
       ]
     },
