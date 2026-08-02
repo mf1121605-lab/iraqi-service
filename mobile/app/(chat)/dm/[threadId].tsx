@@ -10,9 +10,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
-import { MessageBubble } from '@/components/chat/MessageBubble';
+import { MessageBubble, MessageStatus } from '@/components/chat/MessageBubble';
+import { MessageReactionPopover } from '@/components/chat/MessageReactionPopover';
+import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { Avatar } from '@/components/chat/Avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -31,13 +34,32 @@ interface DmMessage {
   sender_id: string;
   body: string | null;
   attachment_url: string | null;
+  reply_to_id: string | null;
+  read_at: string | null;
   created_at: string;
   message_type: string | null;
+  reactions: { emoji: string; user_id: string }[];
 }
 
 function displayNameFor(p: OtherUser | null): string {
   if (!p) return 'عضو';
   return [p.given_name, p.family_name].filter(Boolean).join(' ') || 'عضو';
+}
+
+async function uploadAttachment(uri: string, userId: string, kind: 'image' | 'voice'): Promise<string | null> {
+  try {
+    const ext = kind === 'voice' ? 'm4a' : (uri.split('.').pop()?.toLowerCase() ?? 'jpg');
+    const path = `chat/${userId}/${Date.now()}.${ext}`;
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const contentType = kind === 'voice' ? 'audio/m4a' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    const { error } = await supabase.storage.from('site-assets').upload(path, blob, { contentType, upsert: false });
+    if (error) return null;
+    const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
+    return data.publicUrl;
+  } catch {
+    return null;
+  }
 }
 
 const TEMPLATES = {
@@ -56,6 +78,9 @@ export default function DmThread() {
   const [sending, setSending] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const [recording, setRecording] = useState(false);
+  const [replyTo, setReplyTo] = useState<DmMessage | null>(null);
+  const [reactingId, setReactingId] = useState<string | null>(null);
 
   const listRef = useRef<FlatList>(null);
 
@@ -67,11 +92,11 @@ export default function DmThread() {
     function loadMessages() {
       supabase
         .from('direct_messages')
-        .select('id, sender_id, body, attachment_url, created_at, message_type')
+        .select('id, sender_id, body, attachment_url, reply_to_id, read_at, created_at, message_type, reactions:direct_message_reactions(emoji, user_id)')
         .eq('thread_id', threadId)
         .order('created_at')
         .then(({ data }) => {
-          if (active) setMessages(data ?? []);
+          if (active) setMessages((data ?? []) as unknown as DmMessage[]);
         });
     }
 
@@ -101,6 +126,7 @@ export default function DmThread() {
       channel = supabase
         .channel(`dm-thread-${threadId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'direct_messages', filter: `thread_id=eq.${threadId}` }, loadMessages)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'direct_message_reactions' }, loadMessages)
         .subscribe();
     }
 
@@ -117,17 +143,79 @@ export default function DmThread() {
     }
   }, [messages.length]);
 
+  // Mark the other party's messages as read once viewed.
+  useEffect(() => {
+    if (!profile?.id) return;
+    const unread = messages.filter((m) => m.sender_id !== profile.id && !m.read_at);
+    if (unread.length === 0) return;
+    supabase.from('direct_messages').update({ read_at: new Date().toISOString() }).in('id', unread.map((m) => m.id)).then(() => {});
+  }, [messages, profile?.id]);
+
   async function handleSend() {
     const text = body.trim();
     if (!text || !profile || !threadId) return;
     setSending(true);
     setBody('');
+    const replyId = replyTo?.id ?? null;
+    setReplyTo(null);
     await supabase.from('direct_messages').insert({
       thread_id: threadId,
       sender_id: profile.id,
       body: text,
+      message_type: 'text',
+      reply_to_id: replyId,
     });
     setSending(false);
+  }
+
+  async function pickAndSendImage() {
+    if (!profile || !threadId) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+    if (result.canceled || !result.assets[0]) return;
+    setSending(true);
+    const url = await uploadAttachment(result.assets[0].uri, profile.id, 'image');
+    if (url) {
+      await supabase.from('direct_messages').insert({
+        thread_id: threadId, sender_id: profile.id, body: '📷 صورة',
+        message_type: 'image', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+      });
+      setReplyTo(null);
+    }
+    setSending(false);
+  }
+
+  async function sendVoice(uri: string, durationMs: number) {
+    if (!profile || !threadId) return;
+    setRecording(false);
+    if (durationMs < 800) return;
+    setSending(true);
+    const url = await uploadAttachment(uri, profile.id, 'voice');
+    if (url) {
+      await supabase.from('direct_messages').insert({
+        thread_id: threadId, sender_id: profile.id, body: '🎤 رسالة صوتية',
+        message_type: 'voice', attachment_url: url,
+      });
+    }
+    setSending(false);
+  }
+
+  async function pickReaction(messageId: string, emoji: string) {
+    if (!profile?.id) return;
+    setReactingId(null);
+    const msg = messages.find((m) => m.id === messageId);
+    const mine = msg?.reactions.find((r) => r.user_id === profile.id);
+    if (mine) await supabase.from('direct_message_reactions').delete().eq('message_id', messageId).eq('user_id', profile.id);
+    if (!mine || mine.emoji !== emoji) {
+      await supabase.from('direct_message_reactions').insert({ message_id: messageId, user_id: profile.id, emoji });
+    }
+  }
+
+  function summarizeReactions(reactions: { emoji: string; user_id: string }[]) {
+    const counts: Record<string, number> = {};
+    reactions.forEach((r) => { counts[r.emoji] = (counts[r.emoji] ?? 0) + 1; });
+    return Object.entries(counts).map(([emoji, count]) => ({ emoji, count, mine: false }));
   }
 
   async function applyTemplate(key: keyof typeof TEMPLATES) {
@@ -186,19 +274,35 @@ export default function DmThread() {
           data={messages}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.msgList}
-          renderItem={({ item, index }) => {
+          removeClippedSubviews
+          maxToRenderPerBatch={8}
+          windowSize={8}
+          renderItem={({ item }) => {
             const isMine = item.sender_id === profile!.id;
-            const prev = messages[index - 1];
-            const bundled = prev && prev.sender_id === item.sender_id &&
-              new Date(item.created_at).getTime() - new Date(prev.created_at).getTime() < 120_000;
+            const replySource = item.reply_to_id ? messages.find((m) => m.id === item.reply_to_id) : null;
+            const status: MessageStatus = item.read_at ? 'read' : 'sent';
             return (
-              <MessageBubble
-                body={item.body ?? ''}
-                isMine={isMine}
-                timestamp={item.created_at}
-                messageType={item.message_type ?? undefined}
-                bundled={!!bundled}
-              />
+              <View>
+                {reactingId === item.id && (
+                  <MessageReactionPopover
+                    align={isMine ? 'end' : 'start'}
+                    onPick={(emoji) => pickReaction(item.id, emoji)}
+                    onReply={() => { setReplyTo(item); setReactingId(null); }}
+                  />
+                )}
+                <MessageBubble
+                  body={item.body ?? ''}
+                  isMine={isMine}
+                  timestamp={item.created_at}
+                  messageType={item.message_type ?? undefined}
+                  attachmentUrl={item.attachment_url}
+                  attachmentType={item.message_type === 'image' ? 'image' : item.message_type === 'voice' ? 'voice' : null}
+                  status={isMine ? status : undefined}
+                  reactions={summarizeReactions(item.reactions)}
+                  replyTo={replySource ? { body: replySource.body ?? '' } : null}
+                  onLongPress={() => setReactingId(reactingId === item.id ? null : item.id)}
+                />
+              </View>
             );
           }}
           ListEmptyComponent={
@@ -225,25 +329,48 @@ export default function DmThread() {
           </View>
         )}
 
+        {/* Reply preview */}
+        {replyTo && (
+          <View style={styles.replyBar}>
+            <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
+              <Text style={styles.replyBarClose}>✕</Text>
+            </Pressable>
+            <Text style={styles.replyBarText} numberOfLines={1}>الرد على: {replyTo.body}</Text>
+          </View>
+        )}
+
         {/* Input */}
-        <View style={styles.inputRow}>
-          <TextInput
-            value={body}
-            onChangeText={setBody}
-            placeholder="اكتب رسالة..."
-            placeholderTextColor={COLORS.white40}
-            style={styles.input}
-            multiline
-            textAlign="right"
-          />
-          <Pressable
-            onPress={handleSend}
-            disabled={sending || !body.trim()}
-            style={({ pressed }) => [styles.sendBtn, (sending || !body.trim()) && styles.sendBtnDisabled, pressed && styles.sendBtnPressed]}
-          >
-            <Text style={styles.sendIcon}>↑</Text>
-          </Pressable>
-        </View>
+        {recording ? (
+          <VoiceRecorderBar onSend={sendVoice} onCancel={() => setRecording(false)} />
+        ) : (
+          <View style={styles.inputRow}>
+            {body.trim() ? (
+              <Pressable
+                onPress={handleSend}
+                disabled={sending}
+                style={({ pressed }) => [styles.sendBtn, sending && styles.sendBtnDisabled, pressed && styles.sendBtnPressed]}
+              >
+                <Text style={styles.sendIcon}>↑</Text>
+              </Pressable>
+            ) : (
+              <Pressable style={styles.micBtn} onPress={() => setRecording(true)} disabled={sending}>
+                <Text style={styles.micIcon}>🎤</Text>
+              </Pressable>
+            )}
+            <TextInput
+              value={body}
+              onChangeText={setBody}
+              placeholder="اكتب رسالة..."
+              placeholderTextColor={COLORS.white40}
+              style={styles.input}
+              multiline
+              textAlign="right"
+            />
+            <Pressable style={styles.imageBtn} onPress={pickAndSendImage} disabled={sending}>
+              <Text style={styles.imageBtnIcon}>🖼️</Text>
+            </Pressable>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </ScreenBg>
   );
@@ -313,6 +440,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.gold,
   },
+  replyBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: COLORS.goldDim,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.goldBorder,
+  },
+  replyBarClose: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
+  replyBarText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12, color: COLORS.gold, textAlign: 'right' },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -337,6 +476,10 @@ const styles = StyleSheet.create({
     maxHeight: 120,
     textAlign: 'right',
   },
+  imageBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
+  imageBtnIcon: { fontSize: 17 },
+  micBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(230,171,44,0.12)', borderWidth: 1, borderColor: COLORS.goldBorder, alignItems: 'center', justifyContent: 'center' },
+  micIcon: { fontSize: 18 },
   sendBtn: {
     width: 44,
     height: 44,

@@ -58,14 +58,20 @@ ALTER TABLE public.chat_messages ADD COLUMN IF NOT EXISTS read_at timestamptz;
 
 -- ── per-message emoji reactions (one per user per message; switching
 --    reaction is delete-then-insert client-side, same as social_reactions) ──
-CREATE TABLE IF NOT EXISTS public.chat_message_reactions (
-  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  message_id uuid NOT NULL REFERENCES public.chat_messages(id) ON DELETE CASCADE,
-  user_id    uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  emoji      text NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (message_id, user_id)
-);
+--
+-- chat_message_reactions already exists (20260716130000_advanced_chat_
+-- system.sql) but with UNIQUE(message_id, user_id, emoji) — allowing a
+-- user to stack multiple *different* emoji on the same message — while
+-- its only caller (chat/[slug] toggleReaction) upserts with
+-- onConflict: 'message_id,user_id', a 2-column target that constraint
+-- doesn't satisfy. That mismatch means the upsert has never actually
+-- worked (Postgres validates the ON CONFLICT target against a real
+-- constraint at plan time, so every call errors, not just genuine
+-- conflicts). Align it with the one-reaction-per-user model used
+-- everywhere else instead of duplicating the table.
+ALTER TABLE public.chat_message_reactions DROP CONSTRAINT IF EXISTS chat_message_reactions_message_id_user_id_emoji_key;
+ALTER TABLE public.chat_message_reactions ADD CONSTRAINT chat_message_reactions_message_id_user_id_key UNIQUE (message_id, user_id);
+
 CREATE TABLE IF NOT EXISTS public.request_message_reactions (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   message_id uuid NOT NULL REFERENCES public.request_messages(id) ON DELETE CASCADE,
@@ -83,13 +89,10 @@ CREATE TABLE IF NOT EXISTS public.direct_message_reactions (
   UNIQUE (message_id, user_id)
 );
 
-ALTER TABLE public.chat_message_reactions    ENABLE ROW LEVEL SECURITY;
+-- chat_message_reactions already has RLS enabled + select/insert/delete
+-- policies from its original migration — nothing to add there.
 ALTER TABLE public.request_message_reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.direct_message_reactions  ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY chat_message_reactions_select ON public.chat_message_reactions FOR SELECT TO authenticated USING (true);
-CREATE POLICY chat_message_reactions_insert ON public.chat_message_reactions FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY chat_message_reactions_delete ON public.chat_message_reactions FOR DELETE TO authenticated USING (user_id = auth.uid());
 
 CREATE POLICY request_message_reactions_select ON public.request_message_reactions FOR SELECT TO authenticated USING (true);
 CREATE POLICY request_message_reactions_insert ON public.request_message_reactions FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
@@ -99,6 +102,6 @@ CREATE POLICY direct_message_reactions_select ON public.direct_message_reactions
 CREATE POLICY direct_message_reactions_insert ON public.direct_message_reactions FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
 CREATE POLICY direct_message_reactions_delete ON public.direct_message_reactions FOR DELETE TO authenticated USING (user_id = auth.uid());
 
-ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_message_reactions;
+-- chat_message_reactions is already in the realtime publication.
 ALTER PUBLICATION supabase_realtime ADD TABLE public.request_message_reactions;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.direct_message_reactions;

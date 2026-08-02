@@ -8,10 +8,12 @@ export const MESSAGE_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '�
 interface Props {
   align: 'start' | 'end';
   onPick: (emoji: string) => void;
+  onReply?: () => void;
 }
 
 // Floating emoji row shown above a message bubble on long-press / double-tap.
-export function MessageReactionPopover({ align, onPick }: Props) {
+// An optional trailing "↩" button lets the same gesture start a reply.
+export function MessageReactionPopover({ align, onPick, onReply }: Props) {
   return (
     <Animated.View
       entering={FadeInDown.duration(160).easing(Easing.out(Easing.back(1.4)))}
@@ -28,6 +30,18 @@ export function MessageReactionPopover({ align, onPick }: Props) {
             <Text style={styles.emoji}>{emoji}</Text>
           </Pressable>
         ))}
+        {onReply && (
+          <>
+            <View style={styles.divider} />
+            <Pressable
+              hitSlop={4}
+              style={styles.emojiBtn}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); onReply(); }}
+            >
+              <Text style={styles.replyIcon}>↩</Text>
+            </Pressable>
+          </>
+        )}
       </View>
     </Animated.View>
   );
@@ -52,4 +66,6 @@ const styles = StyleSheet.create({
   },
   emojiBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   emoji: { fontSize: 21 },
+  divider: { width: 1, height: 22, backgroundColor: COLORS.goldBorder, marginHorizontal: 2, alignSelf: 'center' },
+  replyIcon: { fontSize: 18, color: COLORS.gold },
 });

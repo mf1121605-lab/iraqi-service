@@ -303,6 +303,7 @@ export default function RequestDetail() {
                     <MessageReactionPopover
                       align={isMine ? 'end' : 'start'}
                       onPick={(emoji) => pickReaction(item.id, emoji)}
+                      onReply={() => { setReplyTo(item); setReactingId(null); }}
                     />
                   </View>
                 )}

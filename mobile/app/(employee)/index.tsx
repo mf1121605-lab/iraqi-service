@@ -15,12 +15,31 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { Avatar } from '@/components/chat/Avatar';
-import { MessageBubble } from '@/components/chat/MessageBubble';
+import { MessageBubble, MessageStatus } from '@/components/chat/MessageBubble';
+import { MessageReactionPopover } from '@/components/chat/MessageReactionPopover';
+import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+
+async function uploadAttachment(uri: string, userId: string, kind: 'image' | 'voice'): Promise<string | null> {
+  try {
+    const ext = kind === 'voice' ? 'm4a' : (uri.split('.').pop()?.toLowerCase() ?? 'jpg');
+    const path = `chat/${userId}/${Date.now()}.${ext}`;
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const contentType = kind === 'voice' ? 'audio/m4a' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    const { error } = await supabase.storage.from('site-assets').upload(path, blob, { contentType, upsert: false });
+    if (error) return null;
+    const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
+    return data.publicUrl;
+  } catch {
+    return null;
+  }
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,9 +70,11 @@ interface Message {
   sender_id: string;
   body: string | null;
   attachment_url: string | null;
+  reply_to_id: string | null;
   message_type: string | null;
   created_at: string;
   read_at: string | null;
+  reactions: { emoji: string; user_id: string }[];
 }
 
 interface HistoryEntry {
@@ -137,6 +158,9 @@ export default function EmployeeDashboard() {
   // Chat input
   const [messageBody, setMessageBody] = useState('');
   const [sending, setSending] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [reactingId, setReactingId] = useState<string | null>(null);
   const [loadingChat, setLoadingChat] = useState(false);
 
   // Status update
@@ -240,6 +264,7 @@ export default function EmployeeDashboard() {
         event: '*', schema: 'public', table: 'request_messages',
         filter: `request_id=eq.${selectedId}`,
       }, () => loadDetail(selectedId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'request_message_reactions' }, () => loadDetail(selectedId))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -260,7 +285,7 @@ export default function EmployeeDashboard() {
     const [{ data: msgRows }, { data: histRows }, { data: reqRow }] = await Promise.all([
       supabase
         .from('request_messages')
-        .select('id, sender_id, body, attachment_url, message_type, created_at, read_at')
+        .select('id, sender_id, body, attachment_url, reply_to_id, message_type, created_at, read_at, reactions:request_message_reactions(emoji, user_id)')
         .eq('request_id', requestId)
         .order('created_at'),
       supabase
@@ -307,6 +332,8 @@ export default function EmployeeDashboard() {
     setShowPaymentForm(false);
     setShowHistory(false);
     setMessageBody('');
+    setReplyTo(null);
+    setReactingId(null);
     setView('chat');
     loadDetail(req.id);
   }
@@ -339,13 +366,66 @@ export default function EmployeeDashboard() {
     if (!text || !profile || !selectedId) return;
     setSending(true);
     setMessageBody('');
+    const replyId = replyTo?.id ?? null;
+    setReplyTo(null);
     await supabase.from('request_messages').insert({
       request_id: selectedId,
       sender_id: profile.id,
       body: text,
       message_type: 'text',
+      reply_to_id: replyId,
     });
     setSending(false);
+  }
+
+  async function pickAndSendImage() {
+    if (!profile || !selectedId) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+    if (result.canceled || !result.assets[0]) return;
+    setSending(true);
+    const url = await uploadAttachment(result.assets[0].uri, profile.id, 'image');
+    if (url) {
+      await supabase.from('request_messages').insert({
+        request_id: selectedId, sender_id: profile.id, body: '📷 صورة',
+        message_type: 'image', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+      });
+      setReplyTo(null);
+    }
+    setSending(false);
+  }
+
+  async function sendVoice(uri: string, durationMs: number) {
+    if (!profile || !selectedId) return;
+    setRecording(false);
+    if (durationMs < 800) return;
+    setSending(true);
+    const url = await uploadAttachment(uri, profile.id, 'voice');
+    if (url) {
+      await supabase.from('request_messages').insert({
+        request_id: selectedId, sender_id: profile.id, body: '🎤 رسالة صوتية',
+        message_type: 'voice', attachment_url: url,
+      });
+    }
+    setSending(false);
+  }
+
+  async function pickReaction(messageId: string, emoji: string) {
+    if (!profile) return;
+    setReactingId(null);
+    const msg = messages.find((m) => m.id === messageId);
+    const mine = msg?.reactions.find((r) => r.user_id === profile.id);
+    if (mine) await supabase.from('request_message_reactions').delete().eq('message_id', messageId).eq('user_id', profile.id);
+    if (!mine || mine.emoji !== emoji) {
+      await supabase.from('request_message_reactions').insert({ message_id: messageId, user_id: profile.id, emoji });
+    }
+  }
+
+  function summarizeReactions(reactions: { emoji: string; user_id: string }[]) {
+    const counts: Record<string, number> = {};
+    reactions.forEach((r) => { counts[r.emoji] = (counts[r.emoji] ?? 0) + 1; });
+    return Object.entries(counts).map(([emoji, count]) => ({ emoji, count, mine: false }));
   }
 
   async function handleLogPayment() {
@@ -606,14 +686,31 @@ export default function EmployeeDashboard() {
                 const prev = messages[index - 1];
                 const bundled = !!(prev && prev.sender_id === item.sender_id &&
                   new Date(item.created_at).getTime() - new Date(prev.created_at).getTime() < 120_000);
+                const replySource = item.reply_to_id ? messages.find((m) => m.id === item.reply_to_id) : null;
+                const status: MessageStatus = item.read_at ? 'read' : 'sent';
                 return (
-                  <MessageBubble
-                    body={item.body ?? ''}
-                    isMine={isMine}
-                    timestamp={item.created_at}
-                    messageType={item.message_type ?? undefined}
-                    bundled={bundled}
-                  />
+                  <View>
+                    {reactingId === item.id && (
+                      <MessageReactionPopover
+                        align={isMine ? 'end' : 'start'}
+                        onPick={(emoji) => pickReaction(item.id, emoji)}
+                        onReply={() => { setReplyTo(item); setReactingId(null); }}
+                      />
+                    )}
+                    <MessageBubble
+                      body={item.body ?? ''}
+                      isMine={isMine}
+                      timestamp={item.created_at}
+                      messageType={item.message_type ?? undefined}
+                      attachmentUrl={item.attachment_url}
+                      attachmentType={item.message_type === 'image' ? 'image' : item.message_type === 'voice' ? 'voice' : null}
+                      status={isMine ? status : undefined}
+                      reactions={summarizeReactions(item.reactions)}
+                      replyTo={replySource ? { body: replySource.body ?? '' } : null}
+                      bundled={bundled}
+                      onLongPress={() => setReactingId(reactingId === item.id ? null : item.id)}
+                    />
+                  </View>
                 );
               }}
             />
@@ -675,42 +772,65 @@ export default function EmployeeDashboard() {
             </View>
           )}
 
+          {/* Reply preview */}
+          {replyTo && !isClosed && (
+            <View style={styles.replyBar}>
+              <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
+                <Text style={styles.replyBarClose}>✕</Text>
+              </Pressable>
+              <Text style={styles.replyBarText} numberOfLines={1}>الرد على: {replyTo.body}</Text>
+            </View>
+          )}
+
           {/* Input bar */}
           {!isClosed ? (
-            <View style={styles.inputBar}>
-              <Pressable
-                onPress={() => setShowPaymentForm((v) => !v)}
-                style={[styles.toolBtn, showPaymentForm && styles.toolBtnActive]}
-                hitSlop={6}
-              >
-                <Text style={styles.toolBtnIcon}>💰</Text>
-              </Pressable>
-              <TextInput
-                value={messageBody}
-                onChangeText={setMessageBody}
-                placeholder="اكتب رسالة..."
-                placeholderTextColor={COLORS.white40}
-                style={styles.textInput}
-                multiline
-                textAlign="right"
-                maxLength={2000}
-              />
-              <Pressable
-                onPress={handleSend}
-                disabled={sending || !messageBody.trim()}
-                style={({ pressed }) => [
-                  styles.sendBtn,
-                  (!messageBody.trim() || sending) && styles.sendBtnDisabled,
-                  pressed && { opacity: 0.8 },
-                ]}
-              >
-                {sending ? (
-                  <ActivityIndicator color="#000" size="small" />
+            recording ? (
+              <VoiceRecorderBar onSend={sendVoice} onCancel={() => setRecording(false)} />
+            ) : (
+              <View style={styles.inputBar}>
+                <Pressable
+                  onPress={() => setShowPaymentForm((v) => !v)}
+                  style={[styles.toolBtn, showPaymentForm && styles.toolBtnActive]}
+                  hitSlop={6}
+                >
+                  <Text style={styles.toolBtnIcon}>💰</Text>
+                </Pressable>
+                <TextInput
+                  value={messageBody}
+                  onChangeText={setMessageBody}
+                  placeholder="اكتب رسالة..."
+                  placeholderTextColor={COLORS.white40}
+                  style={styles.textInput}
+                  multiline
+                  textAlign="right"
+                  maxLength={2000}
+                />
+                <Pressable style={styles.toolBtn} onPress={pickAndSendImage} disabled={sending} hitSlop={6}>
+                  <Text style={styles.toolBtnIcon}>🖼️</Text>
+                </Pressable>
+                {messageBody.trim() ? (
+                  <Pressable
+                    onPress={handleSend}
+                    disabled={sending}
+                    style={({ pressed }) => [
+                      styles.sendBtn,
+                      sending && styles.sendBtnDisabled,
+                      pressed && { opacity: 0.8 },
+                    ]}
+                  >
+                    {sending ? (
+                      <ActivityIndicator color="#000" size="small" />
+                    ) : (
+                      <Text style={styles.sendIcon}>↑</Text>
+                    )}
+                  </Pressable>
                 ) : (
-                  <Text style={styles.sendIcon}>↑</Text>
+                  <Pressable style={styles.micBtn} onPress={() => setRecording(true)} disabled={sending} hitSlop={6}>
+                    <Text style={styles.micIcon}>🎤</Text>
+                  </Pressable>
                 )}
-              </Pressable>
-            </View>
+              </View>
+            )
           ) : (
             <View style={styles.closedBar}>
               <Text style={styles.closedText}>
@@ -1035,6 +1155,11 @@ const styles = StyleSheet.create({
   sendBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: COLORS.gold, alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { backgroundColor: 'rgba(230,171,44,0.3)' },
   sendIcon: { fontSize: 20, color: '#000', fontFamily: FONTS.bold },
+  micBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(230,171,44,0.12)', borderWidth: 1, borderColor: 'rgba(230,171,44,0.3)', alignItems: 'center', justifyContent: 'center' },
+  micIcon: { fontSize: 17 },
+  replyBar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: 'rgba(230,171,44,0.15)', borderTopWidth: 1, borderTopColor: 'rgba(230,171,44,0.2)' },
+  replyBarClose: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
+  replyBarText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12, color: COLORS.gold, textAlign: 'right' },
   closedBar: { paddingVertical: 14, alignItems: 'center', backgroundColor: '#161b22', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingBottom: Platform.OS === 'ios' ? 28 : 14 },
   closedText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.muted },
 
