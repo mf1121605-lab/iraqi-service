@@ -12,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#0d1117"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.iraqiservice.app"
@@ -25,6 +27,11 @@
       "package": "com.iraqiservice.app",
       "versionCode": 1,
       "permissions": [
+        "NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
         "NOTIFICATIONS",
         "RECEIVE_BOOT_COMPLETED",
         "CAMERA",
@@ -53,6 +60,9 @@
         "projectId": "01765596-0307-4934-b259-c1ae8e1c482b"
       }
     },
-    "owner": "boss_m.f"
+    "owner": "boss_m.f",
+    "updates": {
+      "url": "https://u.expo.dev/01765596-0307-4934-b259-c1ae8e1c482b"
+    }
   }
 }
