@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,12 +11,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import { MessageBubble } from '@/components/chat/MessageBubble';
+import { MessageBubble, MessageStatus } from '@/components/chat/MessageBubble';
+import { MessageReactionPopover } from '@/components/chat/MessageReactionPopover';
+import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
@@ -34,7 +37,11 @@ type Message = {
   sender_id: string;
   body: string;
   message_type: string;
+  attachment_url: string | null;
+  reply_to_id: string | null;
+  read_at: string | null;
   created_at: string;
+  reactions: { emoji: string; user_id: string }[];
 };
 
 type RequestDetail = {
@@ -48,6 +55,22 @@ type RequestDetail = {
   employee: { given_name: string; family_name: string } | null;
 };
 
+async function uploadAttachment(uri: string, userId: string, kind: 'image' | 'voice'): Promise<string | null> {
+  try {
+    const ext = kind === 'voice' ? 'm4a' : (uri.split('.').pop()?.toLowerCase() ?? 'jpg');
+    const path = `chat/${userId}/${Date.now()}.${ext}`;
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const contentType = kind === 'voice' ? 'audio/m4a' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    const { error } = await supabase.storage.from('site-assets').upload(path, blob, { contentType, upsert: false });
+    if (error) return null;
+    const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
+    return data.publicUrl;
+  } catch {
+    return null;
+  }
+}
+
 export default function RequestDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
@@ -60,6 +83,9 @@ export default function RequestDetail() {
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showDesc, setShowDesc] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [reactingId, setReactingId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -71,13 +97,13 @@ export default function RequestDetail() {
         .single(),
       supabase
         .from('request_messages')
-        .select('id, sender_id, body, message_type, created_at')
+        .select('id, sender_id, body, message_type, attachment_url, reply_to_id, read_at, created_at, reactions:request_message_reactions(emoji, user_id)')
         .eq('request_id', id)
         .order('created_at', { ascending: true })
         .limit(200),
     ]);
     if (rRes.data) setReq(rRes.data as unknown as RequestDetail);
-    if (mRes.data) setMessages(mRes.data);
+    if (mRes.data) setMessages(mRes.data as unknown as Message[]);
     setLoading(false);
   }, [id]);
 
@@ -89,6 +115,7 @@ export default function RequestDetail() {
         event: '*', schema: 'public', table: 'request_messages',
         filter: `request_id=eq.${id}`,
       }, () => loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'request_message_reactions' }, () => loadData())
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'requests',
         filter: `id=eq.${id}`,
@@ -103,18 +130,79 @@ export default function RequestDetail() {
     }
   }, [messages.length]);
 
+  // Mark the other party's messages as read once they're visible on screen.
+  useEffect(() => {
+    if (!session?.user.id) return;
+    const unread = messages.filter((m) => m.sender_id !== session.user.id && !m.read_at);
+    if (unread.length === 0) return;
+    supabase.from('request_messages').update({ read_at: new Date().toISOString() }).in('id', unread.map((m) => m.id)).then(() => {});
+  }, [messages, session?.user.id]);
+
   async function sendMessage() {
     if (!text.trim() || !session?.user.id || !id) return;
     const body = text.trim();
+    const replyId = replyTo?.id ?? null;
     setText('');
+    setReplyTo(null);
     setSending(true);
     await supabase.from('request_messages').insert({
       request_id: id,
       sender_id: session.user.id,
       body,
       message_type: 'text',
+      reply_to_id: replyId,
     });
     setSending(false);
+  }
+
+  async function pickAndSendImage() {
+    if (!session?.user.id || !id) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+    if (result.canceled || !result.assets[0]) return;
+    setSending(true);
+    const url = await uploadAttachment(result.assets[0].uri, session.user.id, 'image');
+    if (url) {
+      await supabase.from('request_messages').insert({
+        request_id: id, sender_id: session.user.id, body: '📷 صورة',
+        message_type: 'image', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+      });
+      setReplyTo(null);
+    }
+    setSending(false);
+  }
+
+  async function sendVoice(uri: string, durationMs: number) {
+    if (!session?.user.id || !id) return;
+    setRecording(false);
+    if (durationMs < 800) return; // too short to be intentional
+    setSending(true);
+    const url = await uploadAttachment(uri, session.user.id, 'voice');
+    if (url) {
+      await supabase.from('request_messages').insert({
+        request_id: id, sender_id: session.user.id, body: '🎤 رسالة صوتية',
+        message_type: 'voice', attachment_url: url,
+      });
+    }
+    setSending(false);
+  }
+
+  async function pickReaction(messageId: string, emoji: string) {
+    if (!session?.user.id) return;
+    setReactingId(null);
+    const msg = messages.find((m) => m.id === messageId);
+    const mine = msg?.reactions.find((r) => r.user_id === session.user.id);
+    if (mine) await supabase.from('request_message_reactions').delete().eq('message_id', messageId).eq('user_id', session.user.id);
+    if (!mine || mine.emoji !== emoji) {
+      await supabase.from('request_message_reactions').insert({ message_id: messageId, user_id: session.user.id, emoji });
+    }
+  }
+
+  function summarizeReactions(reactions: { emoji: string; user_id: string }[]) {
+    const counts: Record<string, number> = {};
+    reactions.forEach((r) => { counts[r.emoji] = (counts[r.emoji] ?? 0) + 1; });
+    return Object.entries(counts).map(([emoji, count]) => ({ emoji, count, mine: false }));
   }
 
   if (loading) {
@@ -201,19 +289,36 @@ export default function RequestDetail() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.msgList}
           showsVerticalScrollIndicator={false}
+          removeClippedSubviews
+          maxToRenderPerBatch={8}
+          windowSize={8}
           renderItem={({ item, index }) => {
             const isMine = item.sender_id === session?.user.id;
-            const prev = messages[index - 1];
-            const bundled = !!(prev && prev.sender_id === item.sender_id &&
-              new Date(item.created_at).getTime() - new Date(prev.created_at).getTime() < 60000);
+            const replySource = item.reply_to_id ? messages.find((m) => m.id === item.reply_to_id) : null;
+            const status: MessageStatus = item.read_at ? 'read' : 'sent';
             return (
-              <MessageBubble
-                isMine={isMine}
-                body={item.body}
-                messageType={item.message_type}
-                timestamp={item.created_at}
-                bundled={bundled}
-              />
+              <View>
+                {reactingId === item.id && (
+                  <View style={{ position: 'relative' }}>
+                    <MessageReactionPopover
+                      align={isMine ? 'end' : 'start'}
+                      onPick={(emoji) => pickReaction(item.id, emoji)}
+                    />
+                  </View>
+                )}
+                <MessageBubble
+                  isMine={isMine}
+                  body={item.body}
+                  messageType={item.message_type}
+                  attachmentUrl={item.attachment_url}
+                  attachmentType={item.message_type === 'image' ? 'image' : item.message_type === 'voice' ? 'voice' : null}
+                  timestamp={item.created_at}
+                  status={isMine ? status : undefined}
+                  reactions={summarizeReactions(item.reactions)}
+                  replyTo={replySource ? { body: replySource.body } : null}
+                  onLongPress={() => setReactingId(reactingId === item.id ? null : item.id)}
+                />
+              </View>
             );
           }}
           ListEmptyComponent={
@@ -226,36 +331,51 @@ export default function RequestDetail() {
           onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
         />
 
+        {/* Reply preview */}
+        {replyTo && !isClosed && (
+          <View style={styles.replyBar}>
+            <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
+              <Text style={styles.replyBarClose}>✕</Text>
+            </Pressable>
+            <Text style={styles.replyBarText} numberOfLines={1}>الرد على: {replyTo.body}</Text>
+          </View>
+        )}
+
         {/* Input bar */}
         {!isClosed ? (
-          <View style={styles.inputBar}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.sendBtn,
-                (!text.trim() || sending) && styles.sendBtnDisabled,
-                pressed && styles.sendBtnPressed,
-              ]}
-              onPress={sendMessage}
-              disabled={sending || !text.trim()}
-            >
-              {sending ? (
-                <ActivityIndicator color="#000" size="small" />
+          recording ? (
+            <VoiceRecorderBar onSend={sendVoice} onCancel={() => setRecording(false)} />
+          ) : (
+            <View style={styles.inputBar}>
+              {text.trim() ? (
+                <Pressable
+                  style={({ pressed }) => [styles.sendBtn, sending && styles.sendBtnDisabled, pressed && styles.sendBtnPressed]}
+                  onPress={sendMessage}
+                  disabled={sending}
+                >
+                  {sending ? <ActivityIndicator color="#000" size="small" /> : <Text style={styles.sendIcon}>↑</Text>}
+                </Pressable>
               ) : (
-                <Text style={styles.sendIcon}>↑</Text>
+                <Pressable style={styles.micBtn} onPress={() => setRecording(true)} disabled={sending}>
+                  <Text style={styles.micIcon}>🎤</Text>
+                </Pressable>
               )}
-            </Pressable>
-            <TextInput
-              ref={inputRef}
-              value={text}
-              onChangeText={setText}
-              placeholder="اكتب رسالة..."
-              placeholderTextColor={COLORS.white40}
-              style={styles.textInput}
-              textAlign="right"
-              multiline
-              maxLength={2000}
-            />
-          </View>
+              <TextInput
+                ref={inputRef}
+                value={text}
+                onChangeText={setText}
+                placeholder="اكتب رسالة..."
+                placeholderTextColor={COLORS.white40}
+                style={styles.textInput}
+                textAlign="right"
+                multiline
+                maxLength={2000}
+              />
+              <Pressable style={styles.imageBtn} onPress={pickAndSendImage} disabled={sending}>
+                <Text style={styles.imageBtnIcon}>🖼️</Text>
+              </Pressable>
+            </View>
+          )
         ) : (
           <View style={styles.closedBar}>
             <Text style={styles.closedBarText}>
@@ -364,6 +484,19 @@ const styles = StyleSheet.create({
   emptyChatText: { fontFamily: FONTS.bold, fontSize: 15, color: COLORS.white },
   emptyChatSub: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
 
+  replyBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: COLORS.goldDim,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.goldBorder,
+  },
+  replyBarClose: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
+  replyBarText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12, color: COLORS.gold, textAlign: 'right' },
+
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -390,6 +523,10 @@ const styles = StyleSheet.create({
     maxHeight: 120,
     minHeight: 44,
   },
+  imageBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
+  imageBtnIcon: { fontSize: 17 },
+  micBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(230,171,44,0.12)', borderWidth: 1, borderColor: COLORS.goldBorder, alignItems: 'center', justifyContent: 'center' },
+  micIcon: { fontSize: 18 },
   sendBtn: {
     width: 44,
     height: 44,
