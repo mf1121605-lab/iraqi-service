@@ -1,18 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+import { EmployeeSelectorCarousel, type EmployeeCandidate } from '@/components/employee/EmployeeSelectorCarousel';
 
 const CAT_LABELS: Record<string, string> = {
   military: 'الخدمات العسكرية',
@@ -21,50 +13,39 @@ const CAT_LABELS: Record<string, string> = {
   general: 'خدمات أخرى',
 };
 
-type Candidate = {
-  id: string;
-  given_name: string;
-  family_name: string;
-  avatar_key: string | null;
-  specialization: string | null;
-  is_verified: boolean;
-};
-
-function AvatarCircle({ name, size = 56 }: { name: string; size?: number }) {
-  const initial = name?.charAt(0)?.toUpperCase() ?? '؟';
-  return (
-    <View style={[styles.avatarCircle, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Text style={[styles.avatarInitial, { fontSize: size * 0.4 }]}>{initial}</Text>
-    </View>
-  );
-}
+// Beat between the checkmark animation landing and navigating away, so the
+// selection actually reads as confirmed before the screen changes.
+const SELECT_CONFIRM_DELAY_MS = 650;
 
 export default function MatchingScreen() {
   const { requestId, category } = useLocalSearchParams<{ requestId: string; category: string }>();
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [candidates, setCandidates] = useState<EmployeeCandidate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selecting, setSelecting] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!category) return;
     const { data } = await supabase.rpc('get_active_employee_candidates', {
       p_category: category,
     });
-    setCandidates((data as Candidate[]) ?? []);
+    setCandidates((data as EmployeeCandidate[]) ?? []);
     setLoading(false);
   }, [category]);
 
   useEffect(() => { load(); }, [load]);
 
-  async function selectEmployee(candidateId: string) {
-    if (!requestId || selecting) return;
-    setSelecting(candidateId);
+  async function selectEmployee(candidate: EmployeeCandidate) {
+    if (!requestId || confirmingId) return;
+    setSelectedId(candidate.id);
+    setConfirmingId(candidate.id);
     await supabase
       .from('requests')
-      .update({ employee_id: candidateId, status: 'in_progress' })
+      .update({ employee_id: candidate.id, status: 'in_progress' })
       .eq('id', requestId);
-    // Navigate back — realtime will update the request detail
-    router.back();
+    // Let the checkmark animation land before navigating away — realtime
+    // will update the request detail once we're back.
+    setTimeout(() => router.back(), SELECT_CONFIRM_DELAY_MS);
   }
 
   return (
@@ -101,63 +82,17 @@ export default function MatchingScreen() {
           </Pressable>
         </View>
       ) : (
-        <FlatList
-          data={candidates}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={
-            <Text style={styles.listHeader}>
-              {candidates.length} موظف متاح — اختر من تريد العمل معه
-            </Text>
-          }
-          renderItem={({ item }) => {
-            const fullName = `${item.given_name} ${item.family_name}`;
-            const isSelecting = selecting === item.id;
-            return (
-              <View style={styles.card}>
-                {/* Left accent bar */}
-                <View style={styles.cardAccent} />
-
-                <AvatarCircle name={item.given_name} />
-
-                <View style={styles.cardContent}>
-                  <View style={styles.nameRow}>
-                    <Text style={styles.candidateName}>{fullName}</Text>
-                    {item.is_verified && (
-                      <View style={styles.verifiedBadge}>
-                        <Text style={styles.verifiedText}>✓ موثّق</Text>
-                      </View>
-                    )}
-                  </View>
-                  {item.specialization ? (
-                    <Text style={styles.specialization}>{item.specialization}</Text>
-                  ) : null}
-                  <View style={styles.activeRow}>
-                    <View style={styles.activeDot} />
-                    <Text style={styles.activeText}>متاح الآن</Text>
-                  </View>
-                </View>
-
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.selectBtn,
-                    isSelecting && styles.selectBtnLoading,
-                    pressed && !isSelecting && styles.selectBtnPressed,
-                  ]}
-                  onPress={() => selectEmployee(item.id)}
-                  disabled={!!selecting}
-                >
-                  {isSelecting ? (
-                    <ActivityIndicator color={COLORS.gold} size="small" />
-                  ) : (
-                    <Text style={styles.selectBtnText}>اختيار</Text>
-                  )}
-                </Pressable>
-              </View>
-            );
-          }}
-        />
+        <View style={styles.carouselScreen}>
+          <Text style={styles.listHeader}>
+            {candidates.length} موظف متاح — مرّر واختر من تريد العمل معه
+          </Text>
+          <EmployeeSelectorCarousel
+            candidates={candidates}
+            selectedId={selectedId}
+            confirmingId={confirmingId}
+            onSelect={selectEmployee}
+          />
+        </View>
       )}
     </ScreenBg>
   );
@@ -206,77 +141,12 @@ const styles = StyleSheet.create({
   },
   retryBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.gold },
 
-  list: { padding: 16, gap: 10, paddingBottom: 32 },
+  carouselScreen: { flex: 1, justifyContent: 'center', gap: 22, paddingBottom: 40 },
   listHeader: {
     fontFamily: FONTS.regular,
     fontSize: 13,
     color: COLORS.muted,
-    textAlign: 'right',
-    marginBottom: 6,
+    textAlign: 'center',
+    paddingHorizontal: 24,
   },
-
-  card: {
-    backgroundColor: '#161b22',
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.18)',
-    borderRadius: RADIUS.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    overflow: 'hidden',
-    gap: 12,
-    paddingRight: 14,
-    paddingVertical: 14,
-  },
-  cardAccent: {
-    width: 3,
-    alignSelf: 'stretch',
-    backgroundColor: COLORS.gold,
-    opacity: 0.7,
-  },
-
-  avatarCircle: {
-    backgroundColor: 'rgba(230,171,44,0.15)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(230,171,44,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  avatarInitial: { fontFamily: FONTS.bold, color: COLORS.gold },
-
-  cardContent: { flex: 1, gap: 3, alignItems: 'flex-end' },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' },
-  candidateName: { fontFamily: FONTS.bold, fontSize: 15, color: COLORS.white },
-  verifiedBadge: {
-    backgroundColor: 'rgba(59,130,246,0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.4)',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-  },
-  verifiedText: { fontFamily: FONTS.bold, fontSize: 10, color: '#60a5fa' },
-  specialization: {
-    fontFamily: FONTS.regular,
-    fontSize: 12,
-    color: COLORS.muted,
-    textAlign: 'right',
-  },
-  activeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.green },
-  activeText: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.green },
-
-  selectBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(230,171,44,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.45)',
-    borderRadius: RADIUS.sm,
-    minWidth: 64,
-    alignItems: 'center',
-  },
-  selectBtnLoading: { borderColor: 'rgba(230,171,44,0.2)' },
-  selectBtnPressed: { opacity: 0.7 },
-  selectBtnText: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
 });
