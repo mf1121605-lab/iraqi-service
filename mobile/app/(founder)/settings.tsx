@@ -29,6 +29,7 @@ interface FounderSettings {
   announcement_enabled: boolean | null;
   announcement_text_ar: string | null;
   announcement_text_ckb: string | null;
+  frame_color: string | null;
 }
 
 const ACCENT_PRESETS = [
@@ -51,7 +52,16 @@ const BG_PRESETS = [
   { hex: '#1a0f00', label: 'بني داكن' },
 ];
 
-const TEXT_FIELDS: { key: keyof Omit<FounderSettings, 'id' | 'accent_color' | 'bg_color' | 'announcement_enabled'>; label: string; multiline?: boolean }[] = [
+const FRAME_COLOR_PRESETS = [
+  { hex: '#e6ab2c', label: 'ذهبي' },
+  { hex: '#3b82f6', label: 'أزرق' },
+  { hex: '#8b5cf6', label: 'بنفسجي' },
+  { hex: '#22c55e', label: 'أخضر' },
+  { hex: '#ef4444', label: 'أحمر' },
+  { hex: '#e2e8f0', label: 'فضي' },
+];
+
+const TEXT_FIELDS: { key: keyof Omit<FounderSettings, 'id' | 'accent_color' | 'bg_color' | 'announcement_enabled' | 'frame_color'>; label: string; multiline?: boolean }[] = [
   { key: 'hero_title_ar', label: 'العنوان الرئيسي (عربي)' },
   { key: 'hero_title_ckb', label: 'العنوان الرئيسي (كردي)' },
   { key: 'hero_subtitle_ar', label: 'العنوان الفرعي (عربي)', multiline: true },
@@ -85,6 +95,7 @@ function emptyForm(): Omit<FounderSettings, 'id'> {
     announcement_enabled: false,
     announcement_text_ar: '',
     announcement_text_ckb: '',
+    frame_color: '#e6ab2c',
   };
 }
 
@@ -133,6 +144,7 @@ export default function SettingsScreen() {
           announcement_enabled: s.announcement_enabled ?? false,
           announcement_text_ar: s.announcement_text_ar ?? '',
           announcement_text_ckb: s.announcement_text_ckb ?? '',
+          frame_color: s.frame_color ?? '#e6ab2c',
         });
       }
       // Load lockdown state
@@ -265,6 +277,27 @@ export default function SettingsScreen() {
                 value={form.bg_color ?? ''}
                 onChangeText={(v) => setForm((f) => ({ ...f, bg_color: v }))}
                 placeholder="#0d1117"
+                placeholderTextColor={COLORS.white40}
+                style={[s.input, { direction: 'ltr' as any }]}
+                autoCapitalize="none"
+              />
+
+              <Text style={[s.fieldLabel, { marginTop: 12 }]}>لون الإطار المتحرك (كل شاشات التطبيق)</Text>
+              <View style={s.presetRow}>
+                {FRAME_COLOR_PRESETS.map((p) => (
+                  <Pressable
+                    key={p.hex}
+                    onPress={() => setForm((f) => ({ ...f, frame_color: p.hex }))}
+                    style={[s.colorSwatch, { backgroundColor: p.hex, borderColor: 'rgba(255,255,255,0.3)' }, form.frame_color === p.hex && s.swatchSelected]}
+                  >
+                    {form.frame_color === p.hex && <Text style={s.swatchTick}>✓</Text>}
+                  </Pressable>
+                ))}
+              </View>
+              <TextInput
+                value={form.frame_color ?? ''}
+                onChangeText={(v) => setForm((f) => ({ ...f, frame_color: v }))}
+                placeholder="#e6ab2c"
                 placeholderTextColor={COLORS.white40}
                 style={[s.input, { direction: 'ltr' as any }]}
                 autoCapitalize="none"

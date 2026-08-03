@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { useReserveFrameBottomInset } from '@/hooks/useFrameInset';
 import { COLORS, FONTS } from '@/constants/theme';
+
+const TAB_BAR_HEIGHT = 62;
 
 function TabIcon({ emoji, focused, badge }: { emoji: string; focused: boolean; badge?: number }) {
   return (
@@ -37,6 +41,10 @@ const badgeStyle = StyleSheet.create({
 export default function CustomerLayout() {
   const { session } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const insets = useSafeAreaInsets();
+  // Frame's bottom edge stops just above this tab bar instead of drawing
+  // through it — see hooks/useFrameInset.ts.
+  useReserveFrameBottomInset(TAB_BAR_HEIGHT + insets.bottom);
 
   useEffect(() => {
     if (!session?.user.id) return;

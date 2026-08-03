@@ -15,6 +15,7 @@ import { AuthProvider } from '@/hooks/useAuth';
 import { useAppUpdates } from '@/hooks/useAppUpdates';
 import { CinematicFrame } from '@/components/ui/CinematicFrame';
 import { CinematicSplash } from '@/components/ui/CinematicSplash';
+import { FrameInsetProvider } from '@/hooks/useFrameInset';
 
 // Required to dismiss the OAuth browser session when the app is foregrounded
 WebBrowser.maybeCompleteAuthSession();
@@ -67,10 +68,12 @@ export default function RootLayout() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <AuthProvider>
-          <StatusBar style="light" backgroundColor="#0d1117" />
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />
-          <CinematicFrame />
-          {showSplash && <CinematicSplash onDone={() => setShowSplash(false)} />}
+          <FrameInsetProvider>
+            <StatusBar style="light" backgroundColor="#0d1117" />
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />
+            <CinematicFrame />
+            {showSplash && <CinematicSplash onDone={() => setShowSplash(false)} />}
+          </FrameInsetProvider>
         </AuthProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
