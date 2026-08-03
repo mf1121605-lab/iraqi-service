@@ -97,13 +97,30 @@ const avatarStyles = StyleSheet.create({
   initials: { fontFamily: 'Cairo_700Bold', color: '#fff' },
 });
 
+// Maps a picked file's extension to a MIME type actually accepted by the
+// site-assets bucket allowlist. iOS commonly hands back .mov/.heic — naively
+// interpolating "video/${ext}" would produce invalid types like "video/mov"
+// that Postgres storage rejects outright, so every extension is mapped
+// explicitly instead.
+function mimeFor(kind: 'image' | 'video', ext: string): string {
+  if (kind === 'video') {
+    if (ext === 'mov') return 'video/quicktime';
+    if (ext === 'webm') return 'video/webm';
+    return 'video/mp4';
+  }
+  if (ext === 'jpg') return 'image/jpeg';
+  if (ext === 'heic' || ext === 'heif') return `image/${ext}`;
+  if (ext === 'png' || ext === 'webp') return `image/${ext}`;
+  return 'image/jpeg';
+}
+
 async function uploadMedia(uri: string, folder: string, kind: 'image' | 'video'): Promise<string | null> {
   try {
     const ext = uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg');
     const path = `${folder}/${Date.now()}-${Math.round(Math.random() * 1e6)}.${ext}`;
     const response = await fetch(uri);
     const blob = await response.blob();
-    const contentType = kind === 'video' ? `video/${ext}` : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    const contentType = mimeFor(kind, ext);
     const { error } = await supabase.storage.from('site-assets').upload(path, blob, { contentType, upsert: false });
     if (error) { console.error('upload failed:', error.message); return null; }
     const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
