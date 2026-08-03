@@ -7,6 +7,9 @@ import Animated, {
   Easing,
   Extrapolation,
   interpolate,
+  runOnUI,
+  scrollTo,
+  useAnimatedRef,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
@@ -25,20 +28,25 @@ export type EmployeeCandidate = {
   avatar_key: string | null;
   specialization: string | null;
   is_verified: boolean;
+  is_online?: boolean;
 };
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const CARD_W = 172;
-const CARD_H = 268;
+const CARD_W = 198;
+const CARD_H = 304;
 const CARD_GAP = 16;
 const SNAP = CARD_W + CARD_GAP;
 const SIDE_INSET = (SCREEN_W - CARD_W) / 2;
 
 interface Props {
   candidates: EmployeeCandidate[];
-  selectedId: string | null;
-  confirmingId: string | null;
-  onSelect: (candidate: EmployeeCandidate) => void;
+  selectedId?: string | null;
+  confirmingId?: string | null;
+  onSelect?: (candidate: EmployeeCandidate) => void;
+  // Passive "waiting for an employee to respond" mode: no tap-to-pick,
+  // the strip auto-advances on its own so it reads as a live motion-
+  // graphics grid of who's currently available, not a picker.
+  autoScroll?: boolean;
 }
 
 // Horizontal RTL carousel: the whole scroller is mirrored (scaleX: -1) so the
@@ -47,17 +55,30 @@ interface Props {
 // normally. All scale/opacity/glow driven straight off the scroll offset on
 // the UI thread (useAnimatedScrollHandler + interpolate), so it stays at
 // 60fps with zero JS-thread round trips per frame.
-export function EmployeeSelectorCarousel({ candidates, selectedId, confirmingId, onSelect }: Props) {
+export function EmployeeSelectorCarousel({ candidates, selectedId = null, confirmingId = null, onSelect, autoScroll = false }: Props) {
   const scrollX = useSharedValue(0);
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const onScroll = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollX.value = event.contentOffset.x;
     },
   });
 
+  useEffect(() => {
+    if (!autoScroll || candidates.length < 2) return;
+    let i = 0;
+    const interval = setInterval(() => {
+      i = (i + 1) % candidates.length;
+      runOnUI(() => { 'worklet'; scrollTo(scrollRef, i * SNAP, 0, true); })();
+    }, 2600);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoScroll, candidates.length]);
+
   return (
     <View style={styles.wrap}>
       <Animated.ScrollView
+        ref={scrollRef}
         horizontal
         style={styles.flip}
         onScroll={onScroll}
@@ -65,6 +86,7 @@ export function EmployeeSelectorCarousel({ candidates, selectedId, confirmingId,
         snapToInterval={SNAP}
         decelerationRate="fast"
         showsHorizontalScrollIndicator={false}
+        scrollEnabled={!autoScroll}
         contentContainerStyle={{ paddingHorizontal: SIDE_INSET }}
       >
         {candidates.map((candidate, index) => (
@@ -75,8 +97,8 @@ export function EmployeeSelectorCarousel({ candidates, selectedId, confirmingId,
             scrollX={scrollX}
             isSelected={selectedId === candidate.id}
             isConfirming={confirmingId === candidate.id}
-            disabled={!!confirmingId}
-            onPress={() => onSelect(candidate)}
+            disabled={!!confirmingId || !onSelect}
+            onPress={() => onSelect?.(candidate)}
           />
         ))}
       </Animated.ScrollView>
@@ -200,8 +222,13 @@ function CarouselCard({
 
           <View style={styles.body}>
             <View style={styles.statusRow}>
-              <View style={styles.statusDot} />
-              <Text style={styles.statusText}>متاح الآن</Text>
+              <View style={[styles.statusDot, {
+                backgroundColor: candidate.is_online ? '#22c55e' : '#ef4444',
+                shadowColor: candidate.is_online ? '#22c55e' : '#ef4444',
+              }]} />
+              <Text style={[styles.statusText, { color: candidate.is_online ? '#22c55e' : '#ef4444' }]}>
+                {candidate.is_online ? 'نشط الآن' : 'غير نشط'}
+              </Text>
             </View>
 
             <View style={styles.nameRow}>
@@ -292,8 +319,6 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: '#facc15',
-    shadowColor: '#facc15',
     shadowOpacity: 0.9,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },

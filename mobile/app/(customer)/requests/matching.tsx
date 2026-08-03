@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -13,17 +13,19 @@ const CAT_LABELS: Record<string, string> = {
   general: 'خدمات أخرى',
 };
 
-// Beat between the checkmark animation landing and navigating away, so the
-// selection actually reads as confirmed before the screen changes.
-const SELECT_CONFIRM_DELAY_MS = 650;
-
+// The customer never picks an employee directly — they submit the
+// request, it sits unassigned in every available employee's queue
+// (employee/index.tsx's claimRequest), and whichever employee approves
+// it first takes it. This screen is a passive "search animation" while
+// that happens: candidate cards auto-cycle for visual interest, and a
+// realtime listener on the request row navigates to the chat the
+// moment any employee claims it — no tap-to-select here at all.
 export default function MatchingScreen() {
   const { requestId, category } = useLocalSearchParams<{ requestId: string; category: string }>();
   const [candidates, setCandidates] = useState<EmployeeCandidate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [error, setError] = useState('');
+  const [matched, setMatched] = useState(false);
+  const navigatedRef = useRef(false);
 
   const load = useCallback(async () => {
     if (!category) return;
@@ -36,29 +38,48 @@ export default function MatchingScreen() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function selectEmployee(candidate: EmployeeCandidate) {
-    if (!requestId || confirmingId) return;
-    setSelectedId(candidate.id);
-    setConfirmingId(candidate.id);
-    // Customers can't write assigned_employee_id directly (RLS reserves
-    // that for the assigned employee/staff, matching the employee-claim
-    // race elsewhere in the app) — this security-definer RPC re-checks
-    // the request is still unclaimed and does the assignment atomically.
-    const { data, error: rpcError } = await supabase.rpc('customer_select_employee', {
-      p_request_id: requestId,
-      p_employee_id: candidate.id,
-    });
-    if (rpcError || !data) {
-      setSelectedId(null);
-      setConfirmingId(null);
-      setError('تم حجز هذا الموظف من قبل، يرجى اختيار موظف آخر');
-      load();
-      return;
+  // Watch the request itself — the moment any employee claims it
+  // (assigned_employee_id goes from null to something, status flips to
+  // in_review), jump straight into the chat.
+  useEffect(() => {
+    if (!requestId) return;
+
+    async function checkAssigned() {
+      const { data } = await supabase
+        .from('requests')
+        .select('assigned_employee_id')
+        .eq('id', requestId)
+        .maybeSingle();
+      if (data?.assigned_employee_id && !navigatedRef.current) {
+        navigatedRef.current = true;
+        setMatched(true);
+        setTimeout(() => {
+          router.replace({ pathname: '/(customer)/requests/[id]', params: { id: requestId } });
+        }, 1100);
+      }
     }
-    // Let the checkmark animation land before navigating away — realtime
-    // will update the request detail once we're back.
-    setTimeout(() => router.back(), SELECT_CONFIRM_DELAY_MS);
-  }
+
+    checkAssigned();
+
+    const channel = supabase
+      .channel(`request-match-${requestId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'requests',
+        filter: `id=eq.${requestId}`,
+      }, (payload) => {
+        const updated = payload.new as { assigned_employee_id: string | null };
+        if (updated.assigned_employee_id && !navigatedRef.current) {
+          navigatedRef.current = true;
+          setMatched(true);
+          setTimeout(() => {
+            router.replace({ pathname: '/(customer)/requests/[id]', params: { id: requestId } });
+          }, 1100);
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [requestId]);
 
   return (
     <ScreenBg>
@@ -68,7 +89,7 @@ export default function MatchingScreen() {
           <Text style={styles.backIcon}>‹</Text>
         </Pressable>
         <View style={styles.navCenter}>
-          <Text style={styles.navTitle}>اختيار موظف</Text>
+          <Text style={styles.navTitle}>بانتظار موافقة موظف</Text>
           {category ? (
             <Text style={styles.navSub}>{CAT_LABELS[category] ?? category}</Text>
           ) : null}
@@ -76,7 +97,14 @@ export default function MatchingScreen() {
         <View style={styles.backBtn} />
       </View>
 
-      {loading ? (
+      {matched ? (
+        <View style={styles.center}>
+          <Text style={styles.matchedEmoji}>✅</Text>
+          <Text style={styles.emptyTitle}>تم قبول طلبك!</Text>
+          <Text style={styles.emptySub}>جارِ فتح المحادثة...</Text>
+          <ActivityIndicator color={COLORS.gold} style={{ marginTop: 12 }} />
+        </View>
+      ) : loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={COLORS.gold} size="large" />
           <Text style={styles.loadingText}>جاري البحث عن موظفين متاحين...</Text>
@@ -85,26 +113,20 @@ export default function MatchingScreen() {
         <View style={styles.center}>
           <Text style={styles.emptyEmoji}>🔍</Text>
           <Text style={styles.emptyTitle}>لا يوجد موظفون متاحون حالياً</Text>
-          <Text style={styles.emptySub}>يرجى المحاولة لاحقاً أو التواصل معنا</Text>
+          <Text style={styles.emptySub}>سيصلك إشعار فور موافقة أحد الموظفين على طلبك</Text>
           <Pressable
             style={({ pressed }) => [styles.retryBtn, pressed && { opacity: 0.7 }]}
             onPress={() => { setLoading(true); load(); }}
           >
-            <Text style={styles.retryBtnText}>إعادة المحاولة</Text>
+            <Text style={styles.retryBtnText}>تحديث</Text>
           </Pressable>
         </View>
       ) : (
         <View style={styles.carouselScreen}>
           <Text style={styles.listHeader}>
-            {candidates.length} موظف متاح — مرّر واختر من تريد العمل معه
+            طلبك وصل لـ{candidates.length} موظف متاح — بانتظار موافقة أحدهم
           </Text>
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          <EmployeeSelectorCarousel
-            candidates={candidates}
-            selectedId={selectedId}
-            confirmingId={confirmingId}
-            onSelect={selectEmployee}
-          />
+          <EmployeeSelectorCarousel candidates={candidates} autoScroll />
         </View>
       )}
     </ScreenBg>
@@ -140,6 +162,7 @@ const styles = StyleSheet.create({
 
   loadingText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted, marginTop: 8 },
 
+  matchedEmoji: { fontSize: 52 },
   emptyEmoji: { fontSize: 52 },
   emptyTitle: { fontFamily: FONTS.bold, fontSize: 16, color: COLORS.white },
   emptySub: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted, textAlign: 'center' },
@@ -159,13 +182,6 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     fontSize: 13,
     color: COLORS.muted,
-    textAlign: 'center',
-    paddingHorizontal: 24,
-  },
-  errorText: {
-    fontFamily: FONTS.regular,
-    fontSize: 12,
-    color: COLORS.red,
     textAlign: 'center',
     paddingHorizontal: 24,
   },
