@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -69,6 +69,9 @@ const TEMPLATES = {
   payment:      'رسوم الخدمة هي: [المبلغ]. يمكنك الدفع عبر:',
 };
 
+const TYPING_TIMEOUT_MS = 3000;
+const TYPING_BROADCAST_INTERVAL_MS = 2000;
+
 export default function DmThread() {
   const { threadId } = useLocalSearchParams<{ threadId: string }>();
   const { profile, loading } = useAuth();
@@ -82,8 +85,12 @@ export default function DmThread() {
   const [recording, setRecording] = useState(false);
   const [replyTo, setReplyTo] = useState<DmMessage | null>(null);
   const [reactingId, setReactingId] = useState<string | null>(null);
+  const [otherTyping, setOtherTyping] = useState(false);
 
   const listRef = useRef<FlatList>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const lastTypingBroadcast = useRef(0);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!profile || !threadId) return;
@@ -128,15 +135,32 @@ export default function DmThread() {
         .channel(`dm-thread-${threadId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'direct_messages', filter: `thread_id=eq.${threadId}` }, loadMessages)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'direct_message_reactions' }, loadMessages)
+        .on('broadcast', { event: 'typing' }, (payload) => {
+          const { userId } = payload.payload as { userId: string };
+          if (userId === profile!.id) return;
+          setOtherTyping(true);
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = setTimeout(() => setOtherTyping(false), TYPING_TIMEOUT_MS);
+        })
         .subscribe();
+      channelRef.current = channel;
     }
 
     init();
     return () => {
       active = false;
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (channel) supabase.removeChannel(channel);
     };
   }, [profile?.id, threadId]);
+
+  const broadcastTyping = useCallback(() => {
+    if (!channelRef.current || !profile) return;
+    const now = Date.now();
+    if (now - lastTypingBroadcast.current < TYPING_BROADCAST_INTERVAL_MS) return;
+    lastTypingBroadcast.current = now;
+    channelRef.current.send({ type: 'broadcast', event: 'typing', payload: { userId: profile.id } });
+  }, [profile]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -262,7 +286,9 @@ export default function DmThread() {
           <Text style={styles.headerName} numberOfLines={1}>
             {displayNameFor(otherUser)}
           </Text>
-          <Text style={styles.headerSub}>محادثة خاصة</Text>
+          <Text style={[styles.headerSub, otherTyping && styles.headerSubTyping]}>
+            {otherTyping ? 'يكتب...' : 'محادثة خاصة'}
+          </Text>
         </View>
       </View>
 
@@ -364,7 +390,7 @@ export default function DmThread() {
             )}
             <TextInput
               value={body}
-              onChangeText={setBody}
+              onChangeText={(t) => { setBody(t); broadcastTyping(); }}
               placeholder="اكتب رسالة..."
               placeholderTextColor={COLORS.white40}
               style={styles.input}
@@ -411,6 +437,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     textAlign: 'right',
   },
+  headerSubTyping: { color: COLORS.gold, fontFamily: FONTS.bold },
   headerSub: {
     fontFamily: FONTS.regular,
     fontSize: 11,

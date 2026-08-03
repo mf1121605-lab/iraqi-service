@@ -88,6 +88,12 @@ export default function RequestDetail() {
   const [recording, setRecording] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [reactingId, setReactingId] = useState<string | null>(null);
+  const [employeeTyping, setEmployeeTyping] = useState(false);
+  const [employeeOnline, setEmployeeOnline] = useState(false);
+
+  const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const lastTypingBroadcast = useRef(0);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -123,8 +129,50 @@ export default function RequestDetail() {
         filter: `id=eq.${id}`,
       }, () => loadData())
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [id, loadData]);
+
+    const typingChannel = supabase
+      .channel(`request-typing-${id}`)
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        const { senderId } = payload.payload as { senderId: string };
+        if (senderId === session?.user.id) return;
+        setEmployeeTyping(true);
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => setEmployeeTyping(false), 3000);
+      })
+      .subscribe();
+    typingChannelRef.current = typingChannel;
+
+    return () => {
+      supabase.removeChannel(channel);
+      supabase.removeChannel(typingChannel);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, [id, loadData, session?.user.id]);
+
+  const broadcastTyping = useCallback(() => {
+    if (!typingChannelRef.current || !session?.user.id) return;
+    const now = Date.now();
+    if (now - lastTypingBroadcast.current < 2000) return;
+    lastTypingBroadcast.current = now;
+    typingChannelRef.current.send({ type: 'broadcast', event: 'typing', payload: { senderId: session.user.id } });
+  }, [session?.user.id]);
+
+  // last_active_at isn't directly client-readable (deliberately excluded
+  // from the profiles SELECT grant) — the online/offline badge goes
+  // through a security-definer RPC that only returns the derived boolean.
+  useEffect(() => {
+    const employeeId = req?.assigned_employee_id;
+    if (!employeeId) { setEmployeeOnline(false); return; }
+    let active = true;
+    function checkOnline() {
+      supabase.rpc('get_employee_online_status', { p_employee_id: employeeId }).then(({ data }) => {
+        if (active) setEmployeeOnline(!!data);
+      });
+    }
+    checkOnline();
+    const interval = setInterval(checkOnline, 60_000);
+    return () => { active = false; clearInterval(interval); };
+  }, [req?.assigned_employee_id]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -246,10 +294,14 @@ export default function RequestDetail() {
           </Pressable>
           <View style={styles.navCenter}>
             <Text style={styles.navTitle} numberOfLines={1}>{catEmoji} {req.title}</Text>
-            <View style={[styles.statusPill, { backgroundColor: st.color + '20', borderColor: st.color + '50' }]}>
-              <View style={[styles.statusDot, { backgroundColor: st.color }]} />
-              <Text style={[styles.statusText, { color: st.color }]}>{st.label}</Text>
-            </View>
+            {employeeTyping ? (
+              <Text style={styles.typingIndicator}>الموظف يكتب...</Text>
+            ) : (
+              <View style={[styles.statusPill, { backgroundColor: st.color + '20', borderColor: st.color + '50' }]}>
+                <View style={[styles.statusDot, { backgroundColor: st.color }]} />
+                <Text style={[styles.statusText, { color: st.color }]}>{st.label}</Text>
+              </View>
+            )}
           </View>
           {/* Description toggle */}
           <Pressable onPress={() => setShowDesc((v) => !v)} style={styles.infoBtn} hitSlop={12}>
@@ -268,6 +320,10 @@ export default function RequestDetail() {
                 <View style={styles.employeeChip}>
                   <Text style={styles.employeeChipEmoji}>👤</Text>
                   <Text style={styles.employeeChipName}>{employeeName}</Text>
+                  <View style={[styles.onlineDot, { backgroundColor: employeeOnline ? COLORS.green : COLORS.muted }]} />
+                  <Text style={[styles.onlineLabel, { color: employeeOnline ? COLORS.green : COLORS.muted }]}>
+                    {employeeOnline ? 'نشط' : 'غير نشط'}
+                  </Text>
                 </View>
               ) : req.status === 'submitted' ? (
                 <Pressable
@@ -370,7 +426,7 @@ export default function RequestDetail() {
               <TextInput
                 ref={inputRef}
                 value={text}
-                onChangeText={setText}
+                onChangeText={(t) => { setText(t); broadcastTyping(); }}
                 placeholder="اكتب رسالة..."
                 placeholderTextColor={COLORS.white40}
                 style={styles.textInput}
@@ -434,6 +490,7 @@ const styles = StyleSheet.create({
   },
   statusDot: { width: 5, height: 5, borderRadius: 3 },
   statusText: { fontFamily: FONTS.bold, fontSize: 10 },
+  typingIndicator: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold, alignSelf: 'flex-end' },
   infoBtn: {
     width: 36,
     height: 36,
@@ -472,6 +529,8 @@ const styles = StyleSheet.create({
   },
   employeeChipEmoji: { fontSize: 13 },
   employeeChipName: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
+  onlineDot: { width: 6, height: 6, borderRadius: 3, marginStart: 2 },
+  onlineLabel: { fontFamily: FONTS.bold, fontSize: 10 },
   noEmployee: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted },
   findEmployeeBtn: {
     flexDirection: 'row',

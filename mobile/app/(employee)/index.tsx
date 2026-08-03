@@ -151,7 +151,11 @@ export default function EmployeeDashboard() {
   const [customer, setCustomer] = useState<{ id: string; given_name: string | null; avatar_key: string | null } | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [customerTyping, setCustomerTyping] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const lastTypingBroadcast = useRef(0);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Chat input
   const [messageBody, setMessageBody] = useState('');
@@ -264,9 +268,35 @@ export default function EmployeeDashboard() {
       }, () => loadDetail(selectedId))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'request_message_reactions' }, () => loadDetail(selectedId))
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+
+    const typingChannel = supabase
+      .channel(`request-typing-${selectedId}`)
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        const { senderId } = payload.payload as { senderId: string };
+        if (senderId === profile?.id) return;
+        setCustomerTyping(true);
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => setCustomerTyping(false), 3000);
+      })
+      .subscribe();
+    typingChannelRef.current = typingChannel;
+
+    return () => {
+      supabase.removeChannel(channel);
+      supabase.removeChannel(typingChannel);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      setCustomerTyping(false);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
+
+  const broadcastTyping = useCallback(() => {
+    if (!typingChannelRef.current || !profile?.id) return;
+    const now = Date.now();
+    if (now - lastTypingBroadcast.current < 2000) return;
+    lastTypingBroadcast.current = now;
+    typingChannelRef.current.send({ type: 'broadcast', event: 'typing', payload: { senderId: profile.id } });
+  }, [profile?.id]);
 
   // ── Auto-scroll on new messages ───────────────────────────────────────────
 
@@ -592,7 +622,11 @@ export default function EmployeeDashboard() {
             />
             <View style={styles.chatNavCenter}>
               <Text style={styles.chatNavTitle} numberOfLines={1}>{selectedRequest.title}</Text>
-              <StatusPill status={selectedRequest.status} small />
+              {customerTyping ? (
+                <Text style={styles.typingIndicator}>الزبون يكتب...</Text>
+              ) : (
+                <StatusPill status={selectedRequest.status} small />
+              )}
             </View>
             <Pressable
               onPress={() => { setShowStatusForm((v) => !v); setShowHistory(false); }}
@@ -799,7 +833,7 @@ export default function EmployeeDashboard() {
                 </Pressable>
                 <TextInput
                   value={messageBody}
-                  onChangeText={setMessageBody}
+                  onChangeText={(t) => { setMessageBody(t); broadcastTyping(); }}
                   placeholder="اكتب رسالة..."
                   placeholderTextColor={COLORS.white40}
                   style={styles.textInput}
@@ -1110,6 +1144,7 @@ const styles = StyleSheet.create({
   backIcon: { fontSize: 24, color: COLORS.gold, lineHeight: 28 },
   chatNavCenter: { flex: 1, gap: 4 },
   chatNavTitle: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.white, textAlign: 'right' },
+  typingIndicator: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold, textAlign: 'right' },
   settingsBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   settingsIcon: { fontSize: 20, color: COLORS.muted },
 
