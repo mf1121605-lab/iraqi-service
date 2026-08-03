@@ -184,7 +184,7 @@ export default function ProfileScreen() {
             {profile?.id && (
               <Pressable
                 style={styles.publicProfileLink}
-                onPress={() => router.push({ pathname: '/(customer)/user/[userId]', params: { userId: profile.id } })}
+                onPress={() => router.push({ pathname: '/user/[userId]', params: { userId: profile.id } })}
               >
                 <Text style={styles.publicProfileLinkText}>عرض صفحتي العامة ←</Text>
               </Pressable>

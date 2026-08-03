@@ -534,7 +534,7 @@ export default function NewsScreen() {
                 <Text style={styles.postDate}>{formatDate(item.created_at)}</Text>
                 <Pressable
                   style={styles.authorRow}
-                  onPress={() => item.author && router.push({ pathname: '/(customer)/user/[userId]', params: { userId: item.author.id } })}
+                  onPress={() => item.author && router.push({ pathname: '/user/[userId]', params: { userId: item.author.id } })}
                 >
                   <Text style={styles.authorName}>{authorName}</Text>
                   {item.author ? (

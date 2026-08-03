@@ -296,6 +296,8 @@ export default function DmThread() {
                 <MessageBubble
                   body={item.body ?? ''}
                   isMine={isMine}
+                  senderAvatarKey={!isMine ? otherUser?.avatar_key : undefined}
+                  onSenderPress={!isMine && otherUser ? () => router.push({ pathname: '/user/[userId]', params: { userId: otherUser.id } }) : undefined}
                   timestamp={item.created_at}
                   messageType={item.message_type ?? undefined}
                   attachmentUrl={item.attachment_url}

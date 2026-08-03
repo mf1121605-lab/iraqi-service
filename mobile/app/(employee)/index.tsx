@@ -704,6 +704,8 @@ export default function EmployeeDashboard() {
                       messageType={item.message_type ?? undefined}
                       attachmentUrl={item.attachment_url}
                       attachmentType={item.message_type === 'image' ? 'image' : item.message_type === 'voice' ? 'voice' : null}
+                      senderAvatarKey={!isMine ? customer?.avatar_key : undefined}
+                      onSenderPress={!isMine && customer?.id ? () => router.push({ pathname: '/user/[userId]', params: { userId: customer.id } }) : undefined}
                       status={isMine ? status : undefined}
                       reactions={summarizeReactions(item.reactions)}
                       replyTo={replySource ? { body: replySource.body ?? '' } : null}

@@ -54,7 +54,7 @@ type RequestDetail = {
   status: string;
   created_at: string;
   assigned_employee_id: string | null;
-  employee: { given_name: string; family_name: string } | null;
+  employee: { given_name: string; family_name: string; avatar_key: string | null } | null;
 };
 
 async function uploadAttachment(uri: string, userId: string, kind: 'image' | 'voice'): Promise<string | null> {
@@ -94,7 +94,7 @@ export default function RequestDetail() {
     const [rRes, mRes] = await Promise.all([
       supabase
         .from('requests')
-        .select('id, title, description, category, status, created_at, assigned_employee_id, employee:profiles!assigned_employee_id(given_name, family_name)')
+        .select('id, title, description, category, status, created_at, assigned_employee_id, employee:profiles!assigned_employee_id(given_name, family_name, avatar_key)')
         .eq('id', id)
         .single(),
       supabase
@@ -317,6 +317,8 @@ export default function RequestDetail() {
                   messageType={item.message_type}
                   attachmentUrl={item.attachment_url}
                   attachmentType={item.message_type === 'image' ? 'image' : item.message_type === 'voice' ? 'voice' : null}
+                  senderAvatarKey={!isMine ? req?.employee?.avatar_key : undefined}
+                  onSenderPress={!isMine && req?.assigned_employee_id ? () => router.push({ pathname: '/user/[userId]', params: { userId: req.assigned_employee_id! } }) : undefined}
                   timestamp={item.created_at}
                   status={isMine ? status : undefined}
                   reactions={summarizeReactions(item.reactions)}

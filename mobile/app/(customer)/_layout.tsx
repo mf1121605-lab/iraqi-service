@@ -127,7 +127,6 @@ export default function CustomerLayout() {
       <Tabs.Screen name="requests/matching" options={{ href: null }} />
       <Tabs.Screen name="onboarding" options={{ href: null }} />
       <Tabs.Screen name="search" options={{ href: null }} />
-      <Tabs.Screen name="user/[userId]" options={{ href: null }} />
       <Tabs.Screen name="employee/[id]" options={{ href: null }} />
       <Tabs.Screen name="orders/[id]/checkout" options={{ href: null }} />
       <Tabs.Screen name="orders/[id]/result" options={{ href: null }} />

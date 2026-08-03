@@ -439,6 +439,8 @@ export default function ChatRoomScreen() {
                   body={item.body ?? ''}
                   isMine={isMine}
                   senderName={!isMine && !bundled ? (item.sender_display_name ?? '') : undefined}
+                  senderAvatarKey={!isMine ? item.sender_avatar_key : undefined}
+                  onSenderPress={!isMine ? () => router.push({ pathname: '/user/[userId]', params: { userId: item.sender_id } }) : undefined}
                   timestamp={item.created_at}
                   messageType={item.message_type ?? undefined}
                   attachmentUrl={item.attachment_url}

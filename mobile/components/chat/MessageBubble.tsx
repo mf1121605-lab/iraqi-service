@@ -3,6 +3,7 @@ import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { VoiceMessagePlayer } from './VoiceMessagePlayer';
+import { Avatar } from './Avatar';
 
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
 
@@ -12,6 +13,8 @@ interface Props {
   body: string;
   isMine: boolean;
   senderName?: string;
+  senderAvatarKey?: string | null;
+  onSenderPress?: () => void;
   timestamp?: string;
   messageType?: string;
   attachmentUrl?: string | null;
@@ -40,7 +43,7 @@ function StatusTicks({ status }: { status: MessageStatus }) {
 }
 
 export function MessageBubble({
-  body, isMine, senderName, timestamp, messageType,
+  body, isMine, senderName, senderAvatarKey, onSenderPress, timestamp, messageType,
   attachmentUrl, attachmentType, reactions = [], replyTo, status, onLongPress,
 }: Props) {
   const [fullscreen, setFullscreen] = useState(false);
@@ -62,6 +65,11 @@ export function MessageBubble({
 
   return (
     <View style={[styles.row, isMine ? styles.rowMine : styles.rowTheirs]}>
+      {!isMine && senderAvatarKey !== undefined && (
+        <Pressable onPress={onSenderPress} disabled={!onSenderPress} style={styles.avatarSlot}>
+          <Avatar avatarKey={senderAvatarKey} name={senderName ?? ''} size={28} />
+        </Pressable>
+      )}
       <Pressable onLongPress={onLongPress} delayLongPress={280} style={styles.bubbleWrap}>
         <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
           {isMine && (
@@ -74,7 +82,9 @@ export function MessageBubble({
           {!isMine && <View style={styles.shineLine} />}
 
           {!isMine && senderName && (
-            <Text style={styles.sender}>{senderName}</Text>
+            <Pressable onPress={onSenderPress} disabled={!onSenderPress}>
+              <Text style={styles.sender}>{senderName}</Text>
+            </Pressable>
           )}
 
           {replyTo && (
@@ -134,6 +144,7 @@ const styles = StyleSheet.create({
   rowMine: { justifyContent: 'flex-end' },
   rowTheirs: { justifyContent: 'flex-start' },
   bubbleWrap: { maxWidth: '78%' },
+  avatarSlot: { marginEnd: 6, alignSelf: 'flex-end', marginBottom: 2 },
   bubble: {
     paddingHorizontal: 14,
     paddingVertical: 10,
