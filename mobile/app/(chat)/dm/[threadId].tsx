@@ -54,7 +54,7 @@ async function uploadAttachment(uri: string, userId: string, kind: 'image' | 'vo
     const blob = await response.blob();
     const contentType = kind === 'voice' ? 'audio/m4a' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
     const { error } = await supabase.storage.from('site-assets').upload(path, blob, { contentType, upsert: false });
-    if (error) return null;
+    if (error) { console.error('upload failed:', error.message); return null; }
     const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
     return data.publicUrl;
   } catch {

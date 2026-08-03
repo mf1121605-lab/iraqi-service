@@ -41,7 +41,7 @@ async function uploadCommunityImage(uri: string, userId: string): Promise<string
       contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
       upsert: false,
     });
-    if (error) return null;
+    if (error) { console.error('upload failed:', error.message); return null; }
     const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
     return data.publicUrl;
   } catch {

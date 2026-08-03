@@ -15,7 +15,7 @@ async function uploadBannerMedia(uri: string, kind: 'image' | 'video'): Promise<
     const blob = await response.blob();
     const contentType = kind === 'video' ? `video/${ext}` : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
     const { error } = await supabase.storage.from('site-assets').upload(path, blob, { contentType, upsert: false });
-    if (error) return null;
+    if (error) { console.error('upload failed:', error.message); return null; }
     const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
     return data.publicUrl;
   } catch {
