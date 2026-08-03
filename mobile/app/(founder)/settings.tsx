@@ -30,6 +30,7 @@ interface FounderSettings {
   announcement_text_ar: string | null;
   announcement_text_ckb: string | null;
   frame_color: string | null;
+  frame_enabled: boolean | null;
   particles_enabled: boolean | null;
 }
 
@@ -62,7 +63,7 @@ const FRAME_COLOR_PRESETS = [
   { hex: '#e2e8f0', label: 'فضي' },
 ];
 
-const TEXT_FIELDS: { key: keyof Omit<FounderSettings, 'id' | 'accent_color' | 'bg_color' | 'announcement_enabled' | 'frame_color' | 'particles_enabled'>; label: string; multiline?: boolean }[] = [
+const TEXT_FIELDS: { key: keyof Omit<FounderSettings, 'id' | 'accent_color' | 'bg_color' | 'announcement_enabled' | 'frame_color' | 'frame_enabled' | 'particles_enabled'>; label: string; multiline?: boolean }[] = [
   { key: 'hero_title_ar', label: 'العنوان الرئيسي (عربي)' },
   { key: 'hero_title_ckb', label: 'العنوان الرئيسي (كردي)' },
   { key: 'hero_subtitle_ar', label: 'العنوان الفرعي (عربي)', multiline: true },
@@ -97,6 +98,7 @@ function emptyForm(): Omit<FounderSettings, 'id'> {
     announcement_text_ar: '',
     announcement_text_ckb: '',
     frame_color: '#e6ab2c',
+    frame_enabled: true,
     particles_enabled: true,
   };
 }
@@ -147,6 +149,7 @@ export default function SettingsScreen() {
           announcement_text_ar: s.announcement_text_ar ?? '',
           announcement_text_ckb: s.announcement_text_ckb ?? '',
           frame_color: s.frame_color ?? '#e6ab2c',
+          frame_enabled: s.frame_enabled ?? true,
           particles_enabled: s.particles_enabled ?? true,
         });
       }
@@ -305,6 +308,15 @@ export default function SettingsScreen() {
                 style={[s.input, { direction: 'ltr' as any }]}
                 autoCapitalize="none"
               />
+              <View style={[s.row, { marginTop: 10 }]}>
+                <Switch
+                  value={form.frame_enabled ?? true}
+                  onValueChange={(v) => setForm((f) => ({ ...f, frame_enabled: v }))}
+                  thumbColor={form.frame_enabled ? COLORS.gold : '#888'}
+                  trackColor={{ true: 'rgba(230,171,44,0.4)', false: 'rgba(255,255,255,0.1)' }}
+                />
+                <Text style={s.switchLabel}>{form.frame_enabled ? 'الإطار مفعّل' : 'الإطار متوقف'}</Text>
+              </View>
             </View>
 
             {/* ── Text content ── */}

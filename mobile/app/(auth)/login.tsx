@@ -3,7 +3,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -183,7 +182,7 @@ export default function LoginScreen() {
       <AnimatedLoginGlow />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <View style={styles.scroll}>
 
           {/* Logo — full brand mark (eagle + baked-in platform name), materializes with the eagle cry */}
           <View style={styles.header}>
@@ -272,7 +271,7 @@ export default function LoginScreen() {
             </Pressable>
           </View>
 
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
 
       <AboutPrivacyModal variant={infoModal} onClose={() => setInfoModal(null)} />
@@ -282,7 +281,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  scroll: { flexGrow: 1, padding: 20, paddingVertical: 14, justifyContent: 'center', gap: 14 },
+  scroll: { flex: 1, padding: 20, paddingVertical: 14, justifyContent: 'center', gap: 14 },
 
   header: { alignItems: 'center', gap: 6 },
   appName:  { fontFamily: FONTS.bold,    fontSize: 24, color: COLORS.gold,  letterSpacing: 0.5 },

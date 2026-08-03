@@ -16,6 +16,7 @@ import { Canvas, LinearGradient, Path, Skia, vec } from '@shopify/react-native-s
 import { Easing, useDerivedValue, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useFrameBottomInset } from '@/hooks/useFrameInset';
 import { useFrameColor } from '@/hooks/useFrameColor';
+import { useFrameEnabled } from '@/hooks/useFrameEnabled';
 
 const CORNER = 28;  // px — corner accent size
 const LINE   = 2;   // border line thickness
@@ -27,6 +28,7 @@ export function CinematicFrame() {
   const { width, height } = useWindowDimensions();
   const reservedBottom = useFrameBottomInset();
   const color = useFrameColor();
+  const enabled = useFrameEnabled();
 
   const topInset = insets.top;
   const bottomInset = reservedBottom > 0 ? reservedBottom : insets.bottom;
@@ -62,6 +64,8 @@ export function CinematicFrame() {
 
   const [dim, setDim] = useState(false);
   useEffect(() => { setDim(true); }, []);
+
+  if (!enabled) return null;
 
   return (
     <View style={styles.frame} pointerEvents="none">
