@@ -59,6 +59,9 @@ export default function CustomerLayout() {
         tabBarActiveTintColor: COLORS.gold,
         tabBarInactiveTintColor: COLORS.white40,
         tabBarLabelStyle: styles.tabLabel,
+        // Bigger touch target per tab — the icons themselves are small,
+        // but the whole item area should be comfortably tappable.
+        tabBarItemStyle: styles.tabItem,
       }}
     >
       <Tabs.Screen
@@ -129,6 +132,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+  },
+  tabItem: {
+    // Expands each tab's tappable area to the full item cell instead of
+    // hugging the icon/label — makes taps register more forgivingly.
+    paddingVertical: 4,
   },
   tabLabel: {
     fontFamily: FONTS.regular,

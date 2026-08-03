@@ -67,6 +67,15 @@ export function TabSwipeZone() {
   return (
     <View
       style={[styles.zone, { height: TAB_BAR_HEIGHT + insets.bottom }]}
+      // box-none: this container is never itself a hit-test target, so a
+      // plain tap on a tab button underneath reaches it untouched. The
+      // attached PanResponder still receives the drag once a finger moves
+      // past the swipe threshold — this is the standard RN pattern for a
+      // "transparent to taps, captures a directional gesture" overlay.
+      // Without this, the zone could swallow the very first touch on
+      // Android before the responder had a chance to decline it, making
+      // the tab bar feel unresponsive.
+      pointerEvents="box-none"
       {...pan.panHandlers}
     />
   );
