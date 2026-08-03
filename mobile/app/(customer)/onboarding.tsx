@@ -9,16 +9,27 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { ScreenBg } from '@/components/ui/ScreenBg';
-import { Avatar } from '@/components/chat/Avatar';
+import { Avatar, CARTOON_AVATAR_KEYS } from '@/components/chat/Avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
-const AVATAR_OPTIONS = [
-  'avatar_1', 'avatar_2', 'avatar_3', 'avatar_4', 'avatar_5',
-  'avatar_6', 'avatar_7', 'avatar_8', 'avatar_9', 'avatar_10',
-];
+async function uploadOwnPhoto(uri: string, userId: string): Promise<string | null> {
+  try {
+    const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const path = `avatars/${userId}/${Date.now()}.${ext}`;
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const contentType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    const { error } = await supabase.storage.from('site-assets').upload(path, blob, { contentType, upsert: false });
+    if (error) { console.error('avatar upload failed:', error.message); return null; }
+    return path;
+  } catch {
+    return null;
+  }
+}
 
 export default function Onboarding() {
   const { profile, loading, refreshProfile } = useAuth();
@@ -26,6 +37,7 @@ export default function Onboarding() {
   const [givenName, setGivenName] = useState('');
   const [familyName, setFamilyName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -41,6 +53,19 @@ export default function Onboarding() {
 
   const needsName = !profile?.given_name;
   const canContinue = selected && (!needsName || givenName.trim());
+
+  async function handlePickOwnPhoto() {
+    if (!profile) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, allowsEditing: true, aspect: [1, 1] });
+    if (result.canceled || !result.assets[0]) return;
+    setUploadingPhoto(true);
+    const path = await uploadOwnPhoto(result.assets[0].uri, profile.id);
+    setUploadingPhoto(false);
+    if (path) setSelected(path);
+    else setError('تعذّر رفع الصورة، حاول مرة أخرى');
+  }
 
   async function handleContinue() {
     if (!profile) return;
@@ -110,9 +135,9 @@ export default function Onboarding() {
           </View>
         )}
 
-        <Text style={styles.sectionLabel}>اختر صورتك الرمزية</Text>
+        <Text style={styles.sectionLabel}>اختر شخصية كارتونية</Text>
         <View style={styles.grid}>
-          {AVATAR_OPTIONS.map((key) => (
+          {CARTOON_AVATAR_KEYS.map((key) => (
             <Pressable
               key={key}
               onPress={() => setSelected(key)}
@@ -123,6 +148,24 @@ export default function Onboarding() {
             </Pressable>
           ))}
         </View>
+
+        <View style={styles.orDivider}>
+          <View style={styles.orLine} />
+          <Text style={styles.orText}>أو</Text>
+          <View style={styles.orLine} />
+        </View>
+
+        <Pressable onPress={handlePickOwnPhoto} disabled={uploadingPhoto} style={styles.photoBtn}>
+          {uploadingPhoto ? (
+            <ActivityIndicator color={COLORS.gold} size="small" />
+          ) : (
+            <>
+              <Text style={styles.photoBtnIcon}>📷</Text>
+              <Text style={styles.photoBtnText}>اختر صورة من الاستوديو</Text>
+              {selected && !CARTOON_AVATAR_KEYS.includes(selected) && <Text style={styles.photoBtnCheck}>✓</Text>}
+            </>
+          )}
+        </Pressable>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -243,4 +286,26 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.45 },
   btnText: { fontFamily: FONTS.bold, fontSize: 16, color: '#000' },
+
+  orDivider: { flexDirection: 'row', alignItems: 'center', width: '100%', gap: 10, marginBottom: 4 },
+  orLine: { flex: 1, height: 1, backgroundColor: COLORS.cardBorder },
+  orText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted },
+
+  photoBtn: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    borderRadius: RADIUS.md,
+    paddingVertical: 12,
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  photoBtnIcon: { fontSize: 18 },
+  photoBtnText: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.white },
+  photoBtnCheck: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.gold },
 });
