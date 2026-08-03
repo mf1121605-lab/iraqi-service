@@ -34,14 +34,14 @@ import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
 
-type CommentReaction = { user_id: string };
+type CommentReaction = { user_id: string; reaction_type: string };
 type Comment = {
   id: string;
   content: string;
   image_url: string | null;
   parent_comment_id: string | null;
   created_at: string;
-  author: { given_name: string; family_name: string } | null;
+  author: { id: string; given_name: string; family_name: string; avatar_key: string | null } | null;
   reactions: CommentReaction[];
 };
 
@@ -223,6 +223,7 @@ export default function NewsScreen() {
   const [replyingTo, setReplyingTo] = useState<Record<string, { id: string; name: string } | null>>({});
   const [sendingComment, setSendingComment] = useState<string | null>(null);
   const [openPopoverPostId, setOpenPopoverPostId] = useState<string | null>(null);
+  const [openCommentPopoverId, setOpenCommentPopoverId] = useState<string | null>(null);
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const [mutedVideoId, setMutedVideoId] = useState<Set<string>>(new Set());
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
@@ -255,7 +256,7 @@ export default function NewsScreen() {
         id, content, image_urls, video_url, created_at,
         author:profiles!author_id(id, given_name, family_name, avatar_key),
         reactions:social_reactions(reaction_type, user_id),
-        comments:social_comments(id, content, image_url, parent_comment_id, created_at, author:profiles!author_id(given_name, family_name), reactions:social_comment_reactions(user_id))
+        comments:social_comments(id, content, image_url, parent_comment_id, created_at, author:profiles!author_id(id, given_name, family_name, avatar_key), reactions:social_comment_reactions(user_id, reaction_type))
       `)
       .eq('approved', true)
       .order('created_at', { ascending: false })
@@ -355,13 +356,15 @@ export default function NewsScreen() {
     handleReaction(postId, mine?.reaction_type ?? 'like');
   }
 
-  async function toggleCommentLike(commentId: string, liked: boolean) {
+  async function toggleCommentReaction(comment: Comment, type: string) {
     if (!session?.user.id) return;
-    if (liked) {
-      await supabase.from('social_comment_reactions').delete().eq('comment_id', commentId).eq('user_id', session.user.id);
-    } else {
-      await supabase.from('social_comment_reactions').insert({ comment_id: commentId, user_id: session.user.id });
+    const existing = comment.reactions.find((r) => r.user_id === session.user.id);
+    if (existing) {
+      await supabase.from('social_comment_reactions').delete().eq('comment_id', comment.id).eq('user_id', session.user.id);
+      if (existing.reaction_type === type) return;
     }
+    await supabase.from('social_comment_reactions').insert({ comment_id: comment.id, user_id: session.user.id, reaction_type: type });
+    playSound('reaction');
   }
 
   async function pickCommentImage(postId: string) {
@@ -427,12 +430,16 @@ export default function NewsScreen() {
     postId: string,
   ): React.ReactNode {
     const cName = c.author ? `${c.author.given_name} ${c.author.family_name}` : 'مجهول';
-    const liked = c.reactions.some((r) => r.user_id === session?.user.id);
+    const myReaction = c.reactions.find((r) => r.user_id === session?.user.id);
     const children = byParent[c.id] ?? [];
     return (
       <View key={c.id} style={{ marginRight: depth * 20 }}>
         <Animated.View entering={FadeIn.duration(220)} style={styles.commentRow}>
-          <AvatarCircle name={cName} size={depth > 0 ? 24 : 28} />
+          {c.author ? (
+            <Avatar avatarKey={c.author.avatar_key} name={cName} seed={c.author.id} size={depth > 0 ? 24 : 28} />
+          ) : (
+            <AvatarCircle name={cName} size={depth > 0 ? 24 : 28} />
+          )}
           <View style={styles.commentBubble}>
             <Text style={styles.commentAuthor}>{cName}</Text>
             {c.content ? <Text style={styles.commentContent}>{c.content}</Text> : null}
@@ -441,10 +448,24 @@ export default function NewsScreen() {
               <Pressable onPress={() => setReplyingTo((prev) => ({ ...prev, [postId]: { id: c.id, name: cName } }))}>
                 <Text style={styles.commentReplyBtn}>رد</Text>
               </Pressable>
-              <Pressable onPress={() => toggleCommentLike(c.id, liked)} style={styles.commentLikeBtn}>
-                <Text style={[styles.commentLikeIcon, liked && { color: COLORS.gold }]}>{liked ? '❤️' : '🤍'}</Text>
-                {c.reactions.length > 0 && <Text style={styles.commentLikeCount}>{c.reactions.length}</Text>}
-              </Pressable>
+              <View style={{ position: 'relative' }}>
+                {openCommentPopoverId === c.id && (
+                  <ReactionPopover
+                    onPick={(type) => toggleCommentReaction(c, type)}
+                    onClose={() => setOpenCommentPopoverId(null)}
+                  />
+                )}
+                <Pressable
+                  onPress={() => toggleCommentReaction(c, myReaction?.reaction_type ?? 'like')}
+                  onLongPress={() => setOpenCommentPopoverId(c.id)}
+                  style={styles.commentLikeBtn}
+                >
+                  <Text style={[styles.commentLikeIcon, myReaction && { color: COLORS.gold }]}>
+                    {myReaction ? REACTION_MAP[myReaction.reaction_type]?.emoji ?? '👍' : '🤍'}
+                  </Text>
+                  {c.reactions.length > 0 && <Text style={styles.commentLikeCount}>{c.reactions.length}</Text>}
+                </Pressable>
+              </View>
             </View>
           </View>
         </Animated.View>
@@ -961,11 +982,18 @@ const styles = StyleSheet.create({
   commentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, justifyContent: 'flex-end', marginBottom: 8 },
   commentBubble: {
     flex: 1,
-    backgroundColor: COLORS.bgAlt,
+    backgroundColor: 'rgba(230,171,44,0.06)',
     borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: 'rgba(230,171,44,0.35)',
     padding: 10,
     gap: 3,
     alignItems: 'flex-end',
+    shadowColor: COLORS.gold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
   },
   commentAuthor: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold },
   commentContent: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white, lineHeight: 18, textAlign: 'right' },
