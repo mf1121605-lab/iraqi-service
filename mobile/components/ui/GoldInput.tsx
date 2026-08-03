@@ -25,7 +25,7 @@ export function GoldInput({ label, error, secureToggle, ...props }: Props) {
         style={[
           styles.inputRow,
           focused && styles.inputFocused,
-          error  && styles.inputError,
+          !!error && styles.inputError,
         ]}
       >
         <TextInput
