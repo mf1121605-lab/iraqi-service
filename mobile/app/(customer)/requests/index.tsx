@@ -15,11 +15,16 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
+// Matches the real `request_status` enum (submitted/in_review/needs_changes/
+// approved/rejected) — the previous pending/in_progress/completed/cancelled
+// keys never matched any stored value, so every request silently fell back
+// to the raw untranslated status string with no color.
 const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
-  pending:     { label: 'قيد الانتظار', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  in_progress: { label: 'جارٍ المعالجة', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
-  completed:   { label: 'مكتملة',        color: '#22c55e', bg: 'rgba(34,197,94,0.12)'  },
-  cancelled:   { label: 'ملغية',         color: '#ef4444', bg: 'rgba(239,68,68,0.12)'  },
+  submitted:     { label: 'قيد الانتظار',   color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  in_review:     { label: 'جارٍ المعالجة',   color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+  needs_changes: { label: 'بحاجة لتعديل',    color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
+  approved:      { label: 'مكتملة',          color: '#22c55e', bg: 'rgba(34,197,94,0.12)'  },
+  rejected:      { label: 'مرفوضة',          color: '#ef4444', bg: 'rgba(239,68,68,0.12)'  },
 };
 
 const CAT_META: Record<string, { label: string; emoji: string; accent: string }> = {
@@ -69,7 +74,7 @@ export default function RequestsList() {
     });
   }
 
-  const pendingCount = requests.filter((r) => r.status === 'pending' || r.status === 'in_progress').length;
+  const pendingCount = requests.filter((r) => r.status === 'submitted' || r.status === 'in_review' || r.status === 'needs_changes').length;
 
   if (loading) {
     return (

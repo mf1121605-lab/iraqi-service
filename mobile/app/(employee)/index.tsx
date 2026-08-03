@@ -86,34 +86,30 @@ interface HistoryEntry {
 
 interface Category {
   key: string;
-  name_ar: string;
+  label_ar: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+// Matches the real `request_status` enum — submitted is the only initial
+// value; there is no separate pending/in_progress/completed/cancelled set.
 const STATUS_LABELS: Record<string, string> = {
-  pending:       'قيد الانتظار',
-  in_progress:   'قيد المعالجة',
+  submitted:     'قيد الانتظار',
   in_review:     'تحت المراجعة',
   needs_changes: 'يحتاج تعديلات',
   approved:      'موافق عليه',
   rejected:      'مرفوض',
-  completed:     'مكتمل',
-  cancelled:     'ملغى',
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  pending:       '#f59e0b',
-  in_progress:   '#3b82f6',
+  submitted:     '#f59e0b',
   in_review:     '#8b5cf6',
   needs_changes: '#f97316',
   approved:      '#22c55e',
   rejected:      '#ef4444',
-  completed:     '#22c55e',
-  cancelled:     '#6b7280',
 };
 
-const EMPLOYEE_STATUS_OPTIONS = ['in_progress', 'in_review', 'needs_changes', 'approved', 'rejected', 'completed', 'cancelled'];
+const EMPLOYEE_STATUS_OPTIONS = ['in_review', 'needs_changes', 'approved', 'rejected'];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -229,8 +225,8 @@ export default function EmployeeDashboard() {
   useEffect(() => {
     supabase
       .from('categories')
-      .select('key, name_ar')
-      .order('display_order')
+      .select('key, label_ar')
+      .order('sort_order')
       .then(({ data }) => { if (data) setCategories(data as Category[]); });
   }, []);
 
@@ -340,10 +336,10 @@ export default function EmployeeDashboard() {
 
   async function claimRequest(requestId: string) {
     if (!profile) return;
-    await supabase.from('requests').update({ assigned_employee_id: profile.id }).eq('id', requestId);
+    await supabase.from('requests').update({ assigned_employee_id: profile.id, status: 'in_review' }).eq('id', requestId);
     await loadQueue();
     const req = queue?.find((r) => r.id === requestId);
-    if (req) openChat({ ...req, assigned_employee_id: profile.id });
+    if (req) openChat({ ...req, assigned_employee_id: profile.id, status: 'in_review' });
   }
 
   async function handleStatusUpdate() {
@@ -538,7 +534,7 @@ export default function EmployeeDashboard() {
                 <View style={[styles.serviceCheckbox, activeServices.includes(cat.key) && styles.serviceCheckboxActive]}>
                   {activeServices.includes(cat.key) && <Text style={styles.checkmark}>✓</Text>}
                 </View>
-                <Text style={styles.serviceLabel}>{cat.name_ar}</Text>
+                <Text style={styles.serviceLabel}>{cat.label_ar}</Text>
               </Pressable>
             ))}
           </View>
@@ -570,7 +566,7 @@ export default function EmployeeDashboard() {
   // ─────────────────────────────────────────────────────────────────────────
 
   if (view === 'chat' && selectedRequest) {
-    const isClosed = ['completed', 'cancelled'].includes(selectedRequest.status);
+    const isClosed = ['approved', 'rejected'].includes(selectedRequest.status);
     const custName = customer?.given_name ?? 'الزبون';
 
     return (
@@ -834,7 +830,7 @@ export default function EmployeeDashboard() {
           ) : (
             <View style={styles.closedBar}>
               <Text style={styles.closedText}>
-                {selectedRequest.status === 'completed' ? '✅ تم إنجاز الطلب' : '❌ تم إلغاء الطلب'}
+                {selectedRequest.status === 'approved' ? '✅ تم إنجاز الطلب' : '❌ تم رفض الطلب'}
               </Text>
             </View>
           )}
@@ -851,9 +847,9 @@ export default function EmployeeDashboard() {
   const myRequests = queue?.filter((r) => r.assigned_employee_id === profile?.id) ?? [];
   const unclaimedRequests = queue?.filter((r) => !r.assigned_employee_id) ?? [];
   const allVisible = [...unclaimedRequests, ...myRequests.filter((r) => !unclaimedRequests.find((u) => u.id === r.id))];
-  const pending = myRequests.filter((r) => r.status === 'pending').length;
-  const inProgress = myRequests.filter((r) => r.status === 'in_progress').length;
-  const completed = myRequests.filter((r) => r.status === 'completed').length;
+  const pending = myRequests.filter((r) => r.status === 'submitted').length;
+  const inProgress = myRequests.filter((r) => r.status === 'in_review').length;
+  const completed = myRequests.filter((r) => r.status === 'approved').length;
   const quickBadge = quickRequests?.length ?? 0;
 
   if (queue === null) {

@@ -23,6 +23,7 @@ export default function MatchingScreen() {
   const [loading, setLoading] = useState(true);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     if (!category) return;
@@ -39,10 +40,21 @@ export default function MatchingScreen() {
     if (!requestId || confirmingId) return;
     setSelectedId(candidate.id);
     setConfirmingId(candidate.id);
-    await supabase
-      .from('requests')
-      .update({ employee_id: candidate.id, status: 'in_progress' })
-      .eq('id', requestId);
+    // Customers can't write assigned_employee_id directly (RLS reserves
+    // that for the assigned employee/staff, matching the employee-claim
+    // race elsewhere in the app) — this security-definer RPC re-checks
+    // the request is still unclaimed and does the assignment atomically.
+    const { data, error: rpcError } = await supabase.rpc('customer_select_employee', {
+      p_request_id: requestId,
+      p_employee_id: candidate.id,
+    });
+    if (rpcError || !data) {
+      setSelectedId(null);
+      setConfirmingId(null);
+      setError('تم حجز هذا الموظف من قبل، يرجى اختيار موظف آخر');
+      load();
+      return;
+    }
     // Let the checkmark animation land before navigating away — realtime
     // will update the request detail once we're back.
     setTimeout(() => router.back(), SELECT_CONFIRM_DELAY_MS);
@@ -86,6 +98,7 @@ export default function MatchingScreen() {
           <Text style={styles.listHeader}>
             {candidates.length} موظف متاح — مرّر واختر من تريد العمل معه
           </Text>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <EmployeeSelectorCarousel
             candidates={candidates}
             selectedId={selectedId}
@@ -146,6 +159,13 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     fontSize: 13,
     color: COLORS.muted,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+  errorText: {
+    fontFamily: FONTS.regular,
+    fontSize: 12,
+    color: COLORS.red,
     textAlign: 'center',
     paddingHorizontal: 24,
   },

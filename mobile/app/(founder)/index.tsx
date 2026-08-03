@@ -28,9 +28,11 @@ interface RecentRequest {
   created_at: string;
 }
 
+// Matches the real request_status enum (submitted/in_review/needs_changes/
+// approved/rejected) — see (customer)/requests/[id].tsx for the same fix.
 const STATUS_COLORS: Record<string, string> = {
-  pending: '#f59e0b', in_progress: '#3b82f6', completed: '#22c55e',
-  cancelled: '#6b7280', rejected: '#ef4444', approved: '#22c55e',
+  submitted: '#f59e0b', in_review: '#3b82f6', needs_changes: '#f97316',
+  approved: '#22c55e', rejected: '#ef4444',
 };
 
 const NAV_ITEMS = [

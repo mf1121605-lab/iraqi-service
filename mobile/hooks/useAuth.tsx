@@ -2,6 +2,10 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
+const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://iraqi-service.vercel.app';
+// Same 5-minute cadence as the web AppShell's heartbeat.
+const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
+
 interface Profile {
   id: string;
   given_name: string | null;
@@ -63,6 +67,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Keeps profiles.last_active_at fresh so get_active_employee_candidates()
+  // (which filters on it) and the founder's online/offline badges actually
+  // see mobile employees — this was previously only wired up on the web
+  // AppShell, so employees using the app alone never showed as available.
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!userId) return;
+
+    async function ping() {
+      const { data: { session: current } } = await supabase.auth.getSession();
+      if (!current?.access_token) return;
+      fetch(`${APP_URL}/api/auth/heartbeat`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${current.access_token}` },
+      }).catch(() => {});
+    }
+
+    ping();
+    const interval = setInterval(ping, HEARTBEAT_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [session?.user.id]);
 
   async function loadProfile(userId: string) {
     const { data, error } = await supabase

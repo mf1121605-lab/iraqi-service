@@ -45,7 +45,7 @@ export default function NewRequest() {
       .from('categories')
       .select('id, key, label_ar')
       .eq('is_active', true)
-      .order('display_order', { ascending: true });
+      .order('sort_order', { ascending: true });
     if (data) setCategories(data as Category[]);
     setLoadingCats(false);
   }, []);
@@ -56,7 +56,6 @@ export default function NewRequest() {
     setError('');
     if (!category) { setError('يرجى اختيار نوع الخدمة'); return; }
     if (!title.trim()) { setError('يرجى كتابة عنوان للطلب'); return; }
-    if (!description.trim()) { setError('يرجى كتابة وصف للطلب'); return; }
     if (!session?.user.id) { setError('يرجى تسجيل الدخول أولاً'); return; }
 
     setLoading(true);
@@ -66,8 +65,8 @@ export default function NewRequest() {
         customer_id: session.user.id,
         category,
         title: title.trim(),
-        description: description.trim(),
-        status: 'pending',
+        description: description.trim() || null,
+        status: 'submitted',
       })
       .select('id')
       .single();
@@ -77,7 +76,9 @@ export default function NewRequest() {
       setError(dbErr.message || 'حدث خطأ، يرجى المحاولة مجدداً');
       return;
     }
-    router.replace({ pathname: '/(customer)/requests/[id]', params: { id: data.id } });
+    // Search for an available employee next, instead of jumping straight
+    // to a chat with nobody assigned yet.
+    router.replace({ pathname: '/(customer)/requests/matching', params: { requestId: data.id, category } });
   }
 
   return (
@@ -159,7 +160,7 @@ export default function NewRequest() {
                 placeholder="مثال: معالجة وثيقة التسريح"
               />
               <View>
-                <Text style={styles.fieldLabel}>وصف الطلب</Text>
+                <Text style={styles.fieldLabel}>وصف الطلب (اختياري)</Text>
                 <TextInput
                   value={description}
                   onChangeText={setDescription}
@@ -193,7 +194,7 @@ export default function NewRequest() {
                   {loading ? (
                     <ActivityIndicator color="#000" size="small" />
                   ) : (
-                    <Text style={styles.submitText}>إرسال الطلب ←</Text>
+                    <Text style={styles.submitText}>إرسال الطلب والبحث عن موظف حالي ←</Text>
                   )}
                 </LinearGradient>
               </Pressable>

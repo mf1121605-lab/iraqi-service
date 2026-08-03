@@ -22,10 +22,11 @@ import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
-  pending:     { label: 'قيد الانتظار', color: '#f59e0b' },
-  in_progress: { label: 'جارٍ المعالجة', color: '#3b82f6' },
-  completed:   { label: 'مكتملة',        color: '#22c55e' },
-  cancelled:   { label: 'ملغية',         color: '#ef4444' },
+  submitted:     { label: 'قيد الانتظار',   color: '#f59e0b' },
+  in_review:     { label: 'جارٍ المعالجة',   color: '#3b82f6' },
+  needs_changes: { label: 'بحاجة لتعديل',    color: '#f97316' },
+  approved:      { label: 'مكتملة',          color: '#22c55e' },
+  rejected:      { label: 'مرفوضة',          color: '#ef4444' },
 };
 
 const CAT_EMOJI: Record<string, string> = {
@@ -51,7 +52,7 @@ type RequestDetail = {
   category: string;
   status: string;
   created_at: string;
-  employee_id: string | null;
+  assigned_employee_id: string | null;
   employee: { given_name: string; family_name: string } | null;
 };
 
@@ -92,7 +93,7 @@ export default function RequestDetail() {
     const [rRes, mRes] = await Promise.all([
       supabase
         .from('requests')
-        .select('id, title, description, category, status, created_at, employee_id, employee:profiles!employee_id(given_name, family_name)')
+        .select('id, title, description, category, status, created_at, assigned_employee_id, employee:profiles!assigned_employee_id(given_name, family_name)')
         .eq('id', id)
         .single(),
       supabase
@@ -226,7 +227,7 @@ export default function RequestDetail() {
     ? `${req.employee.given_name} ${req.employee.family_name}`
     : null;
   const catEmoji = CAT_EMOJI[req.category] ?? '📁';
-  const isClosed = req.status === 'completed' || req.status === 'cancelled';
+  const isClosed = req.status === 'approved' || req.status === 'rejected';
 
   return (
     <ScreenBg>
@@ -265,7 +266,7 @@ export default function RequestDetail() {
                   <Text style={styles.employeeChipEmoji}>👤</Text>
                   <Text style={styles.employeeChipName}>{employeeName}</Text>
                 </View>
-              ) : req.status === 'pending' ? (
+              ) : req.status === 'submitted' ? (
                 <Pressable
                   style={({ pressed }) => [styles.findEmployeeBtn, pressed && { opacity: 0.7 }]}
                   onPress={() => router.push({
@@ -380,7 +381,7 @@ export default function RequestDetail() {
         ) : (
           <View style={styles.closedBar}>
             <Text style={styles.closedBarText}>
-              {req.status === 'completed' ? '✅ تم إنجاز الطلب' : '❌ تم إلغاء الطلب'}
+              {req.status === 'approved' ? '✅ تم إنجاز الطلب' : '❌ تم رفض الطلب'}
             </Text>
           </View>
         )}
