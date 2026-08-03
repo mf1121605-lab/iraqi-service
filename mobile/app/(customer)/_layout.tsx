@@ -1,43 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { useReserveFrameBottomInset } from '@/hooks/useFrameInset';
 import { TabSwipeZone } from '@/components/ui/TabSwipeZone';
+import { Icon3D } from '@/components/ui/Icon3D';
 import { COLORS, FONTS } from '@/constants/theme';
 
 const TAB_BAR_HEIGHT = 62;
 
 function TabIcon({ emoji, focused, badge }: { emoji: string; focused: boolean; badge?: number }) {
-  return (
-    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize: focused ? 22 : 20, opacity: focused ? 1 : 0.6 }}>{emoji}</Text>
-      {badge != null && badge > 0 && (
-        <View style={badgeStyle.wrap}>
-          <Text style={badgeStyle.text}>{badge > 9 ? '9+' : badge}</Text>
-        </View>
-      )}
-    </View>
-  );
+  return <Icon3D emoji={emoji} size={focused ? 34 : 30} active={focused} badge={badge} animation={focused ? 'float' : 'none'} />;
 }
-
-const badgeStyle = StyleSheet.create({
-  wrap: {
-    position: 'absolute',
-    top: -4,
-    right: -8,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#ef4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
-  },
-  text: { color: '#fff', fontSize: 9, fontFamily: FONTS.bold },
-});
 
 export default function CustomerLayout() {
   const { session } = useAuth();

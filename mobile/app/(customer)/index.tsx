@@ -14,6 +14,7 @@ import {
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenBg } from '@/components/ui/ScreenBg';
+import { Icon3D } from '@/components/ui/Icon3D';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -310,7 +311,7 @@ function SectionHeader({ title, icon }: { title: string; icon: string }) {
   return (
     <View style={secStyles.row}>
       <View style={secStyles.line} />
-      <Text style={secStyles.icon}>{icon}</Text>
+      <Icon3D emoji={icon} size={26} animation="none" />
       <Text style={secStyles.title}>{title}</Text>
     </View>
   );
@@ -319,7 +320,6 @@ function SectionHeader({ title, icon }: { title: string; icon: string }) {
 const secStyles = StyleSheet.create({
   row:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   title: { fontFamily: FONTS.bold, fontSize: 16, color: COLORS.white, textAlign: 'right' },
-  icon:  { fontSize: 16 },
   line:  { flex: 1, height: 1, backgroundColor: 'rgba(230,171,44,0.2)' },
 });
 

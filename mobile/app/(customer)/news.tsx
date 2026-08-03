@@ -27,6 +27,7 @@ import Animated, {
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Icon3D } from '@/components/ui/Icon3D';
 import { Avatar } from '@/components/chat/Avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -182,7 +183,7 @@ function ReactionPopover({ onPick, onClose }: { onPick: (type: string) => void; 
             style={styles.popoverEmojiBtn}
             hitSlop={4}
           >
-            <Text style={styles.popoverEmoji}>{r.emoji}</Text>
+            <Icon3D emoji={r.emoji} size={34} animation="pulse" />
           </Pressable>
         ))}
       </View>
@@ -439,7 +440,10 @@ export default function NewsScreen() {
         }
         ListHeaderComponent={
           <View style={styles.headerSection}>
-            <Text style={styles.pageTitle}>📰 آخر الأخبار</Text>
+            <View style={styles.pageTitleRow}>
+              <Text style={styles.pageTitle}>آخر الأخبار</Text>
+              <Icon3D emoji="📰" size={36} active glowColor={COLORS.gold} animation="float" />
+            </View>
 
             {/* Composer */}
             <GlassCard style={styles.composerCard} noPad borderRadius={16} borderSpeed={5000}>
@@ -722,6 +726,7 @@ const styles = StyleSheet.create({
   list: { padding: 16, gap: 14, paddingBottom: 32 },
 
   headerSection: { gap: 12, marginBottom: 4 },
+  pageTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'flex-end' },
   pageTitle: { fontFamily: FONTS.bold, fontSize: 22, color: COLORS.gold, textAlign: 'right' },
 
   composerCard: { minHeight: 120 },
