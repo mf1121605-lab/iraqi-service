@@ -18,6 +18,7 @@ import { CinematicSplash } from '@/components/ui/CinematicSplash';
 import { FrameInsetProvider } from '@/hooks/useFrameInset';
 import { AmbientMusicProvider } from '@/hooks/useAmbientMusic';
 import { AmbientMusicIcon } from '@/components/ui/AmbientMusicIcon';
+import { SiteBackgroundProvider } from '@/hooks/useSiteBackground';
 
 // Required to dismiss the OAuth browser session when the app is foregrounded
 WebBrowser.maybeCompleteAuthSession();
@@ -71,13 +72,15 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <AuthProvider>
           <FrameInsetProvider>
-            <AmbientMusicProvider>
-              <StatusBar style="light" backgroundColor="#0d1117" />
-              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />
-              <CinematicFrame />
-              <AmbientMusicIcon />
-              {showSplash && <CinematicSplash onDone={() => setShowSplash(false)} />}
-            </AmbientMusicProvider>
+            <SiteBackgroundProvider>
+              <AmbientMusicProvider>
+                <StatusBar style="light" backgroundColor="#0d1117" />
+                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />
+                <CinematicFrame />
+                <AmbientMusicIcon />
+                {showSplash && <CinematicSplash onDone={() => setShowSplash(false)} />}
+              </AmbientMusicProvider>
+            </SiteBackgroundProvider>
           </FrameInsetProvider>
         </AuthProvider>
       </SafeAreaProvider>

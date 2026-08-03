@@ -8,9 +8,11 @@
  * Requires an APK build (native module). OTA updates are fine after that.
  */
 import { ReactNode } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Image, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Canvas, Rect, RadialGradient, vec } from '@shopify/react-native-skia';
+import { useSiteBackground } from '@/hooks/useSiteBackground';
+import { ParticlesLayer } from './ParticlesLayer';
 
 interface Props {
   children: ReactNode;
@@ -20,6 +22,7 @@ interface Props {
 export function ScreenBg({ children, noTopPad }: Props) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
+  const { imageUrl, color, particlesEnabled } = useSiteBackground();
 
   return (
     <View style={styles.root}>
@@ -64,6 +67,18 @@ export function ScreenBg({ children, noTopPad }: Props) {
           />
         </Rect>
       </Canvas>
+
+      {/* ── Founder-set background image/color — dim layer above the
+          default gradient, still visible underneath, matches the web ── */}
+      {color ? (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: color }]} pointerEvents="none" />
+      ) : imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={[StyleSheet.absoluteFill, { opacity: 0.35 }]} resizeMode="cover" />
+      ) : null}
+
+      {/* ── Ambient particle effect — independent layer on top of whatever
+          background is active, founder-toggleable ── */}
+      {particlesEnabled && <ParticlesLayer />}
 
       {/* ── Screen content ─────────────────────────────────────────── */}
       <View style={[styles.content, !noTopPad && { paddingTop: insets.top }]}>

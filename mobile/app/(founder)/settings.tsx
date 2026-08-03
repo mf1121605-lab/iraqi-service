@@ -30,6 +30,7 @@ interface FounderSettings {
   announcement_text_ar: string | null;
   announcement_text_ckb: string | null;
   frame_color: string | null;
+  particles_enabled: boolean | null;
 }
 
 const ACCENT_PRESETS = [
@@ -61,7 +62,7 @@ const FRAME_COLOR_PRESETS = [
   { hex: '#e2e8f0', label: 'فضي' },
 ];
 
-const TEXT_FIELDS: { key: keyof Omit<FounderSettings, 'id' | 'accent_color' | 'bg_color' | 'announcement_enabled' | 'frame_color'>; label: string; multiline?: boolean }[] = [
+const TEXT_FIELDS: { key: keyof Omit<FounderSettings, 'id' | 'accent_color' | 'bg_color' | 'announcement_enabled' | 'frame_color' | 'particles_enabled'>; label: string; multiline?: boolean }[] = [
   { key: 'hero_title_ar', label: 'العنوان الرئيسي (عربي)' },
   { key: 'hero_title_ckb', label: 'العنوان الرئيسي (كردي)' },
   { key: 'hero_subtitle_ar', label: 'العنوان الفرعي (عربي)', multiline: true },
@@ -96,6 +97,7 @@ function emptyForm(): Omit<FounderSettings, 'id'> {
     announcement_text_ar: '',
     announcement_text_ckb: '',
     frame_color: '#e6ab2c',
+    particles_enabled: true,
   };
 }
 
@@ -145,6 +147,7 @@ export default function SettingsScreen() {
           announcement_text_ar: s.announcement_text_ar ?? '',
           announcement_text_ckb: s.announcement_text_ckb ?? '',
           frame_color: s.frame_color ?? '#e6ab2c',
+          particles_enabled: s.particles_enabled ?? true,
         });
       }
       // Load lockdown state
@@ -335,6 +338,20 @@ export default function SettingsScreen() {
                   trackColor={{ true: 'rgba(230,171,44,0.4)', false: 'rgba(255,255,255,0.1)' }}
                 />
                 <Text style={s.switchLabel}>{form.announcement_enabled ? 'الإعلان مفعّل' : 'الإعلان متوقف'}</Text>
+              </View>
+            </View>
+
+            {/* ── Ambient particles toggle ── */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>✨ مؤثرات الجسيمات المتحركة</Text>
+              <View style={s.row}>
+                <Switch
+                  value={form.particles_enabled ?? true}
+                  onValueChange={(v) => setForm((f) => ({ ...f, particles_enabled: v }))}
+                  thumbColor={form.particles_enabled ? COLORS.gold : '#888'}
+                  trackColor={{ true: 'rgba(230,171,44,0.4)', false: 'rgba(255,255,255,0.1)' }}
+                />
+                <Text style={s.switchLabel}>{form.particles_enabled ? 'المؤثرات مفعّلة' : 'المؤثرات متوقفة'}</Text>
               </View>
             </View>
 
