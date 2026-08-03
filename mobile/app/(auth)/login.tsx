@@ -11,6 +11,7 @@ import {
 import { Link, router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { Audio } from 'expo-av';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -29,6 +30,7 @@ import { CinematicEmblem } from '@/components/ui/CinematicEmblem';
 import { AnimatedGoldBorder } from '@/components/ui/AnimatedGoldBorder';
 import { AnimatedLoginGlow } from '@/components/ui/AnimatedLoginGlow';
 import { GoogleGLogo } from '@/components/ui/GoogleGLogo';
+import { AboutPrivacyModal } from '@/components/ui/AboutPrivacyModal';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 export default function LoginScreen() {
@@ -37,6 +39,7 @@ export default function LoginScreen() {
   const [loading, setLoading]       = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError]           = useState('');
+  const [infoModal, setInfoModal]   = useState<'about' | 'privacy' | null>(null);
 
   // ── Entrance choreography ──────────────────────────────────────────
   const emblemOpacity = useSharedValue(0);
@@ -185,7 +188,7 @@ export default function LoginScreen() {
           {/* Logo — full brand mark (eagle + baked-in platform name), materializes with the eagle cry */}
           <View style={styles.header}>
             <Animated.View style={emblemStyle}>
-              <CinematicEmblem size={190} />
+              <CinematicEmblem size={108} />
             </Animated.View>
             <Animated.Text style={[styles.appName, titleStyle]}>خدماتي</Animated.Text>
             <Animated.View style={[styles.subtitleLine, lineStyle]} />
@@ -255,18 +258,34 @@ export default function LoginScreen() {
             </Link>
           </View>
 
+          {/* من نحن / سياسة الخصوصية — silver-gold pills, same content as the website */}
+          <View style={styles.infoRow}>
+            <Pressable style={({ pressed }) => [styles.infoBtnWrap, pressed && { opacity: 0.8 }]} onPress={() => setInfoModal('about')}>
+              <LinearGradient colors={['#cbd5e1', '#e6ab2c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.infoBtn}>
+                <Text style={styles.infoBtnText}>من نحن</Text>
+              </LinearGradient>
+            </Pressable>
+            <Pressable style={({ pressed }) => [styles.infoBtnWrap, pressed && { opacity: 0.8 }]} onPress={() => setInfoModal('privacy')}>
+              <LinearGradient colors={['#cbd5e1', '#e6ab2c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.infoBtn}>
+                <Text style={styles.infoBtnText}>سياسة الخصوصية</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
+
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <AboutPrivacyModal variant={infoModal} onClose={() => setInfoModal(null)} />
     </ScreenBg>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  scroll: { flexGrow: 1, padding: 24, justifyContent: 'center', gap: 28 },
+  scroll: { flexGrow: 1, padding: 20, paddingVertical: 14, justifyContent: 'center', gap: 14 },
 
-  header: { alignItems: 'center', gap: 12 },
-  appName:  { fontFamily: FONTS.bold,    fontSize: 30, color: COLORS.gold,  letterSpacing: 0.5 },
+  header: { alignItems: 'center', gap: 6 },
+  appName:  { fontFamily: FONTS.bold,    fontSize: 24, color: COLORS.gold,  letterSpacing: 0.5 },
   subtitleLine: {
     height: 2,
     borderRadius: 1,
@@ -278,19 +297,19 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
 
-  card:      { gap: 0, borderWidth: 0 },
+  card:      { gap: 0, borderWidth: 0, padding: 16 },
   cardTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 20,
+    fontSize: 18,
     color: COLORS.white,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
-  fields: { gap: 14 },
+  fields: { gap: 10 },
 
   error: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.red, textAlign: 'center' },
 
-  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 16 },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 10 },
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
   dividerText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
 
@@ -340,4 +359,9 @@ const styles = StyleSheet.create({
 
   forgotBtn: { alignSelf: 'center', paddingVertical: 4 },
   forgotText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
+
+  infoRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: 2 },
+  infoBtnWrap: { borderRadius: RADIUS.sm, overflow: 'hidden' },
+  infoBtn: { paddingHorizontal: 16, paddingVertical: 7 },
+  infoBtnText: { fontFamily: FONTS.bold, fontSize: 12, color: '#ffffff' },
 });
