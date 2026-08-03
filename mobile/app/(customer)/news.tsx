@@ -225,6 +225,28 @@ export default function NewsScreen() {
   const [openPopoverPostId, setOpenPopoverPostId] = useState<string | null>(null);
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const [mutedVideoId, setMutedVideoId] = useState<Set<string>>(new Set());
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [followBusyId, setFollowBusyId] = useState<string | null>(null);
+
+  const loadFollowing = useCallback(async () => {
+    if (!session?.user.id) return;
+    const { data } = await supabase.from('follows').select('following_id').eq('follower_id', session.user.id);
+    setFollowingIds(new Set((data ?? []).map((r) => r.following_id as string)));
+  }, [session?.user.id]);
+
+  async function toggleFollow(authorId: string) {
+    if (!session?.user.id || followBusyId) return;
+    setFollowBusyId(authorId);
+    const isFollowing = followingIds.has(authorId);
+    if (isFollowing) {
+      await supabase.from('follows').delete().eq('follower_id', session.user.id).eq('following_id', authorId);
+      setFollowingIds((prev) => { const next = new Set(prev); next.delete(authorId); return next; });
+    } else {
+      await supabase.from('follows').insert({ follower_id: session.user.id, following_id: authorId });
+      setFollowingIds((prev) => new Set(prev).add(authorId));
+    }
+    setFollowBusyId(null);
+  }
 
   const loadPosts = useCallback(async () => {
     const { data } = await supabase
@@ -242,6 +264,8 @@ export default function NewsScreen() {
     setLoading(false);
     setRefreshing(false);
   }, []);
+
+  useEffect(() => { loadFollowing(); }, [loadFollowing]);
 
   useEffect(() => {
     loadPosts();
@@ -553,17 +577,31 @@ export default function NewsScreen() {
               {/* Post header */}
               <View style={styles.postHeader}>
                 <Text style={styles.postDate}>{formatDate(item.created_at)}</Text>
-                <Pressable
-                  style={styles.authorRow}
-                  onPress={() => item.author && router.push({ pathname: '/user/[userId]', params: { userId: item.author.id } })}
-                >
-                  <Text style={styles.authorName}>{authorName}</Text>
-                  {item.author ? (
-                    <Avatar avatarKey={item.author.avatar_key} name={authorName} seed={item.author.id} size={38} />
-                  ) : (
-                    <AvatarCircle name={authorName} size={38} />
+                <View style={styles.authorCluster}>
+                  {item.author && item.author.id !== session?.user.id && (
+                    <Pressable
+                      style={[styles.followPill, followingIds.has(item.author.id) && styles.followPillActive]}
+                      onPress={() => toggleFollow(item.author!.id)}
+                      disabled={followBusyId === item.author.id}
+                    >
+                      {followingIds.has(item.author.id) && <Text style={styles.followPillCheck}>✓</Text>}
+                      <Text style={[styles.followPillText, followingIds.has(item.author.id) && styles.followPillTextActive]}>
+                        {followingIds.has(item.author.id) ? 'متابَع' : 'متابعة'}
+                      </Text>
+                    </Pressable>
                   )}
-                </Pressable>
+                  <Pressable
+                    style={styles.authorRow}
+                    onPress={() => item.author && router.push({ pathname: '/user/[userId]', params: { userId: item.author.id } })}
+                  >
+                    <Text style={styles.authorName}>{authorName}</Text>
+                    {item.author ? (
+                      <Avatar avatarKey={item.author.avatar_key} name={authorName} seed={item.author.id} size={38} />
+                    ) : (
+                      <AvatarCircle name={authorName} size={38} />
+                    )}
+                  </Pressable>
+                </View>
               </View>
 
               {/* Content */}
@@ -803,7 +841,22 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   postDate: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.muted },
+  authorCluster: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  followPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    borderWidth: 1,
+    borderColor: COLORS.gold,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  followPillActive: { backgroundColor: 'rgba(230,171,44,0.18)' },
+  followPillText: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold },
+  followPillTextActive: { color: COLORS.gold },
+  followPillCheck: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold },
   authorName: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.gold },
 
   postContent: {

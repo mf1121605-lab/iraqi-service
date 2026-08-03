@@ -26,5 +26,14 @@ export default function Index() {
     return <Redirect href="/(employee)/" />;
   }
 
+  // Forces full-name + avatar entry before a customer ever reaches the
+  // dashboard — applies to every signup path (Google OAuth included),
+  // since profile is loaded the same way regardless of how the session
+  // was created. Nothing previously routed a fresh signup here; the
+  // onboarding screen existed but was unreachable.
+  if (profile && !profile.onboarding_complete) {
+    return <Redirect href="/(customer)/onboarding" />;
+  }
+
   return <Redirect href="/(customer)/" />;
 }
