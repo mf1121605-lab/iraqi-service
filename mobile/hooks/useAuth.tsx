@@ -15,6 +15,7 @@ interface Profile {
   admin_level: 'founder' | 'co_admin' | null;
   account_status: string;
   avatar_key: string | null;
+  bio: string | null;
   is_verified?: boolean;
   onboarding_complete?: boolean | null;
 }
@@ -93,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function loadProfile(userId: string) {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, given_name, family_name, phone, role, admin_level, account_status, avatar_key, is_verified, onboarding_complete')
+      .select('id, given_name, family_name, phone, role, admin_level, account_status, avatar_key, bio, is_verified, onboarding_complete')
       .eq('id', userId)
       .single();
     // A missing column-level grant makes Postgres reject this whole query

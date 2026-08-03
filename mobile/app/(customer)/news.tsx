@@ -24,8 +24,10 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Avatar } from '@/components/chat/Avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -48,7 +50,7 @@ type Post = {
   image_urls: string[];
   video_url: string | null;
   created_at: string;
-  author: { given_name: string; family_name: string } | null;
+  author: { id: string; given_name: string; family_name: string; avatar_key: string | null } | null;
   reactions: { reaction_type: string; user_id: string }[];
   comments: Comment[];
 };
@@ -211,7 +213,7 @@ export default function NewsScreen() {
       .from('social_posts')
       .select(`
         id, content, image_urls, video_url, created_at,
-        author:profiles!author_id(given_name, family_name),
+        author:profiles!author_id(id, given_name, family_name, avatar_key),
         reactions:social_reactions(reaction_type, user_id),
         comments:social_comments(id, content, image_url, parent_comment_id, created_at, author:profiles!author_id(given_name, family_name), reactions:social_comment_reactions(user_id))
       `)
@@ -530,10 +532,17 @@ export default function NewsScreen() {
               {/* Post header */}
               <View style={styles.postHeader}>
                 <Text style={styles.postDate}>{formatDate(item.created_at)}</Text>
-                <View style={styles.authorRow}>
+                <Pressable
+                  style={styles.authorRow}
+                  onPress={() => item.author && router.push({ pathname: '/(customer)/user/[userId]', params: { userId: item.author.id } })}
+                >
                   <Text style={styles.authorName}>{authorName}</Text>
-                  <AvatarCircle name={authorName} size={38} />
-                </View>
+                  {item.author ? (
+                    <Avatar avatarKey={item.author.avatar_key} name={authorName} seed={item.author.id} size={38} />
+                  ) : (
+                    <AvatarCircle name={authorName} size={38} />
+                  )}
+                </Pressable>
               </View>
 
               {/* Content */}

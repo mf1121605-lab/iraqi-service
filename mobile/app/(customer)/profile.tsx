@@ -11,11 +11,14 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { GoldInput } from '@/components/ui/GoldInput';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+
+const BIO_MAX = 150;
 
 type Tab = 'info' | 'password';
 
@@ -28,6 +31,7 @@ export default function ProfileScreen() {
   const [givenName, setGivenName]   = useState(profile?.given_name  ?? '');
   const [familyName, setFamilyName] = useState(profile?.family_name ?? '');
   const [phone, setPhone]           = useState(profile?.phone       ?? '');
+  const [bio, setBio]               = useState(profile?.bio ?? '');
 
   // Sync editable fields when profile data arrives or changes
   useEffect(() => {
@@ -35,6 +39,7 @@ export default function ProfileScreen() {
     setGivenName(profile.given_name  ?? '');
     setFamilyName(profile.family_name ?? '');
     setPhone(profile.phone ?? '');
+    setBio(profile.bio ?? '');
   }, [profile?.id]);
   const [infoSaving, setInfoSaving] = useState(false);
   const [infoError, setInfoError]   = useState('');
@@ -84,6 +89,7 @@ export default function ProfileScreen() {
         given_name:  givenName.trim(),
         family_name: familyName.trim(),
         phone:       phone.trim() || null,
+        bio:         bio.trim() || null,
       })
       .eq('id', profile.id);
     setInfoSaving(false);
@@ -175,6 +181,14 @@ export default function ProfileScreen() {
             </View>
             <Text style={styles.fullName}>{fullName}</Text>
             <Text style={styles.phone}>{profile?.phone ?? ''}</Text>
+            {profile?.id && (
+              <Pressable
+                style={styles.publicProfileLink}
+                onPress={() => router.push({ pathname: '/(customer)/user/[userId]', params: { userId: profile.id } })}
+              >
+                <Text style={styles.publicProfileLinkText}>عرض صفحتي العامة ←</Text>
+              </Pressable>
+            )}
           </View>
 
           {/* ── Tab switcher ── */}
@@ -221,6 +235,17 @@ export default function ProfileScreen() {
                   placeholder="07XXXXXXXXX"
                   keyboardType="phone-pad"
                 />
+                <View>
+                  <GoldInput
+                    label="نبذة عني"
+                    value={bio}
+                    onChangeText={(v) => { setBio(v.slice(0, BIO_MAX)); setInfoSaved(false); }}
+                    placeholder="اكتب نبذة قصيرة عنك..."
+                    multiline
+                    maxLength={BIO_MAX}
+                  />
+                  <Text style={styles.bioCounter}>{bio.length}/{BIO_MAX}</Text>
+                </View>
 
                 {infoError ? (
                   <View style={styles.errorBox}>
@@ -405,6 +430,9 @@ const styles = StyleSheet.create({
   statusText: { fontFamily: FONTS.bold, fontSize: 12 },
   fullName:   { fontFamily: FONTS.bold, fontSize: 20, color: COLORS.white },
   phone:      { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.muted },
+  publicProfileLink: { marginTop: 4 },
+  publicProfileLinkText: { fontFamily: FONTS.bold, fontSize: 12, color: COLORS.gold },
+  bioCounter: { fontFamily: FONTS.regular, fontSize: 10, color: COLORS.muted, textAlign: 'left', marginTop: 4 },
 
   // Tab row
   tabRow: {
