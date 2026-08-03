@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -879,6 +880,7 @@ export default function EmployeeDashboard() {
             <Text style={styles.headerIcon}>🚪</Text>
           </Pressable>
           <View style={styles.headerCenter}>
+            <Image source={require('@/assets/full-logo-transparent.png')} style={styles.headerLogo} resizeMode="contain" />
             <View style={styles.headerBadgeRow}>
               <View style={styles.roleBadge}>
                 <Text style={styles.roleBadgeText}>موظف</Text>
@@ -1039,6 +1041,7 @@ const styles = StyleSheet.create({
   listHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4, paddingBottom: 4 },
   headerIcon: { fontSize: 22, padding: 6 },
   headerCenter: { alignItems: 'center', gap: 6 },
+  headerLogo: { width: 30, height: 30 * (823 / 900) },
   headerBadgeRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   roleBadge: { backgroundColor: 'rgba(230,171,44,0.12)', borderWidth: 1, borderColor: 'rgba(230,171,44,0.3)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
   roleBadgeText: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold },

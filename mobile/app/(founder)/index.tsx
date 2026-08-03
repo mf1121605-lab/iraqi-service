@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
@@ -90,7 +90,10 @@ export default function FounderDashboard() {
     <ScreenBg>
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <View style={s.header}>
-          <Text style={s.headerTitle}>لوحة المؤسس</Text>
+          <View style={s.headerTitleRow}>
+            <Image source={require('@/assets/full-logo-transparent.png')} style={s.headerLogo} resizeMode="contain" />
+            <Text style={s.headerTitle}>لوحة المؤسس</Text>
+          </View>
           <Pressable onPress={async () => { await signOut(); router.replace('/'); }} style={s.logoutBtn}>
             <Text style={s.logoutText}>خروج</Text>
           </Pressable>
@@ -160,6 +163,8 @@ const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   denied: { color: COLORS.white, fontFamily: FONTS.bold, fontSize: 18 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerLogo: { width: 32, height: 32 * (823 / 900) },
   headerTitle: { fontFamily: FONTS.bold, fontSize: 22, color: COLORS.gold },
   logoutBtn: { backgroundColor: 'rgba(239,68,68,0.15)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)', borderRadius: RADIUS.sm, paddingHorizontal: 14, paddingVertical: 7 },
   logoutText: { fontFamily: FONTS.bold, fontSize: 13, color: '#ef4444' },

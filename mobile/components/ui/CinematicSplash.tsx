@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Dimensions, Image, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, Image, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, FONTS } from '@/constants/theme';
 
 const { width: W } = Dimensions.get('window');
 const CORNER = 34;
@@ -9,7 +8,11 @@ const INSET   = 14;
 const GOLD65  = 'rgba(230,171,44,0.65)';
 const GOLD35  = 'rgba(230,171,44,0.35)';
 
-const EAGLE = require('../../assets/icon.png');
+// Same single brand asset used everywhere else (login/register/dashboards)
+// — full mark with the bilingual name plaque baked in, so no separate
+// text block is needed here.
+const LOGO = require('../../assets/full-logo-transparent.png');
+const LOGO_ASPECT = 900 / 823;
 
 interface Props { onDone: () => void; }
 
@@ -74,29 +77,20 @@ export function CinematicSplash({ onDone }: Props) {
         {/* Gold glow halo behind eagle */}
         <Animated.View style={[s.halo, { opacity: pulseOp }]} />
 
-        {/* Eagle logo */}
+        {/* Logo — full brand mark, name plaque already baked into the asset */}
         <Animated.View style={[s.eagleWrap, { opacity: logoOp, transform: [{ scale: logoScale }] }]}>
-          <Image source={EAGLE} style={s.eagle} resizeMode="contain" />
-        </Animated.View>
-
-        {/* Platform name */}
-        <Animated.View style={[s.textBlock, { opacity: textOp }]}>
-          <View style={s.nameWrap}>
-            <Text style={s.name}>منصة الخدمات العراقية</Text>
-            <Animated.View
-              style={[s.shimmer, { transform: [{ translateX: shimmerX }] }]}
-              pointerEvents="none"
-            >
-              <LinearGradient
-                colors={['transparent', 'rgba(230,171,44,0.55)', 'transparent']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{ width: W * 0.65, height: 55 }}
-              />
-            </Animated.View>
-          </View>
-          <View style={s.divider} />
-          <Text style={s.tagline}>Iraqi Services Platform</Text>
+          <Image source={LOGO} style={s.eagle} resizeMode="contain" />
+          <Animated.View
+            style={[s.shimmer, { transform: [{ translateX: shimmerX }] }]}
+            pointerEvents="none"
+          >
+            <LinearGradient
+              colors={['transparent', 'rgba(230,171,44,0.55)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{ width: W * 0.65, height: '100%' }}
+            />
+          </Animated.View>
         </Animated.View>
       </View>
 
@@ -159,37 +153,17 @@ const s = StyleSheet.create({
   },
 
   eagleWrap: {
-    width: 220, height: 220,
+    width: 260, height: 260 / LOGO_ASPECT,
     alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
   },
   eagle: {
-    width: 220, height: 220,
-  },
-
-  textBlock: { alignItems: 'center', marginTop: 20 },
-  nameWrap:  { overflow: 'hidden' },
-  name: {
-    fontFamily: FONTS.bold,
-    fontSize: 26,
-    color: COLORS.gold,
-    letterSpacing: 1,
-    textAlign: 'center',
+    width: 260, height: 260 / LOGO_ASPECT,
   },
   shimmer: {
     position: 'absolute',
     top: 0, bottom: 0,
     justifyContent: 'center',
-  },
-  divider: {
-    width: 80, height: 1,
-    backgroundColor: 'rgba(230,171,44,0.35)',
-    marginVertical: 10,
-  },
-  tagline: {
-    fontFamily: FONTS.regular,
-    fontSize: 13,
-    color: COLORS.muted,
-    letterSpacing: 1.5,
   },
 
   dots: {

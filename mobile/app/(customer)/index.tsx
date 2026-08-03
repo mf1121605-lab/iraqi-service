@@ -145,7 +145,7 @@ export default function CustomerDashboard() {
             <View style={styles.logoRow}>
               <View style={styles.logoBadge}>
                 <Image
-                  source={require('@/assets/eagle-icon-transparent.png')}
+                  source={require('@/assets/full-logo-transparent.png')}
                   style={styles.logoImage}
                   resizeMode="contain"
                 />
@@ -345,7 +345,9 @@ const styles = StyleSheet.create({
     shadowColor: '#e6ab2c', shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.35, shadowRadius: 10, elevation: 6,
   },
-  logoImage: { width: 38, height: 38 * (572 / 829) },
+  // Same single brand asset used app-wide (login/register/splash) — real
+  // aspect ratio of full-logo-transparent.png is 900×823.
+  logoImage: { width: 38, height: 38 * (823 / 900) },
   appName:   { fontFamily: FONTS.bold, fontSize: 22, color: COLORS.gold, letterSpacing: 0.5 },
   appSub:    { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted },
   greeting:  { fontFamily: FONTS.regular, fontSize: 15, color: COLORS.white70, textAlign: 'right' },
