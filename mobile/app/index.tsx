@@ -32,7 +32,7 @@ export default function Index() {
   // was created. Nothing previously routed a fresh signup here; the
   // onboarding screen existed but was unreachable.
   if (profile && !profile.onboarding_complete) {
-    return <Redirect href="/(customer)/onboarding" />;
+    return <Redirect href="/onboarding" />;
   }
 
   return <Redirect href="/(customer)/" />;

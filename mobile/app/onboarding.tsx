@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,7 +12,7 @@ import {
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { ScreenBg } from '@/components/ui/ScreenBg';
-import { Avatar, CARTOON_AVATAR_KEYS } from '@/components/chat/Avatar';
+import { Avatar, CARTOON_AVATAR_KEYS, CARTOON_AVATAR_URIS } from '@/components/chat/Avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -50,6 +51,13 @@ export default function Onboarding() {
     if (profile.family_name) setFamilyName(profile.family_name);
     if (profile.avatar_key) setSelected(profile.avatar_key);
   }, [profile]);
+
+  // Warm the image cache for all 8 cartoon presets up front so tapping one
+  // shows the real picture instantly instead of a blank circle until the
+  // network request resolves.
+  useEffect(() => {
+    CARTOON_AVATAR_URIS.forEach((uri) => { Image.prefetch(uri).catch(() => {}); });
+  }, []);
 
   const needsName = !profile?.given_name;
   const canContinue = selected && (!needsName || givenName.trim());

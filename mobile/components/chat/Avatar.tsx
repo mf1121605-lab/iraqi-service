@@ -16,6 +16,7 @@ const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://iraqi-service.vercel
 // its own public/assets/avatars/ folder, reused here by URL rather than
 // duplicating the image files into the app bundle.
 export const CARTOON_AVATAR_KEYS = ['char-1', 'char-2', 'char-3', 'char-4', 'char-5', 'char-6', 'char-7', 'char-8'];
+export const CARTOON_AVATAR_URIS = CARTOON_AVATAR_KEYS.map((key) => `${APP_URL}/assets/avatars/${key}.png`);
 
 function colorFor(seed: string | null | undefined): string {
   if (!seed) return PALETTE[0];
