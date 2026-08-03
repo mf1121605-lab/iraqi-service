@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+import { GlowPressable } from '@/components/ui/GlowPressable';
 
 // Matches the real `request_status` enum (submitted/in_review/needs_changes/
 // approved/rejected) — the previous pending/in_progress/completed/cancelled
@@ -103,8 +104,8 @@ export default function RequestsList() {
           </View>
 
           {/* New request CTA */}
-          <Pressable
-            style={({ pressed }) => [styles.newRequestBtn, pressed && styles.newRequestBtnPressed]}
+          <GlowPressable
+            style={styles.newRequestBtn}
             onPress={() => router.push('/(customer)/requests/new')}
           >
             <LinearGradient
@@ -115,7 +116,7 @@ export default function RequestsList() {
             >
               <Text style={styles.newRequestText}>+ طلب جديد</Text>
             </LinearGradient>
-          </Pressable>
+          </GlowPressable>
         </View>
 
         {requests.length === 0 ? (

@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { useReserveFrameBottomInset } from '@/hooks/useFrameInset';
+import { TabSwipeZone } from '@/components/ui/TabSwipeZone';
 import { COLORS, FONTS } from '@/constants/theme';
 
 const TAB_BAR_HEIGHT = 62;
@@ -74,6 +75,7 @@ export default function CustomerLayout() {
   }, [session?.user.id]);
 
   return (
+    <View style={styles.root}>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -133,10 +135,13 @@ export default function CustomerLayout() {
       <Tabs.Screen name="tutor/[subject]" options={{ href: null }} />
       <Tabs.Screen name="tutor/session/[sessionId]" options={{ href: null }} />
     </Tabs>
+    <TabSwipeZone />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   tabBar: {
     backgroundColor: '#161b22',
     borderTopWidth: 1,
