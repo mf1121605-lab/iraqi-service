@@ -19,8 +19,11 @@ import { supabase } from '@/lib/supabase';
 import { MessageBubble, MessageStatus } from '@/components/chat/MessageBubble';
 import { MessageReactionPopover } from '@/components/chat/MessageReactionPopover';
 import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
+import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
+import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
+import { ChatBgTheme, getChatBgTheme, setChatBgTheme } from '@/utils/chatBackgroundPrefs';
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
   submitted:     { label: 'قيد الانتظار',   color: '#f59e0b' },
@@ -90,6 +93,10 @@ export default function RequestDetail() {
   const [reactingId, setReactingId] = useState<string | null>(null);
   const [employeeTyping, setEmployeeTyping] = useState(false);
   const [employeeOnline, setEmployeeOnline] = useState(false);
+  const [bgTheme, setBgTheme] = useState<ChatBgTheme>('none');
+  const [showBgPicker, setShowBgPicker] = useState(false);
+
+  useEffect(() => { getChatBgTheme().then(setBgTheme); }, []);
 
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingBroadcast = useRef(0);
@@ -282,6 +289,7 @@ export default function RequestDetail() {
 
   return (
     <ScreenBg>
+      <ChatBackgroundLayer theme={bgTheme} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}
@@ -303,11 +311,21 @@ export default function RequestDetail() {
               </View>
             )}
           </View>
+          {/* Chat background theme */}
+          <Pressable onPress={() => setShowBgPicker(true)} style={styles.infoBtn} hitSlop={12}>
+            <Text style={styles.infoBtnText}>🎨</Text>
+          </Pressable>
           {/* Description toggle */}
           <Pressable onPress={() => setShowDesc((v) => !v)} style={styles.infoBtn} hitSlop={12}>
             <Text style={styles.infoBtnText}>ℹ</Text>
           </Pressable>
         </View>
+        <ChatBackgroundPicker
+          visible={showBgPicker}
+          current={bgTheme}
+          onSelect={(t) => { setBgTheme(t); setChatBgTheme(t); setShowBgPicker(false); }}
+          onClose={() => setShowBgPicker(false)}
+        />
 
         {/* Collapsible description */}
         {showDesc && (

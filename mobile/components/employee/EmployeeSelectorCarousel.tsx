@@ -1,13 +1,16 @@
 import { useEffect } from 'react';
 import { ActivityIndicator, Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import Animated, {
+  Easing,
   Extrapolation,
   interpolate,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withSequence,
   withSpring,
   withTiming,
@@ -118,12 +121,32 @@ function CarouselCard({
 }) {
   const inputRange = [(index - 1) * SNAP, index * SNAP, (index + 1) * SNAP];
 
+  // Motion-graphics entrance: each card flips in right-to-left (rotateY
+  // 90deg -> 0deg), staggered by index, on first mount.
+  const flipRotate = useSharedValue(90);
+  const flipOpacity = useSharedValue(0);
+  useEffect(() => {
+    flipRotate.value = withDelay(index * 90, withTiming(0, { duration: 520, easing: Easing.out(Easing.cubic) }));
+    flipOpacity.value = withDelay(index * 90, withTiming(1, { duration: 400 }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const cardStyle = useAnimatedStyle(() => {
     const scale = interpolate(scrollX.value, inputRange, [0.84, 1, 0.84], Extrapolation.CLAMP);
     const translateY = interpolate(scrollX.value, inputRange, [16, 0, 16], Extrapolation.CLAMP);
     const opacity = interpolate(scrollX.value, inputRange, [0.5, 1, 0.5], Extrapolation.CLAMP);
-    // Un-mirror this card's content (parent scroller is scaleX: -1).
-    return { transform: [{ scaleX: -1 }, { scale }, { translateY }], opacity };
+    // Un-mirror this card's content (parent scroller is scaleX: -1), then
+    // apply the entrance flip in that un-mirrored space.
+    return {
+      transform: [
+        { scaleX: -1 },
+        { perspective: 900 },
+        { rotateY: `${flipRotate.value}deg` },
+        { scale },
+        { translateY },
+      ],
+      opacity: opacity * flipOpacity.value,
+    };
   });
 
   const glowStyle = useAnimatedStyle(() => {
@@ -155,15 +178,17 @@ function CarouselCard({
         }}
       >
         <View style={[styles.card, isSelected && styles.cardSelected]}>
+          {/* Glass base — whatever animates behind (ScreenBg gradient/particles) shows through */}
+          <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
           <LinearGradient
-            colors={['#221b0f', '#0d0a06', '#050403']}
+            colors={['rgba(34,27,15,0.55)', 'rgba(13,10,6,0.55)', 'rgba(5,4,3,0.60)']}
             start={{ x: 0.15, y: 0 }}
             end={{ x: 0.9, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
           {/* Glossy top reflection */}
           <LinearGradient
-            colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0)']}
+            colors={['rgba(255,255,255,0.14)', 'rgba(255,255,255,0)']}
             style={styles.glossOverlay}
           />
           {/* Lit top edge */}
@@ -229,7 +254,6 @@ const styles = StyleSheet.create({
     height: CARD_H,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    backgroundColor: '#000',
     borderWidth: 1,
     borderColor: 'rgba(230,171,44,0.35)',
     alignItems: 'center',

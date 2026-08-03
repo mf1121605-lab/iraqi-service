@@ -17,10 +17,13 @@ import { ScreenBg } from '@/components/ui/ScreenBg';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { MessageReactionPopover } from '@/components/chat/MessageReactionPopover';
 import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
+import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
+import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
+import { ChatBgTheme, getChatBgTheme, setChatBgTheme } from '@/utils/chatBackgroundPrefs';
 
 const TYPING_TIMEOUT_MS = 3000;
 const TYPING_BROADCAST_INTERVAL_MS = 2000;
@@ -99,6 +102,10 @@ export default function ChatRoomScreen() {
   const [initializing, setInitializing] = useState(true);
   const [typingUsers, setTypingUsers] = useState<TypingMap>({});
   const [onlineCount, setOnlineCount] = useState(0);
+  const [bgTheme, setBgTheme] = useState<ChatBgTheme>('none');
+  const [showBgPicker, setShowBgPicker] = useState(false);
+
+  useEffect(() => { getChatBgTheme().then(setBgTheme); }, []);
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [activeStickerPack, setActiveStickerPack] = useState<keyof typeof STICKER_PACKS>('expressive');
   const [bannedFromRoom, setBannedFromRoom] = useState(false);
@@ -384,6 +391,7 @@ export default function ChatRoomScreen() {
 
   return (
     <ScreenBg>
+      <ChatBackgroundLayer theme={bgTheme} />
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
@@ -400,7 +408,16 @@ export default function ChatRoomScreen() {
             {onlineCount > 0 ? `${onlineCount} متصل` : 'غرفة مجتمعية'}
           </Text>
         </View>
+        <Pressable onPress={() => setShowBgPicker(true)} style={styles.bgBtn} hitSlop={8}>
+          <Text style={styles.bgBtnIcon}>🎨</Text>
+        </Pressable>
       </View>
+      <ChatBackgroundPicker
+        visible={showBgPicker}
+        current={bgTheme}
+        onSelect={(t) => { setBgTheme(t); setChatBgTheme(t); setShowBgPicker(false); }}
+        onClose={() => setShowBgPicker(false)}
+      />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -613,6 +630,8 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     textAlign: 'right',
   },
+  bgBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
+  bgBtnIcon: { fontSize: 15 },
   msgList: { paddingVertical: 8, paddingHorizontal: 4, gap: 2 },
   emptyText: {
     fontFamily: FONTS.regular,

@@ -17,10 +17,13 @@ import { MessageBubble, MessageStatus } from '@/components/chat/MessageBubble';
 import { MessageReactionPopover } from '@/components/chat/MessageReactionPopover';
 import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { Avatar } from '@/components/chat/Avatar';
+import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
+import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
+import { ChatBgTheme, getChatBgTheme, setChatBgTheme } from '@/utils/chatBackgroundPrefs';
 
 interface OtherUser {
   id: string;
@@ -86,6 +89,10 @@ export default function DmThread() {
   const [replyTo, setReplyTo] = useState<DmMessage | null>(null);
   const [reactingId, setReactingId] = useState<string | null>(null);
   const [otherTyping, setOtherTyping] = useState(false);
+  const [bgTheme, setBgTheme] = useState<ChatBgTheme>('none');
+  const [showBgPicker, setShowBgPicker] = useState(false);
+
+  useEffect(() => { getChatBgTheme().then(setBgTheme); }, []);
 
   const listRef = useRef<FlatList>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -271,6 +278,7 @@ export default function DmThread() {
 
   return (
     <ScreenBg>
+      <ChatBackgroundLayer theme={bgTheme} />
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
@@ -290,7 +298,16 @@ export default function DmThread() {
             {otherTyping ? 'يكتب...' : 'محادثة خاصة'}
           </Text>
         </View>
+        <Pressable onPress={() => setShowBgPicker(true)} style={styles.bgBtn} hitSlop={8}>
+          <Text style={styles.bgBtnIcon}>🎨</Text>
+        </Pressable>
       </View>
+      <ChatBackgroundPicker
+        visible={showBgPicker}
+        current={bgTheme}
+        onSelect={(t) => { setBgTheme(t); setChatBgTheme(t); setShowBgPicker(false); }}
+        onClose={() => setShowBgPicker(false)}
+      />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -438,6 +455,8 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   headerSubTyping: { color: COLORS.gold, fontFamily: FONTS.bold },
+  bgBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
+  bgBtnIcon: { fontSize: 15 },
   headerSub: {
     fontFamily: FONTS.regular,
     fontSize: 11,

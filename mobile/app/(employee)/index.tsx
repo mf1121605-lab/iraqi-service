@@ -19,6 +19,9 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { Avatar } from '@/components/chat/Avatar';
+import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
+import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
+import { ChatBgTheme, getChatBgTheme, setChatBgTheme } from '@/utils/chatBackgroundPrefs';
 import { MessageBubble, MessageStatus } from '@/components/chat/MessageBubble';
 import { MessageReactionPopover } from '@/components/chat/MessageReactionPopover';
 import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
@@ -152,6 +155,10 @@ export default function EmployeeDashboard() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [customerTyping, setCustomerTyping] = useState(false);
+  const [bgTheme, setBgTheme] = useState<ChatBgTheme>('none');
+  const [showBgPicker, setShowBgPicker] = useState(false);
+
+  useEffect(() => { getChatBgTheme().then(setBgTheme); }, []);
   const flatListRef = useRef<FlatList>(null);
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingBroadcast = useRef(0);
@@ -605,6 +612,7 @@ export default function EmployeeDashboard() {
 
     return (
       <ScreenBg>
+        <ChatBackgroundLayer theme={bgTheme} />
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -628,6 +636,9 @@ export default function EmployeeDashboard() {
                 <StatusPill status={selectedRequest.status} small />
               )}
             </View>
+            <Pressable onPress={() => setShowBgPicker(true)} style={styles.settingsBtn} hitSlop={8}>
+              <Text style={styles.settingsIcon}>🎨</Text>
+            </Pressable>
             <Pressable
               onPress={() => { setShowStatusForm((v) => !v); setShowHistory(false); }}
               style={styles.settingsBtn}
@@ -636,6 +647,12 @@ export default function EmployeeDashboard() {
               <Text style={[styles.settingsIcon, showStatusForm && { color: COLORS.gold }]}>⚙️</Text>
             </Pressable>
           </View>
+          <ChatBackgroundPicker
+            visible={showBgPicker}
+            current={bgTheme}
+            onSelect={(t) => { setBgTheme(t); setChatBgTheme(t); setShowBgPicker(false); }}
+            onClose={() => setShowBgPicker(false)}
+          />
 
           {/* Status update panel */}
           {showStatusForm && (
