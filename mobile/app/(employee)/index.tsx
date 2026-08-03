@@ -25,6 +25,7 @@ import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+import { playSound } from '@/utils/soundFX';
 
 async function uploadAttachment(uri: string, userId: string, kind: 'image' | 'voice'): Promise<string | null> {
   try {
@@ -372,6 +373,7 @@ export default function EmployeeDashboard() {
       message_type: 'text',
       reply_to_id: replyId,
     });
+    playSound('messageSent');
     setSending(false);
   }
 
@@ -416,6 +418,7 @@ export default function EmployeeDashboard() {
     if (mine) await supabase.from('request_message_reactions').delete().eq('message_id', messageId).eq('user_id', profile.id);
     if (!mine || mine.emoji !== emoji) {
       await supabase.from('request_message_reactions').insert({ message_id: messageId, user_id: profile.id, emoji });
+      playSound('reaction');
     }
   }
 

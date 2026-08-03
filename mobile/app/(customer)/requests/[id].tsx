@@ -20,6 +20,7 @@ import { MessageBubble, MessageStatus } from '@/components/chat/MessageBubble';
 import { MessageReactionPopover } from '@/components/chat/MessageReactionPopover';
 import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+import { playSound } from '@/utils/soundFX';
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
   submitted:     { label: 'قيد الانتظار',   color: '#f59e0b' },
@@ -153,6 +154,7 @@ export default function RequestDetail() {
       message_type: 'text',
       reply_to_id: replyId,
     });
+    playSound('messageSent');
     setSending(false);
   }
 
@@ -197,6 +199,7 @@ export default function RequestDetail() {
     if (mine) await supabase.from('request_message_reactions').delete().eq('message_id', messageId).eq('user_id', session.user.id);
     if (!mine || mine.emoji !== emoji) {
       await supabase.from('request_message_reactions').insert({ message_id: messageId, user_id: session.user.id, emoji });
+      playSound('reaction');
     }
   }
 

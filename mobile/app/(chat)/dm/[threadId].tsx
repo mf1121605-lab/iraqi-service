@@ -20,6 +20,7 @@ import { Avatar } from '@/components/chat/Avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+import { playSound } from '@/utils/soundFX';
 
 interface OtherUser {
   id: string;
@@ -165,6 +166,7 @@ export default function DmThread() {
       message_type: 'text',
       reply_to_id: replyId,
     });
+    playSound('messageSent');
     setSending(false);
   }
 
@@ -209,6 +211,7 @@ export default function DmThread() {
     if (mine) await supabase.from('direct_message_reactions').delete().eq('message_id', messageId).eq('user_id', profile.id);
     if (!mine || mine.emoji !== emoji) {
       await supabase.from('direct_message_reactions').insert({ message_id: messageId, user_id: profile.id, emoji });
+      playSound('reaction');
     }
   }
 

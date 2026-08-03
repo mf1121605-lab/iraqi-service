@@ -20,6 +20,7 @@ import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+import { playSound } from '@/utils/soundFX';
 
 const TYPING_TIMEOUT_MS = 3000;
 const TYPING_BROADCAST_INTERVAL_MS = 2000;
@@ -204,6 +205,10 @@ export default function ChatRoomScreen() {
           const { userId, name } = payload.payload as { userId: string; name: string };
           if (userId === profile!.id) return;
 
+          // Only chime the first time this user starts typing, not on
+          // every refresh broadcast while they keep typing.
+          if (!typingTimers.current[userId]) playSound('typing');
+
           setTypingUsers(prev => ({ ...prev, [userId]: { name, ts: Date.now() } }));
 
           if (typingTimers.current[userId]) clearTimeout(typingTimers.current[userId]);
@@ -273,6 +278,7 @@ export default function ChatRoomScreen() {
       message_type: 'text',
       reply_to_id: replyId,
     });
+    playSound('messageSent');
     setSending(false);
   }
 
@@ -339,6 +345,7 @@ export default function ChatRoomScreen() {
       if (existing.emoji === emoji) return;
     }
     await supabase.from('chat_message_reactions').insert({ message_id: messageId, user_id: profile.id, emoji });
+    playSound('reaction');
   }
 
   const typingNames = Object.values(typingUsers).map(u => u.name);

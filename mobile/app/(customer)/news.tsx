@@ -29,6 +29,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+import { playSound } from '@/utils/soundFX';
 
 type CommentReaction = { user_id: string };
 type Comment = {
@@ -300,6 +301,7 @@ export default function NewsScreen() {
       if (existing.reaction_type === type) { loadPosts(); return; }
     }
     await supabase.from('social_reactions').insert({ post_id: postId, user_id: session.user.id, reaction_type: type });
+    playSound('reaction');
     loadPosts();
   }
 
