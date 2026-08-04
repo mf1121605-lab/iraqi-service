@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { router } from 'expo-router';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { usePushToken } from './usePushToken';
 
 const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://iraqi-service.vercel.app';
 // Same 5-minute cadence as the web AppShell's heartbeat.
@@ -50,6 +52,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  usePushToken(session?.user.id);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -108,6 +112,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signOut() {
     await supabase.auth.signOut();
+    // Only app/index.tsx watches `session` and redirects on it — a screen
+    // like (customer)/profile.tsx never re-checks auth state on its own,
+    // so without this the session/profile just went null in place and the
+    // logout button appeared to do nothing (user stuck on the same,
+    // now-broken screen). Centralized here so every call site is correct.
+    router.replace('/');
   }
 
   async function refreshProfile() {

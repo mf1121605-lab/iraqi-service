@@ -94,7 +94,7 @@ export default function FounderDashboard() {
             <Image source={require('@/assets/full-logo-transparent.png')} style={s.headerLogo} resizeMode="contain" />
             <Text style={s.headerTitle}>لوحة المؤسس</Text>
           </View>
-          <Pressable onPress={async () => { await signOut(); router.replace('/'); }} style={s.logoutBtn}>
+          <Pressable onPress={signOut} style={s.logoutBtn}>
             <Text style={s.logoutText}>خروج</Text>
           </Pressable>
         </View>

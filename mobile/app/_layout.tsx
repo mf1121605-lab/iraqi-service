@@ -1,7 +1,7 @@
 import '../global.css';
 import { useEffect, useState, Component, ReactNode } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
-import { Stack } from 'expo-router';
+import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as WebBrowser from 'expo-web-browser';
@@ -25,25 +25,59 @@ WebBrowser.maybeCompleteAuthSession();
 
 SplashScreen.preventAutoHideAsync();
 
-// Error boundary to catch any JS crash and show a message instead of blank screen
+// Error boundary to catch any JS crash and show a recoverable screen
+// instead of a blank/frozen app. Previously this only printed the raw
+// error.message with no way out — a crash anywhere left the user stuck
+// with nothing to do but force-quit. Now it offers a retry (re-mounts the
+// subtree, which resolves any crash caused by transient/stale state) and
+// a "go to home" escape hatch (re-runs app/index.tsx's routing from
+// scratch, which resolves crashes tied to a specific broken screen).
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
-  state = { error: null };
+  state = { error: null as string | null };
   static getDerivedStateFromError(e: Error) {
     return { error: e.message };
   }
+  componentDidCatch(error: Error, info: { componentStack: string }) {
+    console.error('ErrorBoundary caught a crash:', error, info.componentStack);
+  }
+  handleRetry = () => this.setState({ error: null });
+  handleGoHome = () => {
+    this.setState({ error: null });
+    router.replace('/');
+  };
   render() {
     if (this.state.error) {
       return (
-        <View style={{ flex: 1, backgroundColor: '#0d1117', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <Text style={{ color: '#ef4444', fontSize: 14, textAlign: 'center' }}>
-            {this.state.error}
-          </Text>
+        <View style={errorStyles.container}>
+          <Text style={errorStyles.emoji}>⚠️</Text>
+          <Text style={errorStyles.title}>حدث خطأ غير متوقع</Text>
+          <Text style={errorStyles.message}>{this.state.error}</Text>
+          <View style={errorStyles.actions}>
+            <Pressable style={errorStyles.retryBtn} onPress={this.handleRetry}>
+              <Text style={errorStyles.retryText}>إعادة المحاولة</Text>
+            </Pressable>
+            <Pressable style={errorStyles.homeBtn} onPress={this.handleGoHome}>
+              <Text style={errorStyles.homeText}>العودة للرئيسية</Text>
+            </Pressable>
+          </View>
         </View>
       );
     }
     return this.props.children;
   }
 }
+
+const errorStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0d1117', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 8 },
+  emoji: { fontSize: 40, marginBottom: 8 },
+  title: { color: '#fff', fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  message: { color: '#ef4444', fontSize: 13, textAlign: 'center', marginBottom: 16 },
+  actions: { flexDirection: 'row', gap: 12 },
+  retryBtn: { backgroundColor: '#e6ab2c', borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12 },
+  retryText: { color: '#0d1117', fontWeight: '700', fontSize: 14 },
+  homeBtn: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12 },
+  homeText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+});
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({

@@ -26,6 +26,8 @@ export default function ProfileScreen() {
   const { profile, signOut, refreshProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('info');
   const [signingOut, setSigningOut] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   // ── Info tab state ──
   const [givenName, setGivenName]   = useState(profile?.given_name  ?? '');
@@ -67,10 +69,59 @@ export default function ProfileScreen() {
         style: 'destructive',
         onPress: async () => {
           setSigningOut(true);
-          await signOut();
+          try {
+            await signOut();
+          } finally {
+            setSigningOut(false);
+          }
         },
       },
     ]);
+  }
+
+  function handleDeleteAccount() {
+    Alert.alert(
+      'حذف الحساب نهائياً',
+      'سيتم حذف حسابك وكل بياناتك (الطلبات، الرسائل، المنشورات) بشكل نهائي ولا يمكن التراجع عن هذا الإجراء. هل أنت متأكد؟',
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'حذف نهائياً',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleteError('');
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            if (!currentSession?.access_token) {
+              setDeleteError('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجدداً');
+              return;
+            }
+            const appUrl = process.env.EXPO_PUBLIC_APP_URL;
+            if (!appUrl) {
+              setDeleteError('خطأ في الإعداد: EXPO_PUBLIC_APP_URL غير محدد');
+              return;
+            }
+            setDeletingAccount(true);
+            try {
+              const res = await fetch(`${appUrl}/api/customer/delete-account`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${currentSession.access_token}` },
+              });
+              let data: Record<string, unknown> = {};
+              try { data = await res.json(); } catch { /* empty */ }
+              if (!res.ok) {
+                setDeleteError((data.error as string) || `خطأ ${res.status}`);
+                setDeletingAccount(false);
+                return;
+              }
+              await signOut();
+            } catch (err: unknown) {
+              setDeleteError(err instanceof Error ? err.message : 'تعذّر الاتصال بالخادم');
+              setDeletingAccount(false);
+            }
+          },
+        },
+      ],
+    );
   }
 
   async function handleSaveInfo() {
@@ -359,6 +410,23 @@ export default function ProfileScreen() {
             <Text style={styles.logoutText}>{signingOut ? 'جاري الخروج...' : 'تسجيل الخروج'}</Text>
           </Pressable>
 
+          {/* ── Danger Zone ── */}
+          <View style={styles.dangerCard}>
+            <Text style={styles.dangerTitle}>منطقة الخطر</Text>
+            <Text style={styles.dangerDesc}>حذف حسابك نهائي ولا يمكن التراجع عنه — سيتم حذف كل بياناتك.</Text>
+            {!!deleteError && <Text style={styles.dangerError}>{deleteError}</Text>}
+            <Pressable
+              style={({ pressed }) => [styles.deleteBtn, pressed && styles.logoutPressed]}
+              onPress={handleDeleteAccount}
+              disabled={deletingAccount}
+            >
+              {deletingAccount
+                ? <ActivityIndicator color={COLORS.red} size="small" />
+                : <Text style={styles.deleteBtnText}>حذف الحساب نهائياً</Text>
+              }
+            </Pressable>
+          </View>
+
           <View style={{ height: 32 }} />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -517,4 +585,25 @@ const styles = StyleSheet.create({
   logoutPressed: { opacity: 0.7 },
   logoutIcon:    { fontSize: 18 },
   logoutText:    { fontFamily: FONTS.bold, fontSize: 15, color: COLORS.red },
+
+  dangerCard: {
+    marginTop: 20,
+    padding: 16,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.25)',
+    backgroundColor: 'rgba(239,68,68,0.04)',
+    gap: 10,
+  },
+  dangerTitle: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.red, textAlign: 'right' },
+  dangerDesc:  { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.white50, textAlign: 'right', lineHeight: 18 },
+  dangerError: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.red, textAlign: 'right' },
+  deleteBtn: {
+    alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.red,
+  },
+  deleteBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.red },
 });
