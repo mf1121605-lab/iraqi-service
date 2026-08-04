@@ -4,3 +4,11 @@
 
 expo-env.d.ts
 # @end expo-cli
+
+# Native projects are regenerated fresh by EAS Build (expo prebuild) on
+# every build from app.json + installed packages — committing them lets
+# them drift out of sync with newly added native dependencies, which is
+# what caused the "Plugin [id: 'expo-module-gradle-plugin'] was not found"
+# Gradle failure.
+/android
+/ios
