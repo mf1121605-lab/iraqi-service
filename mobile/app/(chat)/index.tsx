@@ -71,6 +71,9 @@ export default function ChatIndex() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
+    // Deliberately depends on the stable id, not the whole profile object
+    // (same convention throughout this codebase).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id]);
 
   useEffect(() => {
@@ -110,6 +113,7 @@ export default function ChatIndex() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id]);
 
   const q = query.trim().toLowerCase();

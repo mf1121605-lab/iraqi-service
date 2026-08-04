@@ -29,6 +29,9 @@ export function IraqiFlagBadge({ size = 96, style }: IraqiFlagBadgeProps) {
       -1,
       true,
     );
+    // floatValue/swayValue are Reanimated shared values — referentially
+    // stable, so omitting them from deps is intentional.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => ({

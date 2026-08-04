@@ -16,26 +16,31 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method not allowed' });
   }
 
-  const token = getBearerToken(req);
-  if (!token) {
-    return res.status(401).json({ error: 'missing bearer token' });
-  }
+  try {
+    const token = getBearerToken(req);
+    if (!token) {
+      return res.status(401).json({ error: 'missing bearer token' });
+    }
 
-  const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
-  if (userError || !userData?.user) {
-    return res.status(401).json({ error: 'invalid session' });
-  }
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+    if (userError || !userData?.user) {
+      return res.status(401).json({ error: 'invalid session' });
+    }
 
-  const rl = await checkRateLimit(`delete-account:${userData.user.id}`, 3, 3600);
-  if (rl.limited) {
-    return res.status(429).json({ error: 'عدد كبير من المحاولات، يرجى الانتظار قليلاً' });
-  }
+    const rl = await checkRateLimit(`delete-account:${userData.user.id}`, 3, 3600);
+    if (rl.limited) {
+      return res.status(429).json({ error: 'عدد كبير من المحاولات، يرجى الانتظار قليلاً' });
+    }
 
-  const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userData.user.id);
-  if (deleteError) {
-    console.error('delete-account: deleteUser failed', deleteError);
-    return res.status(500).json({ error: deleteError.message });
-  }
+    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userData.user.id);
+    if (deleteError) {
+      console.error('delete-account: deleteUser failed', deleteError);
+      return res.status(500).json({ error: deleteError.message });
+    }
 
-  return res.status(200).json({ ok: true });
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error('delete-account: unhandled error', err);
+    return res.status(500).json({ error: err?.message ?? 'unexpected server error' });
+  }
 }

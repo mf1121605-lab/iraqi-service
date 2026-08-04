@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
@@ -46,12 +46,20 @@ export default function UsersScreen() {
     if (!session) return;
     setActionLoading(userId + action);
     try {
-      await fetch(`${APP_URL}/api/founder/manage-account`, {
+      const res = await fetch(`${APP_URL}/api/founder/manage-account`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
         body: JSON.stringify({ targetUserId: userId, action }),
       });
+      let data: Record<string, unknown> = {};
+      try { data = await res.json(); } catch { /* empty */ }
+      if (!res.ok) {
+        Alert.alert('تعذّر تنفيذ العملية', (data.error as string) || `خطأ ${res.status}`);
+        return;
+      }
       await loadUsers();
+    } catch (err) {
+      Alert.alert('تعذّر تنفيذ العملية', err instanceof Error ? err.message : 'تعذر الاتصال بالخادم');
     } finally {
       setActionLoading(null);
     }

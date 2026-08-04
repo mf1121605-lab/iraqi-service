@@ -67,12 +67,6 @@ const REACTIONS: { type: string; emoji: string; label: string; colors: [string, 
 ];
 const REACTION_MAP = Object.fromEntries(REACTIONS.map((r) => [r.type, r]));
 
-function getInitials(given?: string, family?: string) {
-  const a = given?.[0] ?? '';
-  const b = family?.[0] ?? '';
-  return (a + b).toUpperCase() || '?';
-}
-
 function AvatarCircle({ name, size = 38 }: { name: string; size?: number }) {
   const initials = name
     .split(' ')

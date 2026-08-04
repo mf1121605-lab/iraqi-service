@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -427,7 +426,7 @@ export default function RequestDetail() {
           removeClippedSubviews
           maxToRenderPerBatch={8}
           windowSize={8}
-          renderItem={({ item, index }) => {
+          renderItem={({ item }) => {
             const isMine = item.sender_id === session?.user.id;
             const replySource = item.reply_to_id ? messages.find((m) => m.id === item.reply_to_id) : null;
             const status: MessageStatus = item.read_at ? 'read' : 'sent';

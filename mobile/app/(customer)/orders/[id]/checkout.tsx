@@ -46,6 +46,9 @@ export default function Checkout() {
           setOrder(data as unknown as Order);
         }
       });
+    // Deliberately depends on the stable id, not the whole profile object
+    // (same convention throughout this codebase).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id, orderId]);
 
   async function handleZainCash() {

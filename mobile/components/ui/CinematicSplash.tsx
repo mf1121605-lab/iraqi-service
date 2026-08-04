@@ -72,6 +72,9 @@ export function CinematicSplash({ onDone }: Props) {
         .start(() => onDone());
     }, 3200);
     return () => clearTimeout(timer);
+    // Animated.Value refs from useRef are stable, and this is a fixed
+    // one-time splash sequence meant to run only on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

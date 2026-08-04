@@ -51,7 +51,7 @@ export function MessageBubble({
 
   if (messageType === 'payment_proposal') {
     let parsed: { method?: string; amount?: string | number; notes?: string } = {};
-    try { parsed = JSON.parse(body); } catch {}
+    try { parsed = JSON.parse(body); } catch { /* malformed payload — render with blank fields below */ }
     const methodColor = PAYMENT_METHOD_COLORS[parsed.method ?? ''] ?? COLORS.gold;
     const methodLabel = PAYMENT_METHOD_LABELS[parsed.method ?? ''] ?? parsed.method ?? '';
     return (

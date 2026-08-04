@@ -19,6 +19,9 @@ export function AnimatedLoginGlow() {
 
   useEffect(() => {
     t.value = withRepeat(withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.sin) }), -1, true);
+    // t is a Reanimated shared value — referentially stable, so omitting
+    // it from deps is intentional.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const orbs: Orb[] = [

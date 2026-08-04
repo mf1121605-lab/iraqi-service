@@ -246,9 +246,16 @@ export default function ChatRoomScreen() {
 
     return () => {
       active = false;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       Object.values(typingTimers.current).forEach(clearTimeout);
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
+    // Deliberately depends on the stable id, not the whole profile object —
+    // reconnecting this realtime channel on every unrelated profile field
+    // change would be wasteful (same convention throughout this codebase).
+    // typingTimers.current is read only for its side effect at cleanup time,
+    // not to derive render output, so a stale ref value here is fine.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id, slug]);
 
   // Scroll to bottom on new messages

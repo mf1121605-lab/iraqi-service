@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CheckSquare, ClipboardCheck, MessageCircle, Newspaper, Radio, Trash2 } from 'lucide-react';
 import AppShell, { useLocale } from '../../components/Layout/AppShell';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -26,7 +26,7 @@ export default function HqSocialPosts() {
   const [actioning, setActioning] = useState(null);
   const [toast, setToast] = useState('');
 
-  function load() {
+  const load = useCallback(() => {
     const query = supabaseClient
       .from('social_posts')
       .select('*, author:profiles(given_name, family_name, role)')
@@ -37,7 +37,7 @@ export default function HqSocialPosts() {
     }
 
     query.then(({ data }) => setPosts(data ?? []));
-  }
+  }, [tab]);
 
   useEffect(() => {
     if (!profile) return undefined;
@@ -48,7 +48,7 @@ export default function HqSocialPosts() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'social_posts' }, load)
       .subscribe();
     return () => supabaseClient.removeChannel(channel);
-  }, [profile, tab]);
+  }, [profile, tab, load]);
 
   useEffect(() => {
     if (!toast) return undefined;

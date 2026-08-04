@@ -53,6 +53,10 @@ export function OrderAlertCard({ body }: Props) {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
+    // Deliberately depends on the stable request_id, not the whole payload
+    // object — payload is a fresh object every time body is re-parsed, so
+    // depending on it directly would resubscribe this channel constantly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [payload?.request_id]);
 
   useEffect(() => {

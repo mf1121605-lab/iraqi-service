@@ -1,7 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
-import { GoldCard } from '@/components/ui/GoldCard';
 import { useAuth } from '@/hooks/useAuth';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 

@@ -74,6 +74,9 @@ export default function LoginScreen() {
     cardY.value          = withDelay(680, withTiming(0, { duration: 550, easing: Easing.out(Easing.cubic) }));
 
     return () => { sound?.unloadAsync(); };
+    // Reanimated shared values are stable across renders; this intro
+    // sequence is meant to run once on mount only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const emblemStyle = useAnimatedStyle(() => ({

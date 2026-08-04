@@ -28,6 +28,9 @@ export default function FounderChatRooms() {
     setRooms((data ?? []) as ChatRoom[]);
   }
 
+  // Deliberately depends on the stable id, not the whole profile object
+  // (same convention throughout this codebase).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (profile) loadRooms(); }, [profile?.id]);
 
   async function handleAdd() {

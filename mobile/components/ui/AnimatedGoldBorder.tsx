@@ -74,6 +74,9 @@ export function AnimatedGoldBorder({
         true, // reverse — creates the up/down "yoyo" sweep
       );
     }
+    // progress is a Reanimated shared value — referentially stable, so
+    // omitting it from deps is intentional (same convention as elsewhere).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paused, speed, mode]);
 
   const center = useMemo(() => vec(width / 2, height / 2), [width, height]);

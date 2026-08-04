@@ -42,6 +42,11 @@ export default function ProfileScreen() {
     setFamilyName(profile.family_name ?? '');
     setPhone(profile.phone ?? '');
     setBio(profile.bio ?? '');
+    // Deliberately depends on the stable id, not the whole profile object —
+    // this resyncs the editable fields when switching to a different
+    // profile, not on every field-level change (same convention throughout
+    // this codebase).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id]);
   const [infoSaving, setInfoSaving] = useState(false);
   const [infoError, setInfoError]   = useState('');

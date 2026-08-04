@@ -31,6 +31,9 @@ export default function FounderAuditLog() {
       .order('created_at', { ascending: false })
       .limit(200)
       .then(({ data }) => setEntries((data ?? []) as AuditEntry[]));
+    // Deliberately depends on the stable id, not the whole profile object
+    // (same convention throughout this codebase).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id]);
 
   if (loading) return <ScreenBg><View style={s.center}><ActivityIndicator color={COLORS.gold} size="large" /></View></ScreenBg>;

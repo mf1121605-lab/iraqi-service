@@ -159,6 +159,10 @@ export default function DmThread() {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (channel) supabase.removeChannel(channel);
     };
+    // Deliberately depends on the stable id, not the whole profile object —
+    // reconnecting this realtime channel on every unrelated profile field
+    // change would be wasteful (same convention throughout this codebase).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id, threadId]);
 
   const broadcastTyping = useCallback(() => {

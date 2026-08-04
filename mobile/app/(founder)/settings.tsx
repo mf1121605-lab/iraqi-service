@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Modal, Pressable, ScrollView,
+  ActivityIndicator, Alert, Pressable, ScrollView,
   StyleSheet, Switch, Text, TextInput, View,
 } from 'react-native';
 import { router } from 'expo-router';

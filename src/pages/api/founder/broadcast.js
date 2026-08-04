@@ -7,6 +7,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method not allowed' });
   }
 
+  try {
   const auth = await requireFounderOrCoAdmin(req);
   if (auth.error) return res.status(auth.status).json({ error: auth.error });
 
@@ -33,4 +34,8 @@ export default async function handler(req, res) {
   if (insertError) return res.status(500).json({ error: insertError.message });
 
   return res.status(200).json({ ok: true, count: rows.length });
+  } catch (err) {
+    console.error('broadcast: unhandled error', err);
+    return res.status(500).json({ error: err?.message ?? 'unexpected server error' });
+  }
 }

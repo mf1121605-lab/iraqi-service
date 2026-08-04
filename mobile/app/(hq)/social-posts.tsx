@@ -59,6 +59,9 @@ export default function HqSocialPosts() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'social_posts' }, () => loadPosts(tab))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
+    // Deliberately depends on the stable id, not the whole profile object
+    // (same convention throughout this codebase).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id, tab]);
 
   async function handleApprove(id: string) {

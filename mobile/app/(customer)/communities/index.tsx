@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View, Pressable, ActivityIndicator } from
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+import { COLORS, FONTS } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 

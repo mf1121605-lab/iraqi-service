@@ -138,11 +138,14 @@ export default function CommunityRoomScreen() {
     return () => { supabase.removeChannel(channel); };
   }, [roomId]);
 
-  // Auto-scroll when messages load
+  // Auto-scroll once when messages finish loading — deliberately not
+  // re-running on every subsequent message (messages.length) so it doesn't
+  // yank a user who's scrolled up reading history back down on new activity.
   useEffect(() => {
     if (messages.length > 0 && !loading) {
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 100);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
   async function handleSend() {

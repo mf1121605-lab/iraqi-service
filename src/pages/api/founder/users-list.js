@@ -10,6 +10,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method not allowed' });
   }
 
+  try {
   const auth = await requireFounderOrCoAdmin(req);
   if (auth.error) {
     return res.status(auth.status).json({ error: auth.error });
@@ -60,4 +61,8 @@ export default async function handler(req, res) {
     customers: customers ?? [],
     employees: (employees ?? []).map((employee) => ({ ...employee, last_login_at: lastLoginByUserId[employee.id] ?? null })),
   });
+  } catch (err) {
+    console.error('users-list: unhandled error', err);
+    return res.status(500).json({ error: err?.message ?? 'unexpected server error' });
+  }
 }

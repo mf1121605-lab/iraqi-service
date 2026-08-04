@@ -6,6 +6,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method not allowed' });
   }
 
+  try {
   const token = (req.headers.authorization ?? '').replace(/^Bearer\s+/i, '');
   if (!token) return res.status(401).json({ error: 'missing bearer token' });
 
@@ -74,4 +75,8 @@ export default async function handler(req, res) {
   });
 
   return res.status(200).json({ payment });
+  } catch (err) {
+    console.error('log-payment: unhandled error', err);
+    return res.status(500).json({ error: err?.message ?? 'unexpected server error' });
+  }
 }

@@ -53,6 +53,10 @@ export default function FounderQuickRequests() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'quick_requests' }, loadRequests)
       .subscribe();
     return () => { supabase.removeChannel(channel); };
+    // Deliberately depends on the stable id, not the whole profile object —
+    // reconnecting this realtime channel on every unrelated profile field
+    // change would be wasteful (same convention throughout this codebase).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id]);
 
   if (loading) return <ScreenBg><View style={s.center}><ActivityIndicator color={COLORS.gold} size="large" /></View></ScreenBg>;
