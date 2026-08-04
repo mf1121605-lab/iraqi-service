@@ -21,6 +21,7 @@ import { HqLinksBox } from '@/components/chat/HqLinksBox';
 import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
 import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
+import { TwemojiSticker } from '@/components/chat/TwemojiSticker';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -535,7 +536,7 @@ export default function ChatRoomScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stickerGrid}>
               {STICKER_PACKS[activeStickerPack].map(sticker => (
                 <Pressable key={sticker} onPress={() => handleSendSticker(sticker)} style={styles.stickerItem}>
-                  <Text style={styles.stickerEmoji}>{sticker}</Text>
+                  <TwemojiSticker emoji={sticker} size={36} />
                 </Pressable>
               ))}
             </ScrollView>
@@ -568,7 +569,7 @@ export default function ChatRoomScreen() {
               style={styles.stickerToggle}
               hitSlop={6}
             >
-              <Text style={styles.stickerToggleText}>😊</Text>
+              <TwemojiSticker emoji="😊" size={24} />
             </Pressable>
             <TextInput
               value={body}

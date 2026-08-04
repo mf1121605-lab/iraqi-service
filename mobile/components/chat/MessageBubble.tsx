@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { VoiceMessagePlayer } from './VoiceMessagePlayer';
 import { Avatar } from './Avatar';
+import { TwemojiSticker, hasTwemojiSticker } from './TwemojiSticker';
 import { PAYMENT_METHOD_COLORS, PAYMENT_METHOD_LABELS } from '@/utils/paymentMethods';
 
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
@@ -118,7 +119,11 @@ export function MessageBubble({
           {body && messageType !== 'sticker' ? (
             <Text style={[styles.text, isMine ? styles.textMine : styles.textTheirs]}>{body}</Text>
           ) : messageType === 'sticker' ? (
-            <Text style={styles.stickerText}>{body}</Text>
+            hasTwemojiSticker(body) ? (
+              <TwemojiSticker emoji={body} size={64} />
+            ) : (
+              <Text style={styles.stickerText}>{body}</Text>
+            )
           ) : null}
 
           <View style={styles.metaRow}>

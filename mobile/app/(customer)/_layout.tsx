@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { Ionicons } from '@expo/vector-icons';
 import { useReserveFrameBottomInset } from '@/hooks/useFrameInset';
 import { TabSwipeZone } from '@/components/ui/TabSwipeZone';
 import { Icon3D } from '@/components/ui/Icon3D';
@@ -8,8 +9,29 @@ import { COLORS, FONTS } from '@/constants/theme';
 
 const TAB_BAR_HEIGHT = 62;
 
-function TabIcon({ emoji, focused, badge }: { emoji: string; focused: boolean; badge?: number }) {
-  return <Icon3D emoji={emoji} size={focused ? 34 : 30} active={focused} badge={badge} animation={focused ? 'float' : 'none'} />;
+// Filled glyph when the tab is active, outline glyph otherwise — the same
+// convention iOS/Material navigation uses, for a more professional look
+// than the previous plain-emoji icons.
+function TabIcon({
+  filled,
+  outline,
+  focused,
+  badge,
+}: {
+  filled: keyof typeof Ionicons.glyphMap;
+  outline: keyof typeof Ionicons.glyphMap;
+  focused: boolean;
+  badge?: number;
+}) {
+  return (
+    <Icon3D
+      iconName={focused ? filled : outline}
+      size={focused ? 34 : 30}
+      active={focused}
+      badge={badge}
+      animation={focused ? 'float' : 'none'}
+    />
+  );
 }
 
 export default function CustomerLayout() {
@@ -36,35 +58,35 @@ export default function CustomerLayout() {
         name="index"
         options={{
           title: 'الرئيسية',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon filled="home" outline="home-outline" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="news"
         options={{
           title: 'آخر الأخبار',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📰" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon filled="newspaper" outline="newspaper-outline" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="messages"
         options={{
           title: 'الرسائل',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="💬" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon filled="chatbubbles" outline="chatbubbles-outline" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="requests/index"
         options={{
           title: 'طلباتي',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📋" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon filled="document-text" outline="document-text-outline" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'حسابي',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon filled="person-circle" outline="person-circle-outline" focused={focused} />,
         }}
       />
       {/* Hidden screens — accessible via navigation but not in tab bar.

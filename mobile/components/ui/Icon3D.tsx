@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -12,7 +13,12 @@ import Animated, {
 import { COLORS } from '@/constants/theme';
 
 interface Props {
-  emoji: string;
+  // Either an emoji glyph (legacy path, still used for reaction/category
+  // icons whose set is data-driven) or a real icon from the bundled,
+  // free @expo/vector-icons set (Ionicons) for fixed, professional-looking
+  // navigation/action icons — pass exactly one.
+  emoji?: string;
+  iconName?: keyof typeof Ionicons.glyphMap;
   size?: number;
   active?: boolean;
   glowColor?: string;
@@ -25,7 +31,7 @@ interface Props {
 // as a small "3D" icon without needing real 3D/image assets. Used anywhere
 // a flat emoji previously stood alone (tab bar, page headers, notification
 // icons).
-export function Icon3D({ emoji, size = 40, active, glowColor = COLORS.gold, badge, animation = 'float' }: Props) {
+export function Icon3D({ emoji, iconName, size = 40, active, glowColor = COLORS.gold, badge, animation = 'float' }: Props) {
   const idle = useSharedValue(0);
 
   useEffect(() => {
@@ -75,7 +81,11 @@ export function Icon3D({ emoji, size = 40, active, glowColor = COLORS.gold, badg
         ]}
       >
         <View style={[styles.topHighlight, { top: size * 0.06, left: size * 0.16, right: size * 0.16 }]} />
-        <Text style={{ fontSize: size * 0.5 }}>{emoji}</Text>
+        {iconName ? (
+          <Ionicons name={iconName} size={size * 0.52} color={active ? COLORS.gold : COLORS.white70} />
+        ) : (
+          <Text style={{ fontSize: size * 0.5 }}>{emoji}</Text>
+        )}
       </LinearGradient>
       {badge != null && badge > 0 && (
         <View style={styles.badge}>
