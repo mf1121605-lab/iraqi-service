@@ -32,6 +32,14 @@
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [{ "scheme": "https", "host": "iraqi-service.vercel.app" }],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "plugins": [
@@ -45,7 +53,8 @@
           "sounds": []
         }
       ],
-      "./plugins/withGradleVersion"
+      "./plugins/withGradleVersion",
+      "@sentry/react-native/expo"
     ],
     "runtimeVersion": "1.0.0",
     "experiments": {

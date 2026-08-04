@@ -24,10 +24,11 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Icon3D } from '@/components/ui/Icon3D';
+import { SkeletonCard } from '@/components/ui/Skeleton';
 import { Avatar } from '@/components/chat/Avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -210,6 +211,7 @@ function ReactionPopover({ onPick, onClose }: { onPick: (type: string) => void; 
 
 export default function NewsScreen() {
   const { session } = useAuth();
+  const { postId: deepLinkedPostId } = useLocalSearchParams<{ postId?: string }>();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -279,6 +281,28 @@ export default function NewsScreen() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [loadPosts]);
+
+  // Deep link support (news/post/:id → /(customer)/news?postId=:id): the
+  // feed only fetches the latest 30 posts, so an older shared post might
+  // not be in that window — fetch it individually and pin it to the top.
+  useEffect(() => {
+    if (!deepLinkedPostId || loading) return;
+    if (posts.some((p) => p.id === deepLinkedPostId)) return;
+    supabase
+      .from('social_posts')
+      .select(`
+        id, content, image_urls, video_url, created_at,
+        author:profiles!author_id(id, given_name, family_name, avatar_key),
+        reactions:social_reactions(reaction_type, user_id),
+        comments:social_comments(id, content, image_url, parent_comment_id, created_at, author:profiles!author_id(id, given_name, family_name, avatar_key), reactions:social_comment_reactions(user_id, reaction_type))
+      `)
+      .eq('id', deepLinkedPostId)
+      .eq('approved', true)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setPosts((prev) => [data as unknown as Post, ...prev]);
+      });
+  }, [deepLinkedPostId, loading, posts]);
 
   async function pickImages() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -476,9 +500,13 @@ export default function NewsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={COLORS.gold} size="large" />
-      </View>
+      <ScreenBg>
+        <View style={{ padding: 16, paddingTop: 60 }}>
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </View>
+      </ScreenBg>
     );
   }
 

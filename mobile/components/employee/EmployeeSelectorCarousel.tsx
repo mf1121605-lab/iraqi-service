@@ -29,6 +29,8 @@ export type EmployeeCandidate = {
   specialization: string | null;
   is_verified: boolean;
   is_online?: boolean;
+  avg_rating?: number | null;
+  rating_count?: number | null;
 };
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -247,6 +249,12 @@ function CarouselCard({
                 🎓 {candidate.specialization}
               </Text>
             ) : null}
+
+            {candidate.avg_rating ? (
+              <Text style={styles.rating}>
+                ⭐ {candidate.avg_rating.toFixed(1)} ({candidate.rating_count})
+              </Text>
+            ) : null}
           </View>
 
           {isConfirming && (
@@ -340,6 +348,7 @@ const styles = StyleSheet.create({
   verifiedGlyph: { fontSize: 9, color: '#60a5fa', fontFamily: FONTS.bold },
 
   specialization: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.white50, maxWidth: '100%' },
+  rating: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold, marginTop: 2 },
 
   confirmOverlay: {
     ...StyleSheet.absoluteFillObject,

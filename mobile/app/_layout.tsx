@@ -19,9 +19,23 @@ import { FrameInsetProvider } from '@/hooks/useFrameInset';
 import { AmbientMusicProvider } from '@/hooks/useAmbientMusic';
 import { AmbientMusicIcon } from '@/components/ui/AmbientMusicIcon';
 import { SiteBackgroundProvider } from '@/hooks/useSiteBackground';
+import * as Sentry from '@sentry/react-native';
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
 
 // Required to dismiss the OAuth browser session when the app is foregrounded
 WebBrowser.maybeCompleteAuthSession();
+
+// No-op until EXPO_PUBLIC_SENTRY_DSN is set (same pattern as VAPID_KEY
+// elsewhere in this codebase — a missing secret disables the feature
+// instead of crashing). Once the founder creates a free Sentry project
+// and gives us the DSN, this starts reporting silent crashes immediately
+// with zero other code changes.
+const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
+Sentry.init({
+  dsn: SENTRY_DSN,
+  enabled: !!SENTRY_DSN,
+  tracesSampleRate: 0.2,
+});
 
 SplashScreen.preventAutoHideAsync();
 
@@ -79,7 +93,7 @@ const errorStyles = StyleSheet.create({
   homeText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });
 
-export default function RootLayout() {
+function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Cairo_400Regular,
     Cairo_700Bold,
@@ -112,6 +126,7 @@ export default function RootLayout() {
                 <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />
                 <CinematicFrame />
                 <AmbientMusicIcon />
+                <OfflineBanner />
                 {showSplash && <CinematicSplash onDone={() => setShowSplash(false)} />}
               </AmbientMusicProvider>
             </SiteBackgroundProvider>
@@ -121,3 +136,5 @@ export default function RootLayout() {
     </ErrorBoundary>
   );
 }
+
+export default Sentry.wrap(RootLayout);

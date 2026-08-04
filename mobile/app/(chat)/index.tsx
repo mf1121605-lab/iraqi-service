@@ -11,6 +11,8 @@ import {
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { Avatar } from '@/components/chat/Avatar';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -171,8 +173,16 @@ export default function ChatIndex() {
       {/* Content */}
       {tab === 'rooms' ? (
         rooms === null ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={COLORS.gold} />
+          <View style={{ padding: 16, gap: 10 }}>
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Skeleton width={44} height={44} radius={22} />
+                <View style={{ flex: 1, gap: 6 }}>
+                  <Skeleton width="50%" height={12} />
+                  <Skeleton width="30%" height={10} />
+                </View>
+              </View>
+            ))}
           </View>
         ) : (
           <FlatList
@@ -195,7 +205,7 @@ export default function ChatIndex() {
               </Pressable>
             )}
             ListEmptyComponent={
-              <Text style={styles.empty}>لا توجد غرف متاحة</Text>
+              <EmptyState emoji="🏘️" title="لا توجد غرف متاحة" subtitle="ستظهر هنا أي غرف محادثة جماعية تنضم إليها" />
             }
           />
         )
@@ -223,7 +233,7 @@ export default function ChatIndex() {
             </Pressable>
           )}
           ListEmptyComponent={
-            <Text style={styles.empty}>لا توجد محادثات خاصة</Text>
+            <EmptyState emoji="💬" title="لا توجد محادثات خاصة" subtitle="ابدأ محادثة من صفحة أي مستخدم لتظهر هنا" />
           }
         />
       )}

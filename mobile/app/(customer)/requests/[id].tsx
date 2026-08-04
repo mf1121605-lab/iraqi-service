@@ -24,6 +24,8 @@ import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
 import { ChatBgTheme, getChatBgTheme, setChatBgTheme } from '@/utils/chatBackgroundPrefs';
+import { StarRating } from '@/components/ui/StarRating';
+import { enqueueOutbox, getOutbox, onReconnect, removeFromOutbox } from '@/utils/offlineOutbox';
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
   submitted:     { label: 'قيد الانتظار',   color: '#f59e0b' },
@@ -94,6 +96,10 @@ export default function RequestDetail() {
   const [employeeTyping, setEmployeeTyping] = useState(false);
   const [employeeOnline, setEmployeeOnline] = useState(false);
   const [bgTheme, setBgTheme] = useState<ChatBgTheme>('none');
+  const [existingRating, setExistingRating] = useState<{ stars: number; comment: string | null } | null | undefined>(undefined);
+  const [ratingStars, setRatingStars] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [ratingSaving, setRatingSaving] = useState(false);
   const [showBgPicker, setShowBgPicker] = useState(false);
 
   useEffect(() => { getChatBgTheme().then(setBgTheme); }, []);
@@ -121,6 +127,30 @@ export default function RequestDetail() {
     if (mRes.data) setMessages(mRes.data as unknown as Message[]);
     setLoading(false);
   }, [id]);
+
+  useEffect(() => {
+    if (!id || req?.status !== 'approved') return;
+    supabase
+      .from('request_ratings')
+      .select('stars, comment')
+      .eq('request_id', id)
+      .maybeSingle()
+      .then(({ data }) => setExistingRating(data ?? null));
+  }, [id, req?.status]);
+
+  async function handleSubmitRating() {
+    if (!id || !req?.assigned_employee_id || !session?.user.id || ratingStars < 1) return;
+    setRatingSaving(true);
+    const { error } = await supabase.from('request_ratings').insert({
+      request_id: id,
+      customer_id: session.user.id,
+      employee_id: req.assigned_employee_id,
+      stars: ratingStars,
+      comment: ratingComment.trim() || null,
+    });
+    setRatingSaving(false);
+    if (!error) setExistingRating({ stars: ratingStars, comment: ratingComment.trim() || null });
+  }
 
   useEffect(() => {
     loadData();
@@ -202,16 +232,43 @@ export default function RequestDetail() {
     setText('');
     setReplyTo(null);
     setSending(true);
-    await supabase.from('request_messages').insert({
+    const { error } = await supabase.from('request_messages').insert({
       request_id: id,
       sender_id: session.user.id,
       body,
       message_type: 'text',
       reply_to_id: replyId,
     });
-    playSound('messageSent');
+    if (error) {
+      // Offline (or a transient network error) — keep the message locally
+      // instead of losing it; flushOutbox resends it the moment the
+      // device reconnects.
+      await enqueueOutbox(id, body);
+    } else {
+      playSound('messageSent');
+    }
     setSending(false);
   }
+
+  const flushOutbox = useCallback(async () => {
+    if (!id || !session?.user.id) return;
+    const queued = await getOutbox(id);
+    for (const item of queued) {
+      const { error } = await supabase.from('request_messages').insert({
+        request_id: id,
+        sender_id: session.user.id,
+        body: item.body,
+        message_type: 'text',
+      });
+      if (!error) await removeFromOutbox(id, item.localId);
+    }
+    if (queued.length) loadData();
+  }, [id, session?.user.id, loadData]);
+
+  useEffect(() => {
+    flushOutbox();
+    return onReconnect(flushOutbox);
+  }, [flushOutbox]);
 
   async function pickAndSendImage() {
     if (!session?.user.id || !id) return;
@@ -462,6 +519,37 @@ export default function RequestDetail() {
             <Text style={styles.closedBarText}>
               {req.status === 'approved' ? '✅ تم إنجاز الطلب' : '❌ تم رفض الطلب'}
             </Text>
+            {req.status === 'approved' && existingRating !== undefined && (
+              <View style={styles.ratingCard}>
+                {existingRating ? (
+                  <>
+                    <Text style={styles.ratingTitle}>تقييمك للموظف</Text>
+                    <StarRating value={existingRating.stars} readonly size={24} />
+                    {existingRating.comment ? <Text style={styles.ratingComment}>{existingRating.comment}</Text> : null}
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.ratingTitle}>قيّم الموظف والخدمة</Text>
+                    <StarRating value={ratingStars} onChange={setRatingStars} size={30} />
+                    <TextInput
+                      value={ratingComment}
+                      onChangeText={setRatingComment}
+                      placeholder="اكتب ملاحظة (اختياري)"
+                      placeholderTextColor={COLORS.white40}
+                      style={styles.ratingInput}
+                      textAlign="right"
+                    />
+                    <Pressable
+                      onPress={handleSubmitRating}
+                      disabled={ratingStars < 1 || ratingSaving}
+                      style={[styles.ratingSubmitBtn, (ratingStars < 1 || ratingSaving) && { opacity: 0.5 }]}
+                    >
+                      <Text style={styles.ratingSubmitText}>{ratingSaving ? '...' : 'إرسال التقييم'}</Text>
+                    </Pressable>
+                  </>
+                )}
+              </View>
+            )}
           </View>
         )}
       </KeyboardAvoidingView>
@@ -632,4 +720,22 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 28 : 14,
   },
   closedBarText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.muted },
+
+  ratingCard: { marginTop: 12, paddingHorizontal: 20, alignItems: 'center', gap: 10, width: '100%' },
+  ratingTitle: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.white },
+  ratingComment: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white70, textAlign: 'center' },
+  ratingInput: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontFamily: FONTS.regular,
+    fontSize: 13,
+    color: COLORS.white,
+  },
+  ratingSubmitBtn: { backgroundColor: COLORS.gold, borderRadius: RADIUS.md, paddingHorizontal: 24, paddingVertical: 10 },
+  ratingSubmitText: { fontFamily: FONTS.bold, fontSize: 13, color: '#000' },
 });
