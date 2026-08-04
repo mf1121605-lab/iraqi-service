@@ -53,8 +53,7 @@
           "sounds": []
         }
       ],
-      "./plugins/withGradleVersion",
-      "@sentry/react-native/expo"
+      "./plugins/withGradleVersion"
     ],
     "runtimeVersion": "1.0.0",
     "experiments": {
