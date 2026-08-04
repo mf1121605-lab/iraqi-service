@@ -5,11 +5,13 @@ import { ScreenBg } from '@/components/ui/ScreenBg';
 import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+import { PAYMENT_METHOD_COLORS, PAYMENT_METHOD_LABELS } from '@/utils/paymentMethods';
 
 interface Payment {
   id: string;
   method: string;
   amount: number;
+  base_amount: number | null;
   notes: string | null;
   created_at: string;
   request: { id: string; title: string } | null;
@@ -18,10 +20,6 @@ interface Payment {
 }
 
 type Filter = 'all' | 'week' | 'month';
-
-const METHOD_COLORS: Record<string, string> = {
-  zaincash: '#f59e0b', qi_card: '#3b82f6',
-};
 
 function filterPayments(payments: Payment[], filter: Filter): Payment[] {
   if (filter === 'all') return payments;
@@ -41,7 +39,7 @@ export default function PaymentsScreen() {
     if (!profile) return;
     supabase
       .from('request_payments')
-      .select('id, method, amount, notes, created_at, request:requests(id, title), employee:profiles!employee_id(given_name, family_name), customer:profiles!customer_id(given_name, family_name)')
+      .select('id, method, amount, base_amount, notes, created_at, request:requests(id, title), employee:profiles!employee_id(given_name, family_name), customer:profiles!customer_id(given_name, family_name)')
       .order('created_at', { ascending: false })
       .limit(50)
       .then(({ data }) => setPayments((data ?? []) as unknown as Payment[]));
@@ -77,15 +75,21 @@ export default function PaymentsScreen() {
         ) : filtered.map((p) => {
           const empName = [p.employee?.given_name, p.employee?.family_name].filter(Boolean).join(' ') || '—';
           const custName = [p.customer?.given_name, p.customer?.family_name].filter(Boolean).join(' ') || '—';
-          const mc = METHOD_COLORS[p.method] ?? COLORS.muted;
+          const mc = PAYMENT_METHOD_COLORS[p.method] ?? COLORS.muted;
           return (
             <View key={p.id} style={s.card}>
               <View style={s.cardTop}>
                 <Text style={s.amount}>{p.amount?.toLocaleString()} د.ع</Text>
                 <View style={[s.methodBadge, { backgroundColor: mc + '20' }]}>
-                  <Text style={[s.methodText, { color: mc }]}>{p.method === 'zaincash' ? 'ZainCash' : 'Qi Card'}</Text>
+                  <Text style={[s.methodText, { color: mc }]}>{PAYMENT_METHOD_LABELS[p.method] ?? p.method}</Text>
                 </View>
               </View>
+              {p.method === 'credit' && p.base_amount ? (
+                <View style={s.row}>
+                  <Text style={s.label}>السعر الأصلي:</Text>
+                  <Text style={s.value}>{p.base_amount.toLocaleString()} د.ع (+40%)</Text>
+                </View>
+              ) : null}
               <View style={s.row}>
                 <Text style={s.label}>الموظف:</Text>
                 <Text style={s.value}>{empName}</Text>

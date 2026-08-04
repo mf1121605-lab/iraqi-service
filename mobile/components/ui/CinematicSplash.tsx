@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Dimensions, Image, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Audio } from 'expo-av';
+
+const EAGLE_CRY = require('../../assets/sounds/eagle-cry.m4a');
 
 const { width: W } = Dimensions.get('window');
 const CORNER = 34;
@@ -23,6 +26,24 @@ export function CinematicSplash({ onDone }: Props) {
   const pulseOp    = useRef(new Animated.Value(0.2)).current;
   const shimmerX   = useRef(new Animated.Value(-W)).current;
   const screenFade = useRef(new Animated.Value(1)).current;
+
+  // Plays every time the splash mounts — i.e. every app open — regardless
+  // of whether a session exists yet, since this renders unconditionally in
+  // RootLayout before AuthProvider has resolved anything.
+  useEffect(() => {
+    let sound: Audio.Sound | null = null;
+    let cancelled = false;
+    Audio.Sound.createAsync(EAGLE_CRY, { shouldPlay: true })
+      .then(({ sound: s }) => {
+        if (cancelled) { s.unloadAsync(); return; }
+        sound = s;
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      sound?.unloadAsync();
+    };
+  }, []);
 
   useEffect(() => {
     // Eagle scales in with spring

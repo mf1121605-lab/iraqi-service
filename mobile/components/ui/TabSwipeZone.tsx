@@ -9,13 +9,13 @@ const TAB_BAR_HEIGHT = 62;
 // Ordered to match the visible tab row in (customer)/_layout.tsx.
 const TAB_ROUTES = [
   '/(customer)/',
+  '/(customer)/news',
+  '/(customer)/messages',
   '/(customer)/requests',
-  '/(customer)/communities',
-  '/(customer)/notifications',
   '/(customer)/profile',
 ] as const;
 
-const MATCH_SEGMENTS = ['requests', 'communities', 'notifications', 'profile'];
+const MATCH_SEGMENTS = ['news', 'messages', 'requests', 'profile'];
 
 function currentTabIndex(pathname: string): number {
   for (let i = 1; i < MATCH_SEGMENTS.length + 1; i++) {

@@ -16,6 +16,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { MessageReactionPopover } from '@/components/chat/MessageReactionPopover';
+import { OrderAlertCard } from '@/components/chat/OrderAlertCard';
+import { HqLinksBox } from '@/components/chat/HqLinksBox';
 import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
 import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
@@ -418,6 +420,7 @@ export default function ChatRoomScreen() {
         onSelect={(t) => { setBgTheme(t); setChatBgTheme(t); setShowBgPicker(false); }}
         onClose={() => setShowBgPicker(false)}
       />
+      {room?.slug === 'hq' && <HqLinksBox />}
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -442,6 +445,10 @@ export default function ChatRoomScreen() {
             const reactionCounts: Record<string, number> = {};
             msgReactions.forEach(r => { reactionCounts[r.emoji] = (reactionCounts[r.emoji] ?? 0) + 1; });
             const replySource = item.reply_to_id ? messages.find(m => m.id === item.reply_to_id) : null;
+
+            if (item.message_type === 'order_alert') {
+              return <OrderAlertCard key={item.id} body={item.body ?? ''} />;
+            }
 
             return (
               <View>

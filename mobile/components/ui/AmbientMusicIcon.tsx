@@ -1,34 +1,62 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useAmbientMusic } from '@/hooks/useAmbientMusic';
 import { COLORS } from '@/constants/theme';
 
 const BAR_COUNT = 3;
+const HIDE_DELAY_MS = 5000;
+const FADE_MS = 600;
 
 // Floating glowing note button — only visible once the founder has set a
 // track. Tapping it is the customer's only control over ambient music (no
 // volume/skip — matches the founder's spec exactly).
+//
+// Muting is treated as "I'm done with this button": it stays visible 5s
+// longer (so the mute is visually confirmed), then fades out and is gone
+// for the rest of this app session — it only comes back on a fresh app
+// launch, not just by navigating around or un-muting again.
 export function AmbientMusicIcon() {
   const { isMuted, toggle, hasTrack } = useAmbientMusic();
   const insets = useSafeAreaInsets();
   const glow = useSharedValue(0.4);
+  const opacity = useSharedValue(1);
+  const [hidden, setHidden] = useState(false);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     glow.value = withRepeat(withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.sin) }), -1, true);
   }, [glow]);
 
+  useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current); }, []);
+
+  function handlePress() {
+    const willMute = !isMuted;
+    toggle();
+    if (willMute) {
+      hideTimer.current = setTimeout(() => {
+        opacity.value = withTiming(0, { duration: FADE_MS }, (finished) => {
+          if (finished) runOnJS(setHidden)(true);
+        });
+      }, HIDE_DELAY_MS);
+    } else if (hideTimer.current) {
+      clearTimeout(hideTimer.current);
+      hideTimer.current = null;
+    }
+  }
+
   const glowStyle = useAnimatedStyle(() => ({
     shadowOpacity: glow.value * 0.8,
     elevation: 6 + glow.value * 8,
+    opacity: opacity.value,
   }));
 
-  if (!hasTrack) return null;
+  if (!hasTrack || hidden) return null;
 
   return (
     <Animated.View style={[styles.wrap, { top: insets.top + 12 }, glowStyle]}>
-      <Pressable onPress={toggle} style={styles.btn} hitSlop={10}>
+      <Pressable onPress={handlePress} style={styles.btn} hitSlop={10}>
         {isMuted ? (
           <Text style={styles.note}>🔇</Text>
         ) : (

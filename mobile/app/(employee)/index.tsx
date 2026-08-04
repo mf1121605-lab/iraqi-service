@@ -29,6 +29,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
+import {
+  CREDIT_COMMISSION_RATE,
+  CREDIT_PAYMENT_NOTE,
+  PAYMENT_METHOD_LABELS,
+  PaymentMethod,
+  creditFinalAmount,
+} from '@/utils/paymentMethods';
+
+const PAYMENT_METHOD_OPTIONS: PaymentMethod[] = ['mastercard', 'zaincash', 'credit'];
 
 async function uploadAttachment(uri: string, userId: string, kind: 'image' | 'voice'): Promise<string | null> {
   try {
@@ -181,7 +190,7 @@ export default function EmployeeDashboard() {
 
   // Payment
   const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'zaincash' | 'qi_card'>('zaincash');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mastercard');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [paymentSaving, setPaymentSaving] = useState(false);
@@ -468,7 +477,9 @@ export default function EmployeeDashboard() {
   async function handleLogPayment() {
     if (!paymentAmount || !selectedId || !profile || !selectedRequest) return;
     setPaymentSaving(true);
-    const amount = parseFloat(paymentAmount);
+    const baseAmount = parseFloat(paymentAmount);
+    const isCredit = paymentMethod === 'credit';
+    const amount = isCredit ? creditFinalAmount(baseAmount) : baseAmount;
     const payloadBody = JSON.stringify({ method: paymentMethod, amount, notes: paymentNotes });
 
     await Promise.all([
@@ -478,6 +489,8 @@ export default function EmployeeDashboard() {
         customer_id: selectedRequest.customer_id,
         method: paymentMethod,
         amount,
+        base_amount: isCredit ? baseAmount : null,
+        commission_rate: isCredit ? CREDIT_COMMISSION_RATE * 100 : null,
         notes: paymentNotes || null,
         logged_by: profile.id,
       }),
@@ -495,6 +508,17 @@ export default function EmployeeDashboard() {
     setPaymentSuccess('تم تسجيل الدفعة بنجاح ✓');
     setTimeout(() => setPaymentSuccess(''), 3000);
     setPaymentSaving(false);
+    loadDetail(selectedId);
+  }
+
+  async function handleSendCreditNote() {
+    if (!selectedId || !profile) return;
+    await supabase.from('request_messages').insert({
+      request_id: selectedId,
+      sender_id: profile.id,
+      body: CREDIT_PAYMENT_NOTE,
+      message_type: 'text',
+    });
     loadDetail(selectedId);
   }
 
@@ -786,14 +810,14 @@ export default function EmployeeDashboard() {
                 </Pressable>
               </View>
               <View style={styles.methodRow}>
-                {(['zaincash', 'qi_card'] as const).map((m) => (
+                {PAYMENT_METHOD_OPTIONS.map((m) => (
                   <Pressable
                     key={m}
                     onPress={() => setPaymentMethod(m)}
                     style={[styles.methodBtn, paymentMethod === m && styles.methodBtnActive]}
                   >
                     <Text style={[styles.methodBtnText, paymentMethod === m && { color: '#000' }]}>
-                      {m === 'zaincash' ? 'ZainCash' : 'Qi Card'}
+                      {PAYMENT_METHOD_LABELS[m]}
                     </Text>
                   </Pressable>
                 ))}
@@ -801,12 +825,17 @@ export default function EmployeeDashboard() {
               <TextInput
                 value={paymentAmount}
                 onChangeText={setPaymentAmount}
-                placeholder="المبلغ بالدينار العراقي"
+                placeholder={paymentMethod === 'credit' ? 'قيمة كارت الرصيد الأصلية' : 'المبلغ بالدينار العراقي'}
                 placeholderTextColor={COLORS.white40}
                 style={styles.input}
                 keyboardType="numeric"
                 textAlign="right"
               />
+              {paymentMethod === 'credit' && !!paymentAmount && !Number.isNaN(parseFloat(paymentAmount)) && (
+                <Text style={styles.creditPreview}>
+                  المبلغ النهائي بعد عمولة 40%: {creditFinalAmount(parseFloat(paymentAmount)).toLocaleString('ar-IQ')} د.ع
+                </Text>
+              )}
               <TextInput
                 value={paymentNotes}
                 onChangeText={setPaymentNotes}
@@ -820,7 +849,10 @@ export default function EmployeeDashboard() {
                 disabled={paymentSaving || !paymentAmount}
                 style={({ pressed }) => [styles.goldBtn, (!paymentAmount || paymentSaving) && { opacity: 0.5 }, pressed && { opacity: 0.8 }]}
               >
-                <Text style={styles.goldBtnText}>{paymentSaving ? '...' : 'تسجيل الدفعة'}</Text>
+                <Text style={styles.goldBtnText}>{paymentSaving ? '...' : 'تثبيت وإصدار وصل الدفع'}</Text>
+              </Pressable>
+              <Pressable onPress={handleSendCreditNote} style={styles.creditNoteBtn}>
+                <Text style={styles.creditNoteBtnText}>ℹ️ إرسال ملاحظة الدفع بالرصيد للزبون</Text>
               </Pressable>
             </View>
           )}
@@ -1201,6 +1233,9 @@ const styles = StyleSheet.create({
   methodBtn: { flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: RADIUS.md, paddingVertical: 9, alignItems: 'center' },
   methodBtnActive: { backgroundColor: COLORS.gold, borderColor: COLORS.gold },
   methodBtnText: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.white70 },
+  creditPreview: { fontFamily: FONTS.bold, fontSize: 12, color: '#22c55e', textAlign: 'right', marginTop: -6, marginBottom: 4 },
+  creditNoteBtn: { alignItems: 'center', paddingVertical: 8, marginTop: 2 },
+  creditNoteBtnText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.white50, textDecorationLine: 'underline' },
 
   // Input bar
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 10, paddingTop: 8, paddingBottom: Platform.OS === 'ios' ? 22 : 10, gap: 8, backgroundColor: '#161b22', borderTopWidth: 1, borderTopColor: 'rgba(230,171,44,0.15)' },

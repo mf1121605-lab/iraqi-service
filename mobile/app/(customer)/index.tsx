@@ -57,7 +57,7 @@ type NewsLink = {
 };
 
 export default function CustomerDashboard() {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const [categories, setCategories]     = useState<Category[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [urgentNews, setUrgentNews]       = useState<UrgentNews[]>([]);
@@ -65,7 +65,33 @@ export default function CustomerDashboard() {
   const [bannerIdx, setBannerIdx]         = useState(0);
   const [loading, setLoading]             = useState(true);
   const [refreshing, setRefreshing]       = useState(false);
+  const [unreadCount, setUnreadCount]     = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  // Notifications lost its own bottom tab (bar is now focused on news +
+  // messages) — this bell is its only remaining entry point, so it needs
+  // to own the unread badge that used to live on the tab bar.
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!userId) return;
+
+    async function fetchUnread() {
+      const { count } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId as string)
+        .eq('is_read', false);
+      setUnreadCount(count ?? 0);
+    }
+
+    fetchUnread();
+    const channel = supabase
+      .channel(`notif-badge-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, fetchUnread)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [session?.user.id]);
 
   const loadData = useCallback(async () => {
     const [cats, ann, urgent, links] = await Promise.all([
@@ -156,13 +182,34 @@ export default function CustomerDashboard() {
                 <Text style={styles.appSub}>منصة الخدمات العراقية</Text>
               </View>
             </View>
-            <Pressable
-              onPress={() => router.push('/(customer)/search')}
-              style={({ pressed }) => [styles.searchBtn, pressed && { opacity: 0.7 }]}
-              hitSlop={8}
-            >
-              <Text style={styles.searchIcon}>🔍</Text>
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable
+                onPress={() => router.push('/(customer)/communities')}
+                style={({ pressed }) => [styles.searchBtn, pressed && { opacity: 0.7 }]}
+                hitSlop={8}
+              >
+                <Text style={styles.searchIcon}>🏘️</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push('/(customer)/notifications')}
+                style={({ pressed }) => [styles.searchBtn, pressed && { opacity: 0.7 }]}
+                hitSlop={8}
+              >
+                <Text style={styles.searchIcon}>🔔</Text>
+                {unreadCount > 0 && (
+                  <View style={styles.bellBadge}>
+                    <Text style={styles.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                  </View>
+                )}
+              </Pressable>
+              <Pressable
+                onPress={() => router.push('/(customer)/search')}
+                style={({ pressed }) => [styles.searchBtn, pressed && { opacity: 0.7 }]}
+                hitSlop={8}
+              >
+                <Text style={styles.searchIcon}>🔍</Text>
+              </Pressable>
+            </View>
           </View>
           <Text style={styles.greeting}>{greeting}</Text>
         </View>
@@ -330,6 +377,7 @@ const styles = StyleSheet.create({
   header:    { gap: 12 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   logoRow:   { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   searchBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: 'rgba(230,171,44,0.1)',
@@ -337,6 +385,13 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   searchIcon: { fontSize: 18 },
+  bellBadge: {
+    position: 'absolute', top: -3, right: -3,
+    minWidth: 16, height: 16, borderRadius: 8,
+    backgroundColor: '#ef4444', alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 3, borderWidth: 1.5, borderColor: COLORS.bg,
+  },
+  bellBadgeText: { fontFamily: FONTS.bold, fontSize: 9, color: '#fff' },
   logoBadge: {
     width: 52, height: 52, borderRadius: 26,
     backgroundColor: 'rgba(230,171,44,0.12)',

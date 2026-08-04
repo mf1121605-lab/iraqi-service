@@ -1,9 +1,6 @@
-import { useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
 import { useReserveFrameBottomInset } from '@/hooks/useFrameInset';
 import { TabSwipeZone } from '@/components/ui/TabSwipeZone';
 import { Icon3D } from '@/components/ui/Icon3D';
@@ -16,39 +13,10 @@ function TabIcon({ emoji, focused, badge }: { emoji: string; focused: boolean; b
 }
 
 export default function CustomerLayout() {
-  const { session } = useAuth();
-  const [unreadCount, setUnreadCount] = useState(0);
   const insets = useSafeAreaInsets();
   // Frame's bottom edge stops just above this tab bar instead of drawing
   // through it — see hooks/useFrameInset.ts.
   useReserveFrameBottomInset(TAB_BAR_HEIGHT + insets.bottom);
-
-  useEffect(() => {
-    if (!session?.user.id) return;
-
-    async function fetchUnread() {
-      const { count } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', session!.user.id)
-        .eq('is_read', false);
-      setUnreadCount(count ?? 0);
-    }
-
-    fetchUnread();
-
-    const channel = supabase
-      .channel(`notif-badge-${session.user.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${session.user.id}`,
-      }, fetchUnread)
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [session?.user.id]);
 
   return (
     <View style={styles.root}>
@@ -72,24 +40,24 @@ export default function CustomerLayout() {
         }}
       />
       <Tabs.Screen
+        name="news"
+        options={{
+          title: 'آخر الأخبار',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="📰" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: 'الرسائل',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="💬" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
         name="requests/index"
         options={{
           title: 'طلباتي',
           tabBarIcon: ({ focused }) => <TabIcon emoji="📋" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="communities/index"
-        options={{
-          title: 'المجتمعات',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏘️" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          title: 'الإشعارات',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🔔" focused={focused} badge={unreadCount} />,
         }}
       />
       <Tabs.Screen
@@ -99,8 +67,12 @@ export default function CustomerLayout() {
           tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,
         }}
       />
-      {/* Hidden screens — accessible via navigation but not in tab bar */}
-      <Tabs.Screen name="news" options={{ href: null }} />
+      {/* Hidden screens — accessible via navigation but not in tab bar.
+          المجتمعات and الإشعارات moved off the bar to keep it focused on
+          news + messages per spec; both stay reachable from the home
+          screen (quick-access button and header bell respectively). */}
+      <Tabs.Screen name="communities/index" options={{ href: null }} />
+      <Tabs.Screen name="notifications" options={{ href: null }} />
       <Tabs.Screen name="requests/new" options={{ href: null }} />
       <Tabs.Screen name="requests/[id]" options={{ href: null }} />
       <Tabs.Screen name="requests/matching" options={{ href: null }} />

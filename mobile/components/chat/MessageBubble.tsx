@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { VoiceMessagePlayer } from './VoiceMessagePlayer';
 import { Avatar } from './Avatar';
+import { PAYMENT_METHOD_COLORS, PAYMENT_METHOD_LABELS } from '@/utils/paymentMethods';
 
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
 
@@ -49,15 +50,25 @@ export function MessageBubble({
   const [fullscreen, setFullscreen] = useState(false);
 
   if (messageType === 'payment_proposal') {
-    let parsed = { method: '', amount: '', notes: '' };
+    let parsed: { method?: string; amount?: string | number; notes?: string } = {};
     try { parsed = JSON.parse(body); } catch {}
+    const methodColor = PAYMENT_METHOD_COLORS[parsed.method ?? ''] ?? COLORS.gold;
+    const methodLabel = PAYMENT_METHOD_LABELS[parsed.method ?? ''] ?? parsed.method ?? '';
     return (
       <View style={[styles.row, isMine ? styles.rowMine : styles.rowTheirs]}>
-        <View style={styles.paymentBubble}>
-          <Text style={styles.paymentLabel}>💰 اتفاقية دفع</Text>
-          <Text style={styles.paymentText}>{parsed.method === 'zaincash' ? 'ZainCash' : 'Qi Card'}</Text>
-          <Text style={styles.paymentText}>{Number(parsed.amount).toLocaleString('ar-IQ')} IQD</Text>
+        <View style={[styles.paymentBubble, { borderColor: methodColor + '66' }]}>
+          <View style={styles.paymentHeader}>
+            <Text style={styles.paymentLabel}>💳 وصل دفع</Text>
+            <View style={[styles.paymentStatusPill, { backgroundColor: '#22c55e26', borderColor: '#22c55e55' }]}>
+              <Text style={styles.paymentStatusText}>✓ مؤكّد</Text>
+            </View>
+          </View>
+          <View style={[styles.paymentMethodPill, { backgroundColor: methodColor + '22', borderColor: methodColor + '66' }]}>
+            <Text style={[styles.paymentMethodText, { color: methodColor }]}>{methodLabel}</Text>
+          </View>
+          <Text style={styles.paymentAmount}>{Number(parsed.amount ?? 0).toLocaleString('ar-IQ')} د.ع</Text>
           {parsed.notes ? <Text style={styles.paymentNotes}>{parsed.notes}</Text> : null}
+          {timestamp && <Text style={styles.paymentTime}>{formatTime(timestamp)}</Text>}
         </View>
       </View>
     );
@@ -230,22 +241,32 @@ const styles = StyleSheet.create({
   reactionCount: { fontFamily: FONTS.regular, fontSize: 10, color: COLORS.muted, marginRight: 2 },
 
   paymentBubble: {
-    backgroundColor: 'rgba(230,171,44,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.4)',
-    borderRadius: RADIUS.md,
-    padding: 12,
-    gap: 4,
+    minWidth: 220,
+    maxWidth: '82%',
+    backgroundColor: 'rgba(22,27,34,0.92)',
+    borderWidth: 1.5,
+    borderRadius: RADIUS.lg,
+    padding: 14,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
   },
+  paymentHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   paymentLabel: {
     fontFamily: FONTS.bold,
     fontSize: 13,
-    color: COLORS.gold,
-    textAlign: 'right',
+    color: COLORS.white,
   },
-  paymentText: {
-    fontFamily: FONTS.regular,
-    fontSize: 14,
+  paymentStatusPill: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 },
+  paymentStatusText: { fontFamily: FONTS.bold, fontSize: 10, color: '#4ade80' },
+  paymentMethodPill: { alignSelf: 'flex-end', borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
+  paymentMethodText: { fontFamily: FONTS.bold, fontSize: 12 },
+  paymentAmount: {
+    fontFamily: FONTS.bold,
+    fontSize: 22,
     color: COLORS.white,
     textAlign: 'right',
   },
@@ -253,6 +274,12 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     fontSize: 12,
     color: COLORS.muted,
+    textAlign: 'right',
+  },
+  paymentTime: {
+    fontFamily: FONTS.regular,
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.4)',
     textAlign: 'right',
   },
 });
