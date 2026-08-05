@@ -11,11 +11,13 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { GoldInput } from '@/components/ui/GoldInput';
+import { FireGlowWrap } from '@/components/ui/FireGlowWrap';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 const CAT_THEMES: Record<string, { emoji: string; accent: string; colors: [string, string] }> = {
@@ -180,24 +182,27 @@ export default function NewRequest() {
                 </View>
               ) : null}
 
-              <Pressable
-                style={({ pressed }) => [styles.submitBtn, pressed && styles.submitBtnPressed, loading && styles.submitBtnLoading]}
-                onPress={handleSubmit}
-                disabled={loading}
-              >
-                <LinearGradient
-                  colors={loading ? ['#555', '#444'] : ['#e6ab2c', '#c9882a']}
-                  style={styles.submitGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
+              <FireGlowWrap borderRadius={RADIUS.md}>
+                <Pressable
+                  style={({ pressed }) => [styles.submitBtn, pressed && styles.submitBtnPressed, loading && styles.submitBtnLoading]}
+                  onPress={handleSubmit}
+                  disabled={loading}
                 >
-                  {loading ? (
-                    <ActivityIndicator color="#000" size="small" />
-                  ) : (
-                    <Text style={styles.submitText}>إرسال الطلب والبحث عن موظف حالي ←</Text>
-                  )}
-                </LinearGradient>
-              </Pressable>
+                  {!loading && <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFill} />}
+                  <LinearGradient
+                    colors={loading ? ['#555', '#444'] : ['rgba(249,115,22,0.55)', 'rgba(220,38,38,0.42)', 'rgba(230,171,44,0.35)']}
+                    style={styles.submitGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="#000" size="small" />
+                    ) : (
+                      <Text style={styles.submitText}>إرسال الطلب والبحث عن موظف حالي ←</Text>
+                    )}
+                  </LinearGradient>
+                </Pressable>
+              </FireGlowWrap>
             </View>
           </View>
 
@@ -318,5 +323,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  submitText: { fontFamily: FONTS.bold, fontSize: 16, color: '#000' },
+  submitText: { fontFamily: FONTS.bold, fontSize: 16, color: '#fff' },
 });

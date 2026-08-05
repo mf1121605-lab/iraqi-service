@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { BlurView } from 'expo-blur';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,6 +22,7 @@ import { MessageReactionPopover } from '@/components/chat/MessageReactionPopover
 import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
 import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
+import { FireGlowWrap } from '@/components/ui/FireGlowWrap';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
 import { ChatBgTheme, getChatBgTheme, setChatBgTheme } from '@/utils/chatBackgroundPrefs';
@@ -412,15 +414,18 @@ export default function RequestDetail() {
                   </Text>
                 </View>
               ) : req.status === 'submitted' ? (
-                <Pressable
-                  style={({ pressed }) => [styles.findEmployeeBtn, pressed && { opacity: 0.7 }]}
-                  onPress={() => router.push({
-                    pathname: '/(customer)/requests/matching',
-                    params: { requestId: req.id, category: req.category },
-                  })}
-                >
-                  <Text style={styles.findEmployeeBtnText}>🔍 البحث عن موظف</Text>
-                </Pressable>
+                <FireGlowWrap borderRadius={RADIUS.sm}>
+                  <Pressable
+                    style={({ pressed }) => [styles.findEmployeeBtn, pressed && { opacity: 0.7 }]}
+                    onPress={() => router.push({
+                      pathname: '/(customer)/requests/matching',
+                      params: { requestId: req.id, category: req.category },
+                    })}
+                  >
+                    <BlurView intensity={22} tint="dark" style={StyleSheet.absoluteFill} />
+                    <Text style={styles.findEmployeeBtnText}>🔍 البحث عن موظف حالي</Text>
+                  </Pressable>
+                </FireGlowWrap>
               ) : (
                 <Text style={styles.noEmployee}>لم يُعيَّن موظف بعد</Text>
               )}
@@ -656,10 +661,10 @@ const styles = StyleSheet.create({
   findEmployeeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(230,171,44,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.4)',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(220,38,38,0.12)',
     borderRadius: RADIUS.sm,
+    overflow: 'hidden',
     paddingHorizontal: 12,
     paddingVertical: 6,
   },

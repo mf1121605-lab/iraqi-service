@@ -5,6 +5,7 @@ import type { Ionicons } from '@expo/vector-icons';
 import { useReserveFrameBottomInset } from '@/hooks/useFrameInset';
 import { TabSwipeZone } from '@/components/ui/TabSwipeZone';
 import { Icon3D } from '@/components/ui/Icon3D';
+import { AnimatedTopBorderLine } from '@/components/ui/AnimatedTopBorderLine';
 import { COLORS, FONTS } from '@/constants/theme';
 
 const TAB_BAR_HEIGHT = 62;
@@ -93,6 +94,7 @@ export default function CustomerLayout() {
           المجتمعات and الإشعارات moved off the bar to keep it focused on
           news + messages per spec; both stay reachable from the home
           screen (quick-access button and header bell respectively). */}
+      <Tabs.Screen name="account-settings" options={{ href: null }} />
       <Tabs.Screen name="communities/index" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
       <Tabs.Screen name="requests/new" options={{ href: null }} />
@@ -108,12 +110,16 @@ export default function CustomerLayout() {
       <Tabs.Screen name="tutor/session/[sessionId]" options={{ href: null }} />
     </Tabs>
     <TabSwipeZone />
+    <View style={[styles.topBorderAnchor, { bottom: TAB_BAR_HEIGHT + insets.bottom }]}>
+      <AnimatedTopBorderLine />
+    </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  topBorderAnchor: { position: 'absolute', left: 0, right: 0, height: 2 },
   tabBar: {
     backgroundColor: '#161b22',
     borderTopWidth: 1,

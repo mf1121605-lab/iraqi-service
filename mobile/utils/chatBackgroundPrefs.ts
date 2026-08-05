@@ -25,3 +25,13 @@ export async function getChatBgTheme(): Promise<ChatBgTheme> {
 export async function setChatBgTheme(theme: ChatBgTheme): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, theme).catch(() => {});
 }
+
+const ROOM_DEFAULT_THEMES: ChatBgTheme[] = ['gold', 'ocean', 'sunset', 'forest'];
+
+// Deterministic per-room default so community rooms look visually distinct
+// from one another out of the box, without needing a per-room storage key.
+export function themeForRoomSlug(slug: string): ChatBgTheme {
+  let hash = 0;
+  for (let i = 0; i < slug.length; i++) hash = (hash * 31 + slug.charCodeAt(i)) >>> 0;
+  return ROOM_DEFAULT_THEMES[hash % ROOM_DEFAULT_THEMES.length];
+}

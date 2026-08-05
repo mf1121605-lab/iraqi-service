@@ -1018,7 +1018,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   commentAuthor: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold },
-  commentContent: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white, lineHeight: 18, textAlign: 'right' },
+  commentContent: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.white, lineHeight: 18, textAlign: 'right' },
   commentImage: { width: '100%', height: 120, borderRadius: 8, marginTop: 4 },
   commentMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 },
   commentReplyBtn: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.muted },

@@ -23,11 +23,12 @@ import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
 import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
 import { TwemojiSticker } from '@/components/chat/TwemojiSticker';
+import { AnimatedGoldBorder } from '@/components/ui/AnimatedGoldBorder';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
-import { ChatBgTheme, getChatBgTheme, setChatBgTheme } from '@/utils/chatBackgroundPrefs';
+import { ChatBgTheme, getChatBgTheme, setChatBgTheme, themeForRoomSlug } from '@/utils/chatBackgroundPrefs';
 
 const TYPING_TIMEOUT_MS = 3000;
 const TYPING_BROADCAST_INTERVAL_MS = 2000;
@@ -115,7 +116,12 @@ export default function ChatRoomScreen() {
   const [bgTheme, setBgTheme] = useState<ChatBgTheme>('none');
   const [showBgPicker, setShowBgPicker] = useState(false);
 
-  useEffect(() => { getChatBgTheme().then(setBgTheme); }, []);
+  // Each room gets a distinct default animated background derived from its
+  // slug, so community rooms feel visually different from one another even
+  // before a member picks a theme manually via the palette icon.
+  useEffect(() => {
+    getChatBgTheme().then((stored) => setBgTheme(stored === 'none' && slug ? themeForRoomSlug(slug) : stored));
+  }, [slug]);
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [activeStickerPack, setActiveStickerPack] = useState<keyof typeof STICKER_PACKS>('expressive');
   const [bannedFromRoom, setBannedFromRoom] = useState(false);
@@ -413,6 +419,7 @@ export default function ChatRoomScreen() {
 
   return (
     <ScreenBg>
+      <AnimatedGoldBorder borderRadius={0} borderWidth={2} innerBg="transparent" style={styles.roomFrame} innerStyle={styles.roomFrameInner}>
       <ChatBackgroundLayer theme={bgTheme} />
       {/* Header */}
       <View style={styles.header}>
@@ -616,12 +623,15 @@ export default function ChatRoomScreen() {
           </View>
         )}
       </KeyboardAvoidingView>
+      </AnimatedGoldBorder>
     </ScreenBg>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  roomFrame: { flex: 1 },
+  roomFrameInner: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   header: {
     flexDirection: 'row',

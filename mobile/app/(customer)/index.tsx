@@ -13,8 +13,10 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { Icon3D } from '@/components/ui/Icon3D';
+import { FireGlowWrap } from '@/components/ui/FireGlowWrap';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -231,15 +233,21 @@ export default function CustomerDashboard() {
         ) : null}
 
         {/* ── Quick Action ── */}
-        <Pressable
-          style={({ pressed }) => [styles.ctaBtn, pressed && styles.ctaBtnPressed]}
-          onPress={() => router.push('/(customer)/requests/new')}
-        >
-          <LinearGradient colors={['#e6ab2c', '#c9882a']} style={styles.ctaGrad}>
-            <Text style={styles.ctaIcon}>＋</Text>
-            <Text style={styles.ctaLabel}>تقديم طلب جديد</Text>
-          </LinearGradient>
-        </Pressable>
+        <FireGlowWrap borderRadius={RADIUS.md} style={styles.ctaBtn}>
+          <Pressable
+            style={({ pressed }) => [styles.ctaPressable, pressed && styles.ctaBtnPressed]}
+            onPress={() => router.push('/(customer)/requests/new')}
+          >
+            <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFill} />
+            <LinearGradient
+              colors={['rgba(249,115,22,0.55)', 'rgba(220,38,38,0.42)', 'rgba(230,171,44,0.35)']}
+              style={styles.ctaGrad}
+            >
+              <Text style={styles.ctaIcon}>＋</Text>
+              <Text style={styles.ctaLabel}>تقديم طلب جديد</Text>
+            </LinearGradient>
+          </Pressable>
+        </FireGlowWrap>
 
         {/* ── Urgent News ── */}
         {urgentNews.length > 0 && (
@@ -387,7 +395,8 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.2)' },
   dotActive: { backgroundColor: COLORS.gold, width: 20, borderRadius: 3 },
 
-  ctaBtn:        { borderRadius: RADIUS.md, overflow: 'hidden', elevation: 6 },
+  ctaBtn:        {},
+  ctaPressable:  { borderRadius: RADIUS.md, overflow: 'hidden' },
   ctaBtnPressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
   ctaGrad: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

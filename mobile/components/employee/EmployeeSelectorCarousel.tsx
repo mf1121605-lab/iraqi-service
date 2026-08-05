@@ -35,10 +35,15 @@ export type EmployeeCandidate = {
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_W = 198;
-const CARD_H = 304;
+const CARD_H = 328;
 const CARD_GAP = 16;
 const SNAP = CARD_W + CARD_GAP;
-const SIDE_INSET = (SCREEN_W - CARD_W) / 2;
+// Each card carries CARD_GAP/2 of marginHorizontal on top of its own width
+// (so consecutive cards total exactly SNAP in the scroll content), so the
+// side inset needs to subtract that margin too — otherwise the snapped
+// card's true visual center lands CARD_GAP/2 off-center from the screen
+// middle, which is what made cards look cut off at the carousel's edges.
+const SIDE_INSET = (SCREEN_W - CARD_W) / 2 - CARD_GAP / 2;
 
 interface Props {
   candidates: EmployeeCandidate[];
@@ -219,7 +224,7 @@ function CarouselCard({
           <View style={styles.topShine} />
 
           <View style={styles.avatarWrap}>
-            <Avatar avatarKey={candidate.avatar_key} name={candidate.given_name} seed={candidate.id} size={82} />
+            <Avatar avatarKey={candidate.avatar_key} name={candidate.given_name} seed={candidate.id} size={108} />
           </View>
 
           <View style={styles.body}>
@@ -314,9 +319,9 @@ const styles = StyleSheet.create({
   },
 
   avatarWrap: {
-    marginTop: 26,
+    marginTop: 18,
     padding: 3,
-    borderRadius: 46,
+    borderRadius: 58,
     borderWidth: 1.5,
     borderColor: 'rgba(230,171,44,0.5)',
   },

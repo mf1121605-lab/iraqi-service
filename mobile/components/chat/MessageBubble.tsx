@@ -226,8 +226,12 @@ const styles = StyleSheet.create({
     marginBottom: 3,
     textAlign: 'right',
   },
+  // "Simplified Arabic Bold" (the founder's literal request) is a
+  // proprietary Microsoft-bundled font, not freely redistributable inside
+  // an app bundle — using the app's existing licensed bold face here
+  // (Cairo Bold, already used for names/timestamps app-wide) instead.
   text: {
-    fontFamily: FONTS.regular,
+    fontFamily: FONTS.bold,
     fontSize: 15,
     lineHeight: 22,
     writingDirection: 'rtl',
