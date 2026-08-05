@@ -17,7 +17,11 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.iraqiservice.app"
+      "bundleIdentifier": "com.iraqiservice.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "يستخدم التطبيق الميكروفون لتسجيل الرسائل الصوتية في المحادثات.",
+        "NSPhotoLibraryUsageDescription": "يستخدم التطبيق مكتبة الصور لإرفاق صور وفيديوهات في المحادثات والمنشورات."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -31,7 +35,8 @@
         "RECEIVE_BOOT_COMPLETED",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "RECORD_AUDIO"
       ],
       "intentFilters": [
         {

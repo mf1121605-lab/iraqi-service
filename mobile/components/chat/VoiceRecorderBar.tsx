@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
@@ -29,7 +29,12 @@ export function VoiceRecorderBar({ onSend, onCancel }: Props) {
 
     (async () => {
       try {
-        await Audio.requestPermissionsAsync();
+        const perm = await Audio.requestPermissionsAsync();
+        if (!perm.granted) {
+          Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الميكروفون من إعدادات الجهاز لتسجيل رسالة صوتية.');
+          onCancel();
+          return;
+        }
         await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
         const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
         if (cancelled) { recording.stopAndUnloadAsync().catch(() => {}); return; }
@@ -37,6 +42,7 @@ export function VoiceRecorderBar({ onSend, onCancel }: Props) {
         startedAtRef.current = Date.now();
         interval = setInterval(() => setElapsedMs(Date.now() - startedAtRef.current), 200);
       } catch {
+        Alert.alert('تعذّر بدء التسجيل', 'حدث خطأ أثناء محاولة تسجيل الصوت، حاول مرة أخرى.');
         onCancel();
       }
     })();

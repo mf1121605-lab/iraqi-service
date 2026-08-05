@@ -231,6 +231,8 @@ export default function DmThread() {
         message_type: isVideo ? 'video' : 'image', attachment_url: url, reply_to_id: replyTo?.id ?? null,
       });
       setReplyTo(null);
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع المرفق، حاول مرة أخرى.');
     }
     setSending(false);
   }
@@ -246,6 +248,8 @@ export default function DmThread() {
         thread_id: threadId, sender_id: profile.id, body: '🎤 رسالة صوتية',
         message_type: 'voice', attachment_url: url,
       });
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع الرسالة الصوتية، حاول مرة أخرى.');
     }
     setSending(false);
   }

@@ -297,6 +297,8 @@ export default function RequestDetail() {
         message_type: isVideo ? 'video' : 'image', attachment_url: url, reply_to_id: replyTo?.id ?? null,
       });
       setReplyTo(null);
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع المرفق، حاول مرة أخرى.');
     }
     setSending(false);
   }
@@ -312,6 +314,8 @@ export default function RequestDetail() {
         request_id: id, sender_id: session.user.id, body: '🎤 رسالة صوتية',
         message_type: 'voice', attachment_url: url,
       });
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع الرسالة الصوتية، حاول مرة أخرى.');
     }
     setSending(false);
   }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Pressable,
@@ -300,7 +301,10 @@ export default function NewsScreen() {
 
   async function pickImages() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
+    if (!perm.granted) {
+      Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الصور من إعدادات الجهاز لإرفاق صورة.');
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
@@ -315,7 +319,10 @@ export default function NewsScreen() {
 
   async function pickVideo() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
+    if (!perm.granted) {
+      Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الفيديوهات من إعدادات الجهاز لإرفاق فيديو.');
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Videos,
       quality: 0.8,
@@ -335,9 +342,19 @@ export default function NewsScreen() {
     let videoUrl: string | null = null;
     if (pickedVideo) {
       videoUrl = await uploadMedia(pickedVideo, `social/${session.user.id}`, 'video');
+      if (!videoUrl) {
+        setPosting(false);
+        Alert.alert('تعذّر رفع الفيديو', 'حدث خطأ أثناء رفع الفيديو، حاول مرة أخرى.');
+        return;
+      }
     } else if (pickedImages.length > 0) {
       const uploaded = await Promise.all(pickedImages.map((uri) => uploadMedia(uri, `social/${session.user.id}`, 'image')));
       imageUrls = uploaded.filter((u): u is string => !!u);
+      if (imageUrls.length < pickedImages.length) {
+        setPosting(false);
+        Alert.alert('تعذّر رفع الصور', 'حدث خطأ أثناء رفع بعض الصور، حاول مرة أخرى.');
+        return;
+      }
     }
 
     await supabase.from('social_posts').insert({
@@ -387,7 +404,10 @@ export default function NewsScreen() {
 
   async function pickCommentImage(postId: string) {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
+    if (!perm.granted) {
+      Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الصور من إعدادات الجهاز لإرفاق صورة.');
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
     if (!result.canceled && result.assets[0]) {
       setCommentImages((prev) => ({ ...prev, [postId]: result.assets[0].uri }));
@@ -400,7 +420,14 @@ export default function NewsScreen() {
     if ((!body && !localImage) || !session?.user.id) return;
     setSendingComment(postId);
     let imageUrl: string | null = null;
-    if (localImage) imageUrl = await uploadMedia(localImage, `social/${session.user.id}/comments`, 'image');
+    if (localImage) {
+      imageUrl = await uploadMedia(localImage, `social/${session.user.id}/comments`, 'image');
+      if (!imageUrl) {
+        setSendingComment(null);
+        Alert.alert('تعذّر رفع الصورة', 'حدث خطأ أثناء رفع الصورة، حاول مرة أخرى.');
+        return;
+      }
+    }
     await supabase.from('social_comments').insert({
       post_id: postId,
       author_id: session.user.id,

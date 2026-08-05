@@ -19,6 +19,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Avatar } from '@/components/chat/Avatar';
+import { AnimatedGoldBorder } from '@/components/ui/AnimatedGoldBorder';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 export type EmployeeCandidate = {
@@ -206,7 +207,13 @@ function CarouselCard({
           onPress();
         }}
       >
-        <View style={[styles.card, isSelected && styles.cardSelected]}>
+        <AnimatedGoldBorder
+          borderRadius={RADIUS.lg}
+          borderWidth={1.5}
+          innerBg="transparent"
+          style={isSelected ? { ...styles.cardBorderWrap, ...styles.cardBorderWrapSelected } : styles.cardBorderWrap}
+          innerStyle={styles.card}
+        >
           {/* Glass base — whatever animates behind (ScreenBg gradient/particles) shows through */}
           <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
           <LinearGradient
@@ -271,7 +278,7 @@ function CarouselCard({
           <Animated.View style={[styles.checkBadge, checkStyle]} pointerEvents="none">
             <Text style={styles.checkGlyph}>✓</Text>
           </Animated.View>
-        </View>
+        </AnimatedGoldBorder>
       </Pressable>
     </Animated.View>
   );
@@ -289,18 +296,17 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
     shadowRadius: 20,
   },
-  card: {
+  cardBorderWrap: {
     width: CARD_W,
     height: CARD_H,
-    borderRadius: RADIUS.lg,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.35)',
-    alignItems: 'center',
   },
-  cardSelected: {
-    borderWidth: 2,
-    borderColor: COLORS.gold,
+  cardBorderWrapSelected: {
+    shadowColor: COLORS.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+  },
+  card: {
+    alignItems: 'center',
   },
   glossOverlay: {
     position: 'absolute',
