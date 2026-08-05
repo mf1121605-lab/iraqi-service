@@ -41,13 +41,19 @@ export default function LoginScreen() {
   const [infoModal, setInfoModal]   = useState<'about' | 'privacy' | null>(null);
 
   // ── Entrance choreography ──────────────────────────────────────────
+  // The login form itself (cardOpacity/cardY, previously gating the
+  // entire card behind a ~1.2s sequential fade delayed 680ms) is
+  // deliberately no longer part of this animation — confirmed via a
+  // real device screenshot that it can render invisible (opacity stuck
+  // at 0, still occupying layout space) if that delayed animation
+  // stalls or the screen is captured slightly early. The functional
+  // login form must never depend on an animation completing to become
+  // visible. Logo/title entrance stays purely cosmetic.
   const emblemOpacity = useSharedValue(0);
   const emblemScale   = useSharedValue(0.4);
   const titleOpacity  = useSharedValue(0);
   const titleY        = useSharedValue(14);
   const lineWidth     = useSharedValue(0);
-  const cardOpacity   = useSharedValue(0);
-  const cardY         = useSharedValue(28);
 
   useEffect(() => {
     // Eagle-cry entrance sound, synced with the logo materializing.
@@ -70,8 +76,6 @@ export default function LoginScreen() {
     titleOpacity.value  = withDelay(320, withTiming(1, { duration: 450 }));
     titleY.value         = withDelay(320, withTiming(0, { duration: 450, easing: Easing.out(Easing.cubic) }));
     lineWidth.value     = withDelay(580, withTiming(76, { duration: 550, easing: Easing.out(Easing.cubic) }));
-    cardOpacity.value   = withDelay(680, withTiming(1, { duration: 550 }));
-    cardY.value          = withDelay(680, withTiming(0, { duration: 550, easing: Easing.out(Easing.cubic) }));
 
     return () => { sound?.unloadAsync(); };
     // Reanimated shared values are stable across renders; this intro
@@ -88,10 +92,6 @@ export default function LoginScreen() {
     transform: [{ translateY: titleY.value }],
   }));
   const lineStyle = useAnimatedStyle(() => ({ width: lineWidth.value }));
-  const cardStyle = useAnimatedStyle(() => ({
-    opacity: cardOpacity.value,
-    transform: [{ translateY: cardY.value }],
-  }));
 
   async function handleLogin() {
     if (!identifier.trim() || !password.trim()) {
@@ -196,8 +196,12 @@ export default function LoginScreen() {
             <Animated.View style={[styles.subtitleLine, lineStyle]} />
           </View>
 
-          {/* Login Card — spinning gold shimmer border via Skia */}
-          <Animated.View style={cardStyle}>
+          {/* Login Card — spinning gold shimmer border via Skia. Always
+              fully visible immediately — never gated behind an entrance
+              animation (confirmed on a real device that a delayed fade
+              can leave the entire login form invisible while still
+              occupying layout space if the animation stalls). */}
+          <View>
             <AnimatedGoldBorder borderRadius={RADIUS.xl} borderWidth={1.5} innerBg="transparent" speed={3200}>
               <GoldCard style={styles.card}>
                 <Text style={styles.cardTitle}>تسجيل الدخول</Text>
@@ -250,7 +254,7 @@ export default function LoginScreen() {
                 </Pressable>
               </GoldCard>
             </AnimatedGoldBorder>
-          </Animated.View>
+          </View>
 
           {/* Register link */}
           <View style={styles.linkRow}>
