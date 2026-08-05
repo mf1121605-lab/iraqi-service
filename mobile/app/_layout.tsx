@@ -65,6 +65,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: string |
   }
   componentDidCatch(error: Error, info: { componentStack: string }) {
     console.error('ErrorBoundary caught a crash:', error, info.componentStack);
+    Sentry.captureException(error, { contexts: { react: { componentStack: info.componentStack } } });
   }
   handleRetry = () => this.setState({ error: null });
   handleGoHome = () => {
