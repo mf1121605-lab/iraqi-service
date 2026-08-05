@@ -22,9 +22,12 @@ async function uploadOwnPhoto(uri: string, userId: string): Promise<string | nul
     const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
     const path = `avatars/${userId}/${Date.now()}.${ext}`;
     const response = await fetch(uri);
-    const blob = await response.blob();
+    // React Native's Blob polyfill is unreliable for binary upload bodies —
+    // it can report the correct size while silently sending empty/corrupted
+    // data. arrayBuffer() is Supabase's own recommended path for RN.
+    const arrayBuffer = await response.arrayBuffer();
     const contentType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-    const { error } = await supabase.storage.from('site-assets').upload(path, blob, { contentType, upsert: false });
+    const { error } = await supabase.storage.from('site-assets').upload(path, arrayBuffer, { contentType, upsert: false });
     if (error) { console.error('avatar upload failed:', error.message); return null; }
     return path;
   } catch {

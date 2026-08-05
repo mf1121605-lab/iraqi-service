@@ -30,9 +30,12 @@ async function uploadCategoryMedia(uri: string, kind: 'image' | 'video'): Promis
     const ext = uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg');
     const path = `categories/${kind}/${Date.now()}.${ext}`;
     const response = await fetch(uri);
-    const blob = await response.blob();
+    // React Native's Blob polyfill is unreliable for binary upload bodies —
+    // it can report the correct size while silently sending empty/corrupted
+    // data. arrayBuffer() is Supabase's own recommended path for RN.
+    const arrayBuffer = await response.arrayBuffer();
     const contentType = kind === 'video' ? `video/${ext}` : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-    const { error } = await supabase.storage.from('site-assets').upload(path, blob, { contentType, upsert: false });
+    const { error } = await supabase.storage.from('site-assets').upload(path, arrayBuffer, { contentType, upsert: false });
     if (error) { console.error('upload failed:', error.message); return null; }
     const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
     return data.publicUrl;
