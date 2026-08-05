@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -50,13 +51,19 @@ function displayNameFor(p: OtherUser | null): string {
   return [p.given_name, p.family_name].filter(Boolean).join(' ') || 'عضو';
 }
 
-async function uploadAttachment(uri: string, userId: string, kind: 'image' | 'voice'): Promise<string | null> {
+async function uploadAttachment(uri: string, userId: string, kind: 'image' | 'voice' | 'video'): Promise<string | null> {
   try {
-    const ext = kind === 'voice' ? 'm4a' : (uri.split('.').pop()?.toLowerCase() ?? 'jpg');
+    const ext = kind === 'voice'
+      ? 'm4a'
+      : (uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg'));
     const path = `chat/${userId}/${Date.now()}.${ext}`;
     const response = await fetch(uri);
     const blob = await response.blob();
-    const contentType = kind === 'voice' ? 'audio/m4a' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    const contentType = kind === 'voice'
+      ? 'audio/m4a'
+      : kind === 'video'
+        ? `video/${ext === 'mov' ? 'quicktime' : ext}`
+        : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
     const { error } = await supabase.storage.from('site-assets').upload(path, blob, { contentType, upsert: false });
     if (error) { console.error('upload failed:', error.message); return null; }
     const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
@@ -208,15 +215,20 @@ export default function DmThread() {
   async function pickAndSendImage() {
     if (!profile || !threadId) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+    if (!perm.granted) {
+      Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الصور والفيديوهات من إعدادات الجهاز لإرسال المرفقات.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.8 });
     if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    const isVideo = asset.type === 'video';
     setSending(true);
-    const url = await uploadAttachment(result.assets[0].uri, profile.id, 'image');
+    const url = await uploadAttachment(asset.uri, profile.id, isVideo ? 'video' : 'image');
     if (url) {
       await supabase.from('direct_messages').insert({
-        thread_id: threadId, sender_id: profile.id, body: '📷 صورة',
-        message_type: 'image', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+        thread_id: threadId, sender_id: profile.id, body: isVideo ? '🎬 فيديو' : '📷 صورة',
+        message_type: isVideo ? 'video' : 'image', attachment_url: url, reply_to_id: replyTo?.id ?? null,
       });
       setReplyTo(null);
     }
@@ -348,7 +360,11 @@ export default function DmThread() {
                   timestamp={item.created_at}
                   messageType={item.message_type ?? undefined}
                   attachmentUrl={item.attachment_url}
-                  attachmentType={item.message_type === 'image' ? 'image' : item.message_type === 'voice' ? 'voice' : null}
+                  attachmentType={
+                    item.message_type === 'image' ? 'image' :
+                    item.message_type === 'voice' ? 'voice' :
+                    item.message_type === 'video' ? 'video' : null
+                  }
                   status={isMine ? status : undefined}
                   reactions={summarizeReactions(item.reactions)}
                   replyTo={replySource ? { body: replySource.body ?? '' } : null}

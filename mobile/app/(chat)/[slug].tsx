@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -70,13 +71,19 @@ function displayNameFor(profile: { given_name?: string | null; family_name?: str
   return [profile.given_name, profile.family_name].filter(Boolean).join(' ') || 'عضو';
 }
 
-async function uploadAttachment(uri: string, userId: string, kind: 'image' | 'voice'): Promise<string | null> {
+async function uploadAttachment(uri: string, userId: string, kind: 'image' | 'voice' | 'video'): Promise<string | null> {
   try {
-    const ext = kind === 'voice' ? 'm4a' : (uri.split('.').pop()?.toLowerCase() ?? 'jpg');
+    const ext = kind === 'voice'
+      ? 'm4a'
+      : (uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg'));
     const path = `chat/${userId}/${Date.now()}.${ext}`;
     const response = await fetch(uri);
     const blob = await response.blob();
-    const contentType = kind === 'voice' ? 'audio/m4a' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    const contentType = kind === 'voice'
+      ? 'audio/m4a'
+      : kind === 'video'
+        ? `video/${ext === 'mov' ? 'quicktime' : ext}`
+        : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
     const { error } = await supabase.storage.from('site-assets').upload(path, blob, { contentType, upsert: false });
     if (error) { console.error('upload failed:', error.message); return null; }
     const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
@@ -316,16 +323,21 @@ export default function ChatRoomScreen() {
   async function pickAndSendImage() {
     if (!room || !profile) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+    if (!perm.granted) {
+      Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الصور والفيديوهات من إعدادات الجهاز لإرسال المرفقات.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.8 });
     if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    const isVideo = asset.type === 'video';
     setSending(true);
-    const url = await uploadAttachment(result.assets[0].uri, profile.id, 'image');
+    const url = await uploadAttachment(asset.uri, profile.id, isVideo ? 'video' : 'image');
     if (url) {
       await supabase.from('chat_messages').insert({
         room_id: room.id, sender_id: profile.id,
         sender_display_name: displayNameFor(profile), sender_avatar_key: profile.avatar_key, sender_role: profile.role,
-        body: '📷 صورة', message_type: 'image', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+        body: isVideo ? '🎬 فيديو' : '📷 صورة', message_type: isVideo ? 'video' : 'image', attachment_url: url, reply_to_id: replyTo?.id ?? null,
       });
       setReplyTo(null);
     }
@@ -476,7 +488,11 @@ export default function ChatRoomScreen() {
                   timestamp={item.created_at}
                   messageType={item.message_type ?? undefined}
                   attachmentUrl={item.attachment_url}
-                  attachmentType={item.message_type === 'image' ? 'image' : item.message_type === 'voice' ? 'voice' : null}
+                  attachmentType={
+                    item.message_type === 'image' ? 'image' :
+                    item.message_type === 'voice' ? 'voice' :
+                    item.message_type === 'video' ? 'video' : null
+                  }
                   reactions={Object.entries(reactionCounts).map(([emoji, count]) => ({ emoji, count, mine: false }))}
                   replyTo={replySource ? { body: replySource.body ?? '', senderName: replySource.sender_display_name ?? undefined } : null}
                   bundled={!!bundled}

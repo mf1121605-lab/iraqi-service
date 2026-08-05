@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
@@ -61,13 +62,19 @@ type RequestDetail = {
   employee: { given_name: string; family_name: string; avatar_key: string | null } | null;
 };
 
-async function uploadAttachment(uri: string, userId: string, kind: 'image' | 'voice'): Promise<string | null> {
+async function uploadAttachment(uri: string, userId: string, kind: 'image' | 'voice' | 'video'): Promise<string | null> {
   try {
-    const ext = kind === 'voice' ? 'm4a' : (uri.split('.').pop()?.toLowerCase() ?? 'jpg');
+    const ext = kind === 'voice'
+      ? 'm4a'
+      : (uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg'));
     const path = `chat/${userId}/${Date.now()}.${ext}`;
     const response = await fetch(uri);
     const blob = await response.blob();
-    const contentType = kind === 'voice' ? 'audio/m4a' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    const contentType = kind === 'voice'
+      ? 'audio/m4a'
+      : kind === 'video'
+        ? `video/${ext === 'mov' ? 'quicktime' : ext}`
+        : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
     const { error } = await supabase.storage.from('site-assets').upload(path, blob, { contentType, upsert: false });
     if (error) { console.error('upload failed:', error.message); return null; }
     const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
@@ -272,15 +279,20 @@ export default function RequestDetail() {
   async function pickAndSendImage() {
     if (!session?.user.id || !id) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+    if (!perm.granted) {
+      Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الصور والفيديوهات من إعدادات الجهاز لإرسال المرفقات.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.8 });
     if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    const isVideo = asset.type === 'video';
     setSending(true);
-    const url = await uploadAttachment(result.assets[0].uri, session.user.id, 'image');
+    const url = await uploadAttachment(asset.uri, session.user.id, isVideo ? 'video' : 'image');
     if (url) {
       await supabase.from('request_messages').insert({
-        request_id: id, sender_id: session.user.id, body: '📷 صورة',
-        message_type: 'image', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+        request_id: id, sender_id: session.user.id, body: isVideo ? '🎬 فيديو' : '📷 صورة',
+        message_type: isVideo ? 'video' : 'image', attachment_url: url, reply_to_id: replyTo?.id ?? null,
       });
       setReplyTo(null);
     }
@@ -446,7 +458,11 @@ export default function RequestDetail() {
                   body={item.body}
                   messageType={item.message_type}
                   attachmentUrl={item.attachment_url}
-                  attachmentType={item.message_type === 'image' ? 'image' : item.message_type === 'voice' ? 'voice' : null}
+                  attachmentType={
+                    item.message_type === 'image' ? 'image' :
+                    item.message_type === 'voice' ? 'voice' :
+                    item.message_type === 'video' ? 'video' : null
+                  }
                   senderAvatarKey={!isMine ? req?.employee?.avatar_key : undefined}
                   onSenderPress={!isMine && req?.assigned_employee_id ? () => router.push({ pathname: '/user/[userId]', params: { userId: req.assigned_employee_id! } }) : undefined}
                   timestamp={item.created_at}

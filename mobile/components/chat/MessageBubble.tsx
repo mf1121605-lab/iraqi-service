@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ResizeMode, Video } from 'expo-av';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { VoiceMessagePlayer } from './VoiceMessagePlayer';
 import { Avatar } from './Avatar';
@@ -20,7 +21,7 @@ interface Props {
   timestamp?: string;
   messageType?: string;
   attachmentUrl?: string | null;
-  attachmentType?: 'image' | 'voice' | null;
+  attachmentType?: 'image' | 'voice' | 'video' | null;
   reactions?: ReactionSummary[];
   replyTo?: { body: string; senderName?: string } | null;
   status?: MessageStatus;
@@ -112,6 +113,22 @@ export function MessageBubble({
             </Pressable>
           )}
 
+          {attachmentType === 'video' && attachmentUrl && (
+            <Pressable onPress={() => setFullscreen(true)} style={styles.videoThumbWrap}>
+              <Video
+                source={{ uri: attachmentUrl }}
+                style={styles.attachmentImage}
+                resizeMode={ResizeMode.COVER}
+                shouldPlay={false}
+                isMuted
+                useNativeControls={false}
+              />
+              <View style={styles.playOverlay}>
+                <Text style={styles.playIcon}>▶</Text>
+              </View>
+            </Pressable>
+          )}
+
           {attachmentType === 'voice' && attachmentUrl && (
             <VoiceMessagePlayer uri={attachmentUrl} isMine={isMine} />
           )}
@@ -149,6 +166,23 @@ export function MessageBubble({
           <Pressable style={styles.fullscreenOverlay} onPress={() => setFullscreen(false)}>
             <Image source={{ uri: attachmentUrl }} style={styles.fullscreenImage} resizeMode="contain" />
           </Pressable>
+        </Modal>
+      )}
+
+      {attachmentType === 'video' && attachmentUrl && (
+        <Modal visible={fullscreen} transparent animationType="fade" onRequestClose={() => setFullscreen(false)}>
+          <View style={styles.fullscreenOverlay}>
+            <Pressable style={styles.fullscreenCloseBtn} onPress={() => setFullscreen(false)} hitSlop={12}>
+              <Text style={styles.fullscreenCloseText}>✕</Text>
+            </Pressable>
+            <Video
+              source={{ uri: attachmentUrl }}
+              style={styles.fullscreenVideo}
+              resizeMode={ResizeMode.CONTAIN}
+              useNativeControls
+              shouldPlay
+            />
+          </View>
         </Modal>
       )}
     </View>
@@ -224,8 +258,40 @@ const styles = StyleSheet.create({
   replyQuoteBody: { fontFamily: FONTS.regular, fontSize: 12, color: 'rgba(255,255,255,0.75)', textAlign: 'right' },
 
   attachmentImage: { width: 200, height: 200, borderRadius: 12, marginBottom: 6 },
+  videoThumbWrap: { position: 'relative' },
+  playOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playIcon: {
+    fontSize: 22,
+    color: '#fff',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    overflow: 'hidden',
+  },
   fullscreenOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center' },
   fullscreenImage: { width: '100%', height: '100%' },
+  fullscreenVideo: { width: '100%', height: '80%' },
+  fullscreenCloseBtn: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullscreenCloseText: { fontSize: 16, color: '#fff', fontFamily: FONTS.bold },
 
   reactionsPill: {
     flexDirection: 'row',

@@ -1,6 +1,6 @@
 import '../global.css';
 import { useEffect, useState, Component, ReactNode } from 'react';
-import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, Pressable, StyleSheet, I18nManager } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -36,6 +36,18 @@ Sentry.init({
   enabled: !!SENTRY_DSN,
   tracesSampleRate: 0.2,
 });
+
+// Both supported locales (Arabic, Kurdish Sorani) are RTL, and the app never
+// offers an LTR locale — so RTL should be the system-level layout direction
+// from the very first launch, not just the manual textAlign styling used
+// per-screen. forceRTL only takes effect for native views starting the next
+// app launch (React Native limitation), so on a brand-new install this one
+// runs once and the layout direction fully applies from the second open
+// onward; the existing manual RTL styling already covers the gap in between.
+if (!I18nManager.isRTL) {
+  I18nManager.allowRTL(true);
+  I18nManager.forceRTL(true);
+}
 
 SplashScreen.preventAutoHideAsync();
 
