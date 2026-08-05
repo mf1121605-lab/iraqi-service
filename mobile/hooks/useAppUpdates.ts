@@ -1,24 +1,11 @@
-import { useEffect } from 'react';
-import * as Updates from 'expo-updates';
-
-// Actively checks for an EAS Update on launch instead of relying on the
-// default silent background-download (which only applies on the *next*
-// cold start). Fetching + reloading here means a fresh update is live
-// after a single relaunch. No-ops in Expo Go / dev client, where
-// Updates.isEnabled is false.
-export function useAppUpdates() {
-  useEffect(() => {
-    if (!Updates.isEnabled) return;
-
-    (async () => {
-      try {
-        const check = await Updates.checkForUpdateAsync();
-        if (!check.isAvailable) return;
-        await Updates.fetchUpdateAsync();
-        await Updates.reloadAsync();
-      } catch (e) {
-        console.log('useAppUpdates: check failed', e);
-      }
-    })();
-  }, []);
-}
+// Deliberately disabled. This used to silently check for an EAS OTA
+// update on every launch and swap the running JS bundle for whatever
+// was last published to the "preview" channel — including, at one
+// point, a mismatched/incompatible publish from an unrelated EAS
+// project accidentally created outside this workflow. That made a
+// freshly built, verified-correct APK behave like a stale or broken
+// install with no visible explanation. Every release now goes out as
+// a full `eas build`, so there is nothing an OTA check would add here
+// except risk. Kept as a no-op hook (rather than deleted) so the single
+// call site in app/_layout.tsx doesn't need to change.
+export function useAppUpdates() {}
