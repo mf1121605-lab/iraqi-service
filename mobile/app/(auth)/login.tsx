@@ -10,7 +10,7 @@ import {
 import { Link, router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { Audio } from 'expo-av';
-import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -264,17 +264,19 @@ export default function LoginScreen() {
             </Link>
           </View>
 
-          {/* من نحن / سياسة الخصوصية — silver-gold pills, same content as the website */}
+          {/* من نحن / سياسة الخصوصية — glass boxes with a shimmering animated gold border */}
           <View style={styles.infoRow}>
-            <Pressable style={({ pressed }) => [styles.infoBtnWrap, pressed && { opacity: 0.8 }]} onPress={() => setInfoModal('about')}>
-              <LinearGradient colors={['#cbd5e1', '#e6ab2c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.infoBtn}>
+            <Pressable style={({ pressed }) => pressed && { opacity: 0.8 }} onPress={() => setInfoModal('about')}>
+              <AnimatedGoldBorder borderRadius={RADIUS.sm} borderWidth={1.25} innerBg="transparent" speed={3200} innerStyle={styles.infoBtn}>
+                <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
                 <Text style={styles.infoBtnText}>من نحن</Text>
-              </LinearGradient>
+              </AnimatedGoldBorder>
             </Pressable>
-            <Pressable style={({ pressed }) => [styles.infoBtnWrap, pressed && { opacity: 0.8 }]} onPress={() => setInfoModal('privacy')}>
-              <LinearGradient colors={['#cbd5e1', '#e6ab2c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.infoBtn}>
+            <Pressable style={({ pressed }) => pressed && { opacity: 0.8 }} onPress={() => setInfoModal('privacy')}>
+              <AnimatedGoldBorder borderRadius={RADIUS.sm} borderWidth={1.25} innerBg="transparent" speed={3200} innerStyle={styles.infoBtn}>
+                <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
                 <Text style={styles.infoBtnText}>سياسة الخصوصية</Text>
-              </LinearGradient>
+              </AnimatedGoldBorder>
             </Pressable>
           </View>
 
@@ -367,7 +369,6 @@ const styles = StyleSheet.create({
   forgotText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
 
   infoRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: 2 },
-  infoBtnWrap: { borderRadius: RADIUS.sm, overflow: 'hidden' },
-  infoBtn: { paddingHorizontal: 16, paddingVertical: 7 },
+  infoBtn: { paddingHorizontal: 16, paddingVertical: 7, alignItems: 'center', justifyContent: 'center' },
   infoBtnText: { fontFamily: FONTS.bold, fontSize: 12, color: '#ffffff' },
 });
