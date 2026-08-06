@@ -9,6 +9,7 @@ import { ScreenBg } from '@/components/ui/ScreenBg';
 import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { uploadToStorage } from '@/lib/uploadToStorage';
+import { FONT_FAMILIES } from '@/hooks/useAppTheme';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://iraqi-service.vercel.app';
@@ -34,7 +35,27 @@ interface FounderSettings {
   frame_color: string | null;
   frame_enabled: boolean | null;
   particles_enabled: boolean | null;
+  // Added by the app-theme migration; read live by hooks/useAppTheme.tsx.
+  app_font_family: string | null;
+  app_text_color: string | null;
+  app_font_scale: number | null;
 }
+
+const TEXT_COLOR_PRESETS = [
+  { hex: '#ffffff', label: 'أبيض' },
+  { hex: '#e6ab2c', label: 'ذهبي' },
+  { hex: '#e2e8f0', label: 'فضي' },
+  { hex: '#fcd34d', label: 'ذهبي فاتح' },
+  { hex: '#a7f3d0', label: 'أخضر فاتح' },
+  { hex: '#bfdbfe', label: 'أزرق فاتح' },
+];
+
+const FONT_SCALES = [
+  { value: 0.9, label: 'صغير' },
+  { value: 1.0, label: 'عادي' },
+  { value: 1.1, label: 'كبير' },
+  { value: 1.25, label: 'أكبر' },
+];
 
 const ACCENT_PRESETS = [
   { hex: '#f59e0b', label: 'ذهبي' },
@@ -103,6 +124,9 @@ function emptyForm(): Omit<FounderSettings, 'id'> {
     frame_color: '#e6ab2c',
     frame_enabled: true,
     particles_enabled: true,
+    app_font_family: 'Cairo',
+    app_text_color: '',
+    app_font_scale: 1,
   };
 }
 
@@ -155,6 +179,9 @@ export default function SettingsScreen() {
           frame_color: s.frame_color ?? '#e6ab2c',
           frame_enabled: s.frame_enabled ?? true,
           particles_enabled: s.particles_enabled ?? true,
+          app_font_family: s.app_font_family ?? 'Cairo',
+          app_text_color: s.app_text_color ?? '',
+          app_font_scale: s.app_font_scale ?? 1,
         });
       }
       // Load lockdown state
@@ -377,6 +404,69 @@ export default function SettingsScreen() {
               ))}
             </View>
 
+            {/* ── App typography (dynamic, read by every screen) ── */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>🔤 خط التطبيق ولون النص</Text>
+              <Text style={s.hint}>
+                يُطبَّق فوراً على كل شاشات التطبيق لدى جميع المستخدمين بعد الحفظ.
+              </Text>
+
+              <Text style={s.fieldLabel}>نوع الخط</Text>
+              <View style={s.fontGrid}>
+                {FONT_FAMILIES.map((f) => {
+                  const selected = (form.app_font_family ?? 'Cairo') === f.key;
+                  return (
+                    <Pressable
+                      key={f.key}
+                      onPress={() => setForm((v) => ({ ...v, app_font_family: f.key }))}
+                      style={[s.fontChip, selected && s.fontChipOn]}
+                    >
+                      <Text style={[s.fontChipText, { fontFamily: `${f.key}_700Bold` }, selected && { color: COLORS.gold }]}>
+                        {f.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={[s.fieldLabel, { marginTop: 10 }]}>لون النص العام</Text>
+              <View style={s.swatchRow}>
+                {TEXT_COLOR_PRESETS.map((c) => {
+                  const selected = (form.app_text_color ?? '') === c.hex;
+                  return (
+                    <Pressable
+                      key={c.hex}
+                      onPress={() => setForm((v) => ({ ...v, app_text_color: selected ? '' : c.hex }))}
+                      style={[s.swatch, { backgroundColor: c.hex }, selected && s.swatchOn]}
+                    />
+                  );
+                })}
+              </View>
+              <Text style={s.hint}>
+                {form.app_text_color
+                  ? `مفعّل: ${form.app_text_color} — اضغط اللون نفسه لإلغائه والعودة لألوان كل شاشة.`
+                  : 'غير مفعّل — كل شاشة تحتفظ بألوانها الأصلية (الوضع الموصى به).'}
+              </Text>
+
+              <Text style={[s.fieldLabel, { marginTop: 10 }]}>
+                قوام/حجم الخط: {Math.round((form.app_font_scale ?? 1) * 100)}%
+              </Text>
+              <View style={s.scaleRow}>
+                {FONT_SCALES.map((sc) => {
+                  const selected = Math.abs((form.app_font_scale ?? 1) - sc.value) < 0.001;
+                  return (
+                    <Pressable
+                      key={sc.value}
+                      onPress={() => setForm((v) => ({ ...v, app_font_scale: sc.value }))}
+                      style={[s.scaleChip, selected && s.fontChipOn]}
+                    >
+                      <Text style={[s.fontChipText, selected && { color: COLORS.gold }]}>{sc.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
             {/* ── Ambient music ── */}
             <View style={s.section}>
               <Text style={s.sectionTitle}>🎵 الموسيقى المحيطة</Text>
@@ -571,6 +661,23 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   switchLabel: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white },
   hint: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted, textAlign: 'right' },
+  // Typography controls
+  fontGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  fontChip: {
+    paddingHorizontal: 12, paddingVertical: 9, borderRadius: RADIUS.sm,
+    borderWidth: 1, borderColor: COLORS.cardBorder, backgroundColor: '#0d1117',
+  },
+  fontChipOn: { borderColor: COLORS.gold, backgroundColor: 'rgba(230,171,44,0.12)' },
+  fontChipText: { fontSize: 12, color: COLORS.white70 },
+  swatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  swatch: { width: 34, height: 34, borderRadius: 17, borderWidth: 2, borderColor: 'transparent' },
+  swatchOn: { borderColor: COLORS.gold },
+  scaleRow: { flexDirection: 'row', gap: 8 },
+  scaleChip: {
+    flex: 1, paddingVertical: 9, borderRadius: RADIUS.sm, alignItems: 'center',
+    borderWidth: 1, borderColor: COLORS.cardBorder, backgroundColor: '#0d1117',
+  },
+
   audioPickBtn: {
     backgroundColor: 'rgba(230,171,44,0.12)',
     borderWidth: 1,

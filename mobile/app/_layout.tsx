@@ -26,6 +26,7 @@ import { SiteBackgroundProvider } from '@/hooks/useSiteBackground';
 import * as Sentry from '@sentry/react-native';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { UiOverridesProvider } from '@/hooks/useUiOverrides';
+import { AppThemeProvider } from '@/hooks/useAppTheme';
 import { DesignModeToggle } from '@/components/ui/DesignModeToggle';
 import { ElementEditorSheet } from '@/components/ui/ElementEditorSheet';
 
@@ -142,6 +143,7 @@ function RootLayout() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <AuthProvider>
+          <AppThemeProvider>
           <UiOverridesProvider>
             <FrameInsetProvider>
               <SiteBackgroundProvider>
@@ -158,6 +160,7 @@ function RootLayout() {
               </SiteBackgroundProvider>
             </FrameInsetProvider>
           </UiOverridesProvider>
+          </AppThemeProvider>
         </AuthProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
