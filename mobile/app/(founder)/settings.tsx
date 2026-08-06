@@ -4,9 +4,11 @@ import {
   StyleSheet, Switch, Text, TextInput, View,
 } from 'react-native';
 import { router } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { uploadToStorage } from '@/lib/uploadToStorage';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://iraqi-service.vercel.app';
@@ -74,7 +76,8 @@ const TEXT_FIELDS: { key: keyof Omit<FounderSettings, 'id' | 'accent_color' | 'b
   { key: 'footer_legal_ckb', label: 'النص القانوني (كردي)', multiline: true },
   { key: 'footer_instagram_url', label: 'رابط انستغرام' },
   { key: 'footer_twitter_url', label: 'رابط تويتر/X' },
-  { key: 'site_ambient_audio_url', label: 'رابط الصوت المحيطي (URL)' },
+  // site_ambient_audio_url is intentionally NOT here — it has its own section
+  // with a device file picker, so it is no longer a URL-only text field.
   { key: 'announcement_text_ar', label: 'نص الإعلان (عربي)', multiline: true },
   { key: 'announcement_text_ckb', label: 'نص الإعلان (كردي)', multiline: true },
 ];
@@ -108,6 +111,7 @@ export default function SettingsScreen() {
   const [settingsId, setSettingsId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<FounderSettings, 'id'>>(emptyForm());
   const [dataLoading, setDataLoading] = useState(true);
+  const [audioUploading, setAudioUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -159,6 +163,40 @@ export default function SettingsScreen() {
       setDataLoading(false);
     })();
   }, [profile]);
+
+  // Ambient music used to be a URL-only text field, which meant the founder
+  // had to host the file somewhere else first. This picks an audio file
+  // straight off the device and uploads it to the same site-assets bucket the
+  // banners use, then stores the resulting public URL in the same column — so
+  // nothing downstream (useAmbientMusic) needs to change.
+  async function pickAmbientAudio() {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: 'audio/*',
+      copyToCacheDirectory: true, // guarantees a locally readable URI
+      multiple: false,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    const ext = asset.name?.split('.').pop()?.toLowerCase() ?? 'mp3';
+    const contentType = asset.mimeType ?? (ext === 'm4a' ? 'audio/mp4' : `audio/${ext}`);
+
+    setAudioUploading(true);
+    const { url, error } = await uploadToStorage(
+      asset.uri,
+      'site-assets',
+      `ambient-audio/${Date.now()}.${ext}`,
+      contentType,
+    );
+    setAudioUploading(false);
+
+    if (!url) {
+      Alert.alert('تعذّر رفع الملف الصوتي', error ?? 'سبب غير معروف');
+      return;
+    }
+    setForm((f) => ({ ...f, site_ambient_audio_url: url }));
+    Alert.alert('تم الرفع', 'اضغط "حفظ الإعدادات" لتثبيت الموسيقى الجديدة.');
+  }
 
   async function handleSave() {
     if (!settingsId) return;
@@ -339,6 +377,55 @@ export default function SettingsScreen() {
               ))}
             </View>
 
+            {/* ── Ambient music ── */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>🎵 الموسيقى المحيطة</Text>
+              <Text style={s.hint}>
+                ارفع ملفاً صوتياً (MP3 / M4A) من جهازك مباشرة. يُحفظ في التخزين ويعمل بكل شاشات التطبيق.
+              </Text>
+
+              <Pressable
+                onPress={pickAmbientAudio}
+                disabled={audioUploading}
+                style={({ pressed }) => [s.audioPickBtn, pressed && { opacity: 0.8 }]}
+              >
+                {audioUploading
+                  ? <ActivityIndicator color={COLORS.gold} size="small" />
+                  : <Text style={s.audioPickBtnText}>
+                      {form.site_ambient_audio_url ? '🔁 استبدال الملف الصوتي' : '⬆️ اختيار ورفع ملف صوتي'}
+                    </Text>}
+              </Pressable>
+
+              {form.site_ambient_audio_url ? (
+                <View style={s.audioCurrentRow}>
+                  <Pressable
+                    onPress={() => setForm((f) => ({ ...f, site_ambient_audio_url: '' }))}
+                    style={s.audioClearBtn}
+                  >
+                    <Text style={s.audioClearText}>حذف</Text>
+                  </Pressable>
+                  <Text style={s.audioCurrentText} numberOfLines={1} ellipsizeMode="middle">
+                    {form.site_ambient_audio_url}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={s.hint}>لا يوجد ملف صوتي حالياً — زر الموسيقى مخفي عن المستخدمين.</Text>
+              )}
+
+              {/* Kept so an already-hosted URL can still be pasted directly. */}
+              <View style={s.fieldGroup}>
+                <Text style={s.fieldLabel}>أو الصق رابطاً مباشراً (اختياري)</Text>
+                <TextInput
+                  value={form.site_ambient_audio_url ?? ''}
+                  onChangeText={(v) => setForm((f) => ({ ...f, site_ambient_audio_url: v }))}
+                  placeholder="https://..."
+                  placeholderTextColor={COLORS.white40}
+                  style={[s.input, { direction: 'ltr' as never }]}
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
+
             {/* ── Announcement toggle ── */}
             <View style={s.section}>
               <Text style={s.sectionTitle}>📢 الإعلان الجاري</Text>
@@ -484,6 +571,28 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   switchLabel: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white },
   hint: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted, textAlign: 'right' },
+  audioPickBtn: {
+    backgroundColor: 'rgba(230,171,44,0.12)',
+    borderWidth: 1,
+    borderColor: COLORS.goldBorder,
+    borderRadius: RADIUS.md,
+    paddingVertical: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 46,
+  },
+  audioPickBtnText: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
+  audioCurrentRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  audioCurrentText: { flex: 1, fontFamily: FONTS.regular, fontSize: 11, color: COLORS.white70, textAlign: 'left' },
+  audioClearBtn: {
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.3)',
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  audioClearText: { fontFamily: FONTS.bold, fontSize: 11, color: '#ef4444' },
   successBanner: { backgroundColor: 'rgba(34,197,94,0.15)', borderWidth: 1, borderColor: 'rgba(34,197,94,0.3)', borderRadius: RADIUS.sm, padding: 10 },
   successText: { fontFamily: FONTS.bold, fontSize: 13, color: '#22c55e', textAlign: 'center' },
   goldBtn: { backgroundColor: COLORS.gold, borderRadius: RADIUS.md, paddingVertical: 13, alignItems: 'center' },

@@ -1,29 +1,17 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { uploadToStorage } from '@/lib/uploadToStorage';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
-async function uploadBannerMedia(uri: string, kind: 'image' | 'video'): Promise<string | null> {
-  try {
-    const ext = uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg');
-    const path = `banners/${kind}/${Date.now()}.${ext}`;
-    const response = await fetch(uri);
-    // React Native's Blob polyfill is unreliable for binary upload bodies —
-    // it can report the correct size while silently sending empty/corrupted
-    // data. arrayBuffer() is Supabase's own recommended path for RN.
-    const arrayBuffer = await response.arrayBuffer();
-    const contentType = kind === 'video' ? `video/${ext}` : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-    const { error } = await supabase.storage.from('site-assets').upload(path, arrayBuffer, { contentType, upsert: false });
-    if (error) { console.error('upload failed:', error.message); return null; }
-    const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
-    return data.publicUrl;
-  } catch {
-    return null;
-  }
+function uploadBannerMedia(uri: string, kind: 'image' | 'video') {
+  const ext = uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg');
+  const contentType = kind === 'video' ? `video/${ext}` : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+  return uploadToStorage(uri, 'site-assets', `banners/${kind}/${Date.now()}.${ext}`, contentType);
 }
 
 interface Banner {
@@ -113,9 +101,16 @@ export default function BannersScreen() {
     });
     if (result.canceled || !result.assets[0]) return;
     setUploadingField(fieldKey);
-    const url = await uploadBannerMedia(result.assets[0].uri, kind);
+    const { url, error } = await uploadBannerMedia(result.assets[0].uri, kind);
     setUploadingField(null);
-    if (!url) return;
+    // Previously this returned silently on failure: the spinner stopped, the
+    // field stayed empty and nothing explained why, which is exactly the
+    // "الرفع لا يُحفظ ولا يظهر" report. Storage rejections (bucket policy,
+    // missing bucket, size limit) now surface verbatim.
+    if (!url) {
+      Alert.alert('تعذّر رفع الملف', error ?? 'سبب غير معروف');
+      return;
+    }
     setter(fieldKey, url);
   }
 
