@@ -37,6 +37,13 @@ interface Props {
   mode?: 'vertical' | 'rotate';
   style?: ViewStyle;
   innerStyle?: ViewStyle;
+  // true (default) makes the inner content area `flex: 1` so it fills a
+  // root that has an explicit width AND height (e.g. a fixed-size card).
+  // Confirmed via a real device test that this collapses to 0 height when
+  // the root's height is left auto/content-driven (dynamic content like
+  // the login card) — even with an explicit width. Pass false for that
+  // case so the inner area sizes from its own content instead.
+  fillHeight?: boolean;
 }
 
 export function AnimatedGoldBorder({
@@ -49,6 +56,7 @@ export function AnimatedGoldBorder({
   mode = 'vertical',
   style,
   innerStyle,
+  fillHeight = true,
 }: Props) {
   const [size, setSize] = useState({ width: 0, height: 0 });
   const { width, height } = size;
@@ -178,7 +186,7 @@ export function AnimatedGoldBorder({
       <View
         style={[
           {
-            flex: 1,
+            ...(fillHeight ? { flex: 1 } : null),
             margin: borderWidth,
             borderRadius: Math.max(0, borderRadius - borderWidth),
             overflow: 'hidden',
