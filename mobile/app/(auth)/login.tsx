@@ -196,13 +196,14 @@ export default function LoginScreen() {
             <Animated.View style={[styles.subtitleLine, lineStyle]} />
           </View>
 
-          {/* Login Card — spinning gold shimmer border via Skia. Always
-              fully visible immediately — never gated behind an entrance
-              animation (confirmed on a real device that a delayed fade
-              can leave the entire login form invisible while still
-              occupying layout space if the animation stalls). */}
-          <View>
-            <AnimatedGoldBorder borderRadius={RADIUS.xl} borderWidth={1.5} innerBg="transparent" speed={3200}>
+          {/* Login Card — spinning gold shimmer border via Skia. Not gated
+              behind any entrance animation. Also confirmed via a real
+              device recording that AnimatedGoldBorder needs an explicit
+              width to size reliably — without it the whole card can
+              render at 0 size with no error/crash (see cardWrap/
+              cardBorder below). */}
+          <View style={styles.cardWrap}>
+            <AnimatedGoldBorder borderRadius={RADIUS.xl} borderWidth={1.5} innerBg="transparent" speed={3200} style={styles.cardBorder}>
               <GoldCard style={styles.card}>
                 <ThemedText id="login.cardTitle" label="عنوان بطاقة تسجيل الدخول" bold style={styles.cardTitle}>تسجيل الدخول</ThemedText>
 
@@ -267,13 +268,13 @@ export default function LoginScreen() {
           {/* من نحن / سياسة الخصوصية — glass boxes with a shimmering animated gold border */}
           <View style={styles.infoRow}>
             <Pressable style={({ pressed }) => pressed && { opacity: 0.8 }} onPress={() => setInfoModal('about')}>
-              <AnimatedGoldBorder borderRadius={RADIUS.sm} borderWidth={1.25} innerBg="transparent" speed={3200} innerStyle={styles.infoBtn}>
+              <AnimatedGoldBorder borderRadius={RADIUS.sm} borderWidth={1.25} innerBg="transparent" speed={3200} style={styles.infoBtnBorderSmall} innerStyle={styles.infoBtn}>
                 <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
                 <ThemedText id="login.aboutBtnText" label="نص زر من نحن" bold style={styles.infoBtnText}>من نحن</ThemedText>
               </AnimatedGoldBorder>
             </Pressable>
             <Pressable style={({ pressed }) => pressed && { opacity: 0.8 }} onPress={() => setInfoModal('privacy')}>
-              <AnimatedGoldBorder borderRadius={RADIUS.sm} borderWidth={1.25} innerBg="transparent" speed={3200} innerStyle={styles.infoBtn}>
+              <AnimatedGoldBorder borderRadius={RADIUS.sm} borderWidth={1.25} innerBg="transparent" speed={3200} style={styles.infoBtnBorderLarge} innerStyle={styles.infoBtn}>
                 <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
                 <ThemedText id="login.privacyBtnText" label="نص زر سياسة الخصوصية" bold style={styles.infoBtnText}>سياسة الخصوصية</ThemedText>
               </AnimatedGoldBorder>
@@ -305,6 +306,14 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
 
+  // AnimatedGoldBorder measures its own size from onLayout and needs an
+  // unambiguous width to resolve reliably — every other usage in the app
+  // passes explicit width/height; this is the one spot with dynamic
+  // content height, so only width is fixed (via %), height stays auto.
+  // Confirmed via a real device screen recording that omitting this
+  // entirely can leave the whole card invisible (0-size) with no error.
+  cardWrap:   { width: '100%' },
+  cardBorder: { width: '100%' },
   card:      { gap: 0, borderWidth: 0, padding: 16 },
   cardTitle: {
     fontFamily: FONTS.bold,
@@ -369,6 +378,11 @@ const styles = StyleSheet.create({
   forgotText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
 
   infoRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: 2 },
+  // Fixed pixel sizes for the same reason as cardBorder above — these two
+  // strings are static (not user content), so a hardcoded size sized to
+  // fit each label comfortably is safe and avoids the auto-sizing bug.
+  infoBtnBorderSmall: { width: 104, height: 34 },
+  infoBtnBorderLarge: { width: 156, height: 34 },
   infoBtn: { paddingHorizontal: 16, paddingVertical: 7, alignItems: 'center', justifyContent: 'center' },
   infoBtnText: { fontFamily: FONTS.bold, fontSize: 12, color: '#ffffff' },
 });
