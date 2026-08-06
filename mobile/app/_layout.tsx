@@ -10,6 +10,10 @@ import {
   Cairo_400Regular,
   Cairo_700Bold,
 } from '@expo-google-fonts/cairo';
+import { Tajawal_400Regular, Tajawal_700Bold } from '@expo-google-fonts/tajawal';
+import { Almarai_400Regular, Almarai_700Bold } from '@expo-google-fonts/almarai';
+import { IBMPlexSansArabic_400Regular, IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arabic';
+import { NotoKufiArabic_400Regular, NotoKufiArabic_700Bold } from '@expo-google-fonts/noto-kufi-arabic';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/hooks/useAuth';
 import { useAppUpdates } from '@/hooks/useAppUpdates';
@@ -21,6 +25,9 @@ import { AmbientMusicIcon } from '@/components/ui/AmbientMusicIcon';
 import { SiteBackgroundProvider } from '@/hooks/useSiteBackground';
 import * as Sentry from '@sentry/react-native';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
+import { UiOverridesProvider } from '@/hooks/useUiOverrides';
+import { DesignModeToggle } from '@/components/ui/DesignModeToggle';
+import { ElementEditorSheet } from '@/components/ui/ElementEditorSheet';
 
 // Required to dismiss the OAuth browser session when the app is foregrounded
 WebBrowser.maybeCompleteAuthSession();
@@ -105,6 +112,14 @@ function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Cairo_400Regular,
     Cairo_700Bold,
+    Tajawal_400Regular,
+    Tajawal_700Bold,
+    Almarai_400Regular,
+    Almarai_700Bold,
+    IBMPlexSansArabic_400Regular,
+    IBMPlexSansArabic_700Bold,
+    NotoKufiArabic_400Regular,
+    NotoKufiArabic_700Bold,
   });
   const [showSplash, setShowSplash] = useState(true);
 
@@ -127,18 +142,22 @@ function RootLayout() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <AuthProvider>
-          <FrameInsetProvider>
-            <SiteBackgroundProvider>
-              <AmbientMusicProvider>
-                <StatusBar style="light" backgroundColor="#0d1117" />
-                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />
-                <CinematicFrame />
-                <AmbientMusicIcon />
-                <OfflineBanner />
-                {showSplash && <CinematicSplash onDone={() => setShowSplash(false)} />}
-              </AmbientMusicProvider>
-            </SiteBackgroundProvider>
-          </FrameInsetProvider>
+          <UiOverridesProvider>
+            <FrameInsetProvider>
+              <SiteBackgroundProvider>
+                <AmbientMusicProvider>
+                  <StatusBar style="light" backgroundColor="#0d1117" />
+                  <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />
+                  <CinematicFrame />
+                  <AmbientMusicIcon />
+                  <OfflineBanner />
+                  <DesignModeToggle />
+                  <ElementEditorSheet />
+                  {showSplash && <CinematicSplash onDone={() => setShowSplash(false)} />}
+                </AmbientMusicProvider>
+              </SiteBackgroundProvider>
+            </FrameInsetProvider>
+          </UiOverridesProvider>
         </AuthProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

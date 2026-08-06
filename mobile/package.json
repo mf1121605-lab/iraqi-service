@@ -13,7 +13,11 @@
     "submit": "eas submit -p android"
   },
   "dependencies": {
+    "@expo-google-fonts/almarai": "^0.4.1",
     "@expo-google-fonts/cairo": "^0.2.3",
+    "@expo-google-fonts/ibm-plex-sans-arabic": "^0.4.2",
+    "@expo-google-fonts/noto-kufi-arabic": "^0.4.3",
+    "@expo-google-fonts/tajawal": "^0.4.1",
     "@expo/vector-icons": "^14.0.0",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-community/netinfo": "11.3.1",

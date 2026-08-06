@@ -4,7 +4,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { Link, router } from 'expo-router';
@@ -30,6 +29,7 @@ import { AnimatedGoldBorder } from '@/components/ui/AnimatedGoldBorder';
 import { AnimatedLoginGlow } from '@/components/ui/AnimatedLoginGlow';
 import { GoogleGLogo } from '@/components/ui/GoogleGLogo';
 import { AboutPrivacyModal } from '@/components/ui/AboutPrivacyModal';
+import { ThemedText, ThemedBox } from '@/components/ui/Themed';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 export default function LoginScreen() {
@@ -204,7 +204,7 @@ export default function LoginScreen() {
           <View>
             <AnimatedGoldBorder borderRadius={RADIUS.xl} borderWidth={1.5} innerBg="transparent" speed={3200}>
               <GoldCard style={styles.card}>
-                <Text style={styles.cardTitle}>تسجيل الدخول</Text>
+                <ThemedText id="login.cardTitle" label="عنوان بطاقة تسجيل الدخول" bold style={styles.cardTitle}>تسجيل الدخول</ThemedText>
 
                 <View style={styles.fields}>
                   <GoldInput
@@ -222,20 +222,20 @@ export default function LoginScreen() {
                     placeholder="كلمة المرور"
                     secureToggle
                   />
-                  {error ? <Text style={styles.error}>{error}</Text> : null}
+                  {error ? <ThemedText id="login.errorText" label="نص رسالة الخطأ" style={styles.error}>{error}</ThemedText> : null}
                   <GoldButton label="دخول" onPress={handleLogin} loading={loading} />
                   <Pressable
                     style={styles.forgotBtn}
                     onPress={() => router.push('/(auth)/forgot-password')}
                   >
-                    <Text style={styles.forgotText}>نسيت كلمة المرور؟</Text>
+                    <ThemedText id="login.forgotText" label="نص نسيت كلمة المرور" style={styles.forgotText}>نسيت كلمة المرور؟</ThemedText>
                   </Pressable>
                 </View>
 
                 {/* Divider */}
                 <View style={styles.divider}>
                   <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>أو</Text>
+                  <ThemedText id="login.dividerText" label='نص الفاصل "أو"' style={styles.dividerText}>أو</ThemedText>
                   <View style={styles.dividerLine} />
                 </View>
 
@@ -245,12 +245,12 @@ export default function LoginScreen() {
                   onPress={handleGoogleSignIn}
                   disabled={googleLoading}
                 >
-                  <View style={styles.googleBadge}>
+                  <ThemedBox id="login.googleBadge" label="خلفية شارة غوغل" style={styles.googleBadge}>
                     <GoogleGLogo size={18} />
-                  </View>
-                  <Text style={styles.googleText}>
+                  </ThemedBox>
+                  <ThemedText id="login.googleText" label="نص زر الدخول بغوغل" bold style={styles.googleText}>
                     {googleLoading ? 'جاري الاتصال...' : 'الدخول بحساب Google'}
-                  </Text>
+                  </ThemedText>
                 </Pressable>
               </GoldCard>
             </AnimatedGoldBorder>
@@ -258,9 +258,9 @@ export default function LoginScreen() {
 
           {/* Register link */}
           <View style={styles.linkRow}>
-            <Text style={styles.linkText}>ليس لديك حساب؟ </Text>
+            <ThemedText id="login.registerPrompt" label="نص دعوة إنشاء حساب" style={styles.linkText}>ليس لديك حساب؟ </ThemedText>
             <Link href="/(auth)/register">
-              <Text style={styles.link}>إنشاء حساب</Text>
+              <ThemedText id="login.registerLink" label="رابط إنشاء حساب" bold style={styles.link}>إنشاء حساب</ThemedText>
             </Link>
           </View>
 
@@ -269,13 +269,13 @@ export default function LoginScreen() {
             <Pressable style={({ pressed }) => pressed && { opacity: 0.8 }} onPress={() => setInfoModal('about')}>
               <AnimatedGoldBorder borderRadius={RADIUS.sm} borderWidth={1.25} innerBg="transparent" speed={3200} innerStyle={styles.infoBtn}>
                 <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
-                <Text style={styles.infoBtnText}>من نحن</Text>
+                <ThemedText id="login.aboutBtnText" label="نص زر من نحن" bold style={styles.infoBtnText}>من نحن</ThemedText>
               </AnimatedGoldBorder>
             </Pressable>
             <Pressable style={({ pressed }) => pressed && { opacity: 0.8 }} onPress={() => setInfoModal('privacy')}>
               <AnimatedGoldBorder borderRadius={RADIUS.sm} borderWidth={1.25} innerBg="transparent" speed={3200} innerStyle={styles.infoBtn}>
                 <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
-                <Text style={styles.infoBtnText}>سياسة الخصوصية</Text>
+                <ThemedText id="login.privacyBtnText" label="نص زر سياسة الخصوصية" bold style={styles.infoBtnText}>سياسة الخصوصية</ThemedText>
               </AnimatedGoldBorder>
             </Pressable>
           </View>
