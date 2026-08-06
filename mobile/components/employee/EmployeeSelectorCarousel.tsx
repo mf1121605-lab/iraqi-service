@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { ActivityIndicator, Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
@@ -34,7 +34,6 @@ export type EmployeeCandidate = {
   rating_count?: number | null;
 };
 
-const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_W = 198;
 const CARD_H = 328;
 const CARD_GAP = 16;
@@ -44,7 +43,16 @@ const SNAP = CARD_W + CARD_GAP;
 // side inset needs to subtract that margin too — otherwise the snapped
 // card's true visual center lands CARD_GAP/2 off-center from the screen
 // middle, which is what made cards look cut off at the carousel's edges.
-const SIDE_INSET = (SCREEN_W - CARD_W) / 2 - CARD_GAP / 2;
+//
+// SIDE_INSET must be computed from a *live* screen width, not a
+// module-load-time Dimensions.get('window') snapshot — that snapshot can
+// be stale/wrong on some Android devices/release builds before the native
+// bridge finishes reporting real dimensions, silently pushing every card
+// off-center toward one edge with no error. useWindowDimensions() inside
+// the component always reflects the actual current layout.
+function sideInsetFor(screenWidth: number) {
+  return (screenWidth - CARD_W) / 2 - CARD_GAP / 2;
+}
 
 interface Props {
   candidates: EmployeeCandidate[];
@@ -64,6 +72,8 @@ interface Props {
 // the UI thread (useAnimatedScrollHandler + interpolate), so it stays at
 // 60fps with zero JS-thread round trips per frame.
 export function EmployeeSelectorCarousel({ candidates, selectedId = null, confirmingId = null, onSelect, autoScroll = false }: Props) {
+  const { width: screenWidth } = useWindowDimensions();
+  const sideInset = useMemo(() => sideInsetFor(screenWidth), [screenWidth]);
   const scrollX = useSharedValue(0);
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const onScroll = useAnimatedScrollHandler({
@@ -95,7 +105,7 @@ export function EmployeeSelectorCarousel({ candidates, selectedId = null, confir
         decelerationRate="fast"
         showsHorizontalScrollIndicator={false}
         scrollEnabled={!autoScroll}
-        contentContainerStyle={{ paddingHorizontal: SIDE_INSET }}
+        contentContainerStyle={{ paddingHorizontal: sideInset }}
       >
         {candidates.map((candidate, index) => (
           <CarouselCard
