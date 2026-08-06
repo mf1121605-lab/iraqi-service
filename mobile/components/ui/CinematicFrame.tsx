@@ -8,7 +8,7 @@
  * an animated Skia sweep (same GPU-driven technique as
  * AnimatedGoldBorder) in a color the founder can change from settings.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Canvas, LinearGradient, Path, Skia, vec } from '@shopify/react-native-skia';
@@ -53,15 +53,12 @@ export function CinematicFrame() {
   const gradStart = useDerivedValue(() => vec(progress.value * (frameW + band) - band, 0));
   const gradEnd = useDerivedValue(() => vec(progress.value * (frameW + band) - band + band, 0));
 
-  const [dim, setDim] = useState(false);
-  useEffect(() => { setDim(true); }, []);
-
   if (!enabled) return null;
 
   return (
     <View style={styles.frame} pointerEvents="none">
       <View style={{ position: 'absolute', top: topInset, left: 0, width: frameW, height: LINE + 1 }}>
-        {dim && borderPath && (
+        {borderPath && (
           <Canvas style={StyleSheet.absoluteFill}>
             {/* Dim base line, always visible */}
             <Path path={borderPath} style="stroke" strokeWidth={LINE} strokeCap="round" color={color + '38'} />

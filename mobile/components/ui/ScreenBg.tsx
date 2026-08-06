@@ -27,7 +27,7 @@ export function ScreenBg({ children, noTopPad }: Props) {
   return (
     <View style={styles.root}>
       {/* ── Skia canvas: real radial gradients ─────────────────────── */}
-      <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Canvas key={`canvas-${width}-${height}`} style={StyleSheet.absoluteFill} pointerEvents="none">
         {/* Base #0d1117 */}
         <Rect x={0} y={0} width={width} height={height} color="#0d1117" />
 
