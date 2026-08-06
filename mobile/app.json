@@ -29,7 +29,7 @@
         "backgroundColor": "#0d1117"
       },
       "package": "com.iraqiservice.app",
-      "versionCode": 4,
+      "versionCode": 5,
       "permissions": [
         "NOTIFICATIONS",
         "RECEIVE_BOOT_COMPLETED",
@@ -71,7 +71,8 @@
     },
     "owner": "boss_m.f",
     "updates": {
-      "url": "https://u.expo.dev/01765596-0307-4934-b259-c1ae8e1c482b"
+      "url": "https://u.expo.dev/01765596-0307-4934-b259-c1ae8e1c482b",
+      "checkAutomatically": "NEVER"
     }
   }
 }
