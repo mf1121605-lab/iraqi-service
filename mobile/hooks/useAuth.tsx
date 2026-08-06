@@ -96,6 +96,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [session?.user.id]);
 
   async function loadProfile(userId: string) {
+    // Re-enter the loading state for the duration of the fetch. Without this,
+    // signing in left the app at loading=false / session=set / profile=null
+    // for the whole round trip, and app/index.tsx — which routes purely off
+    // `profile` — saw a null role and redirected straight to the customer
+    // screens. The founder's own panel only appeared after a full app
+    // restart, because that path loads the profile before index.tsx ever
+    // renders. Setting this synchronously (before the first await) means it
+    // batches with the setSession() call in the same auth-state callback, so
+    // index.tsx never observes the in-between state at all.
+    setLoading(true);
     const { data, error } = await supabase
       .from('profiles')
       .select('id, given_name, family_name, phone, role, admin_level, account_status, avatar_key, bio, is_verified, onboarding_complete')

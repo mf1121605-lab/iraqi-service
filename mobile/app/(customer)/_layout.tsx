@@ -8,7 +8,9 @@ import { Icon3D } from '@/components/ui/Icon3D';
 import { AnimatedTopBorderLine } from '@/components/ui/AnimatedTopBorderLine';
 import { COLORS, FONTS } from '@/constants/theme';
 
-const TAB_BAR_HEIGHT = 62;
+// Raised ~20% (62 → 74) alongside larger icons/labels, for a clearer and
+// more forgiving touch target on the bottom bar.
+const TAB_BAR_HEIGHT = 74;
 
 // Filled glyph when the tab is active, outline glyph otherwise — the same
 // convention iOS/Material navigation uses, for a more professional look
@@ -27,7 +29,7 @@ function TabIcon({
   return (
     <Icon3D
       iconName={focused ? filled : outline}
-      size={focused ? 34 : 30}
+      size={focused ? 41 : 36}
       active={focused}
       badge={badge}
       animation={focused ? 'float' : 'none'}
@@ -124,9 +126,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#161b22',
     borderTopWidth: 1,
     borderTopColor: 'rgba(230,171,44,0.2)',
-    paddingBottom: 6,
-    paddingTop: 6,
-    height: 62,
+    paddingBottom: 8,
+    paddingTop: 7,
+    height: TAB_BAR_HEIGHT,
     elevation: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
@@ -140,7 +142,7 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontFamily: FONTS.regular,
-    fontSize: 10,
+    fontSize: 12,
   },
   badge: {
     backgroundColor: '#ef4444',

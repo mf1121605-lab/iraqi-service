@@ -3,10 +3,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { Audio } from 'expo-av';
 import { BlurView } from 'expo-blur';
@@ -185,7 +186,18 @@ export default function LoginScreen() {
       <AnimatedLoginGlow />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-        <View style={styles.scroll}>
+        {/* flexGrow:1 + justifyContent:center makes this behave EXACTLY like a
+            fixed, non-scrolling centred screen whenever the content fits — but
+            it scrolls instead of clipping when it doesn't. The previous plain
+            View clipped overflow symmetrically: on a real device that cut the
+            logo off at the top AND pushed the register / من نحن / سياسة الخصوصية
+            row off the bottom entirely, which read as "the links are missing". */}
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+        >
 
           {/* Logo — full brand mark (eagle + baked-in platform name), materializes with the eagle cry */}
           <View style={styles.header}>
@@ -260,22 +272,24 @@ export default function LoginScreen() {
             </AnimatedGoldBorder>
           </View>
 
-          {/* Register link */}
-          <View style={styles.linkRow}>
-            <ThemedText id="login.registerPrompt" label="نص دعوة إنشاء حساب" style={styles.linkText}>ليس لديك حساب؟ </ThemedText>
-            <Link href="/(auth)/register">
-              <ThemedText id="login.registerLink" label="رابط إنشاء حساب" bold style={styles.link}>إنشاء حساب</ThemedText>
-            </Link>
-          </View>
-
-          {/* من نحن / سياسة الخصوصية — glass boxes with a shimmering animated gold border.
-              fillHeight={false}: same fix as the login card. The earlier
-              hardcoded width/height (infoBtnBorderSmall/Large) got the
-              text to render but the fixed width was a guess that didn't
-              match the actual rendered text — "سياسة الخصوصية" overflowed
-              its box on a real device. Content-driven sizing is correct
-              here, not a hardcoded guess. */}
+          {/* إنشاء حساب جديد / من نحن / سياسة الخصوصية — one consistent row of
+              glass link boxes with a shimmering animated gold border.
+              Previously the register link sat in its own separate text row
+              above these two; merging all three into a single row both
+              matches the requested layout and reclaims the vertical space
+              that was pushing this whole row off the bottom of the screen.
+              fillHeight={false}: AnimatedGoldBorder's inner wrapper defaults
+              to flex:1, which collapses to 0 height without an explicit
+              parent height — content-driven sizing is what these need.
+              flexWrap lets a long label drop to a second line on a narrow
+              device instead of overflowing its box. */}
           <View style={styles.infoRow}>
+            <Pressable style={({ pressed }) => pressed && { opacity: 0.8 }} onPress={() => router.push('/(auth)/register')}>
+              <AnimatedGoldBorder borderRadius={RADIUS.sm} borderWidth={1.25} innerBg="transparent" speed={3200} innerStyle={styles.infoBtn} fillHeight={false}>
+                <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
+                <ThemedText id="login.registerLink" label="رابط إنشاء حساب" bold style={styles.infoBtnTextGold}>إنشاء حساب جديد</ThemedText>
+              </AnimatedGoldBorder>
+            </Pressable>
             <Pressable style={({ pressed }) => pressed && { opacity: 0.8 }} onPress={() => setInfoModal('about')}>
               <AnimatedGoldBorder borderRadius={RADIUS.sm} borderWidth={1.25} innerBg="transparent" speed={3200} innerStyle={styles.infoBtn} fillHeight={false}>
                 <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
@@ -290,7 +304,7 @@ export default function LoginScreen() {
             </Pressable>
           </View>
 
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
 
       <AboutPrivacyModal variant={infoModal} onClose={() => setInfoModal(null)} />
@@ -300,9 +314,9 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  scroll: { flex: 1, padding: 20, paddingVertical: 14, justifyContent: 'center', gap: 14 },
+  scroll: { flexGrow: 1, padding: 20, paddingVertical: 14, justifyContent: 'center', gap: 12 },
 
-  header: { alignItems: 'center', gap: 6 },
+  header: { alignItems: 'center', gap: 4 },
   appName:  { fontFamily: FONTS.bold,    fontSize: 24, color: COLORS.gold,  letterSpacing: 0.5 },
   subtitleLine: {
     height: 2,
@@ -335,7 +349,7 @@ const styles = StyleSheet.create({
 
   error: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.red, textAlign: 'center' },
 
-  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 10 },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 8 },
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
   dividerText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
 
@@ -379,14 +393,16 @@ const styles = StyleSheet.create({
     color: COLORS.gold,
   },
 
-  linkRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  linkText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.muted },
-  link:     { fontFamily: FONTS.bold,    fontSize: 14, color: COLORS.gold },
-
   forgotBtn: { alignSelf: 'center', paddingVertical: 4 },
   forgotText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
 
-  infoRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: 2 },
-  infoBtn: { paddingHorizontal: 16, paddingVertical: 7, alignItems: 'center', justifyContent: 'center' },
+  // Three link boxes on one line. flexWrap is the safety valve: on a narrow
+  // device the longest label ("سياسة الخصوصية") drops to a second line
+  // instead of overflowing, which is what happened when these boxes were
+  // given hardcoded pixel widths.
+  infoRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 2 },
+  infoBtn: { paddingHorizontal: 12, paddingVertical: 7, alignItems: 'center', justifyContent: 'center' },
   infoBtnText: { fontFamily: FONTS.bold, fontSize: 12, color: '#ffffff' },
+  // The register link is the primary action of the three — gold, not white.
+  infoBtnTextGold: { fontFamily: FONTS.bold, fontSize: 12, color: COLORS.gold },
 });
