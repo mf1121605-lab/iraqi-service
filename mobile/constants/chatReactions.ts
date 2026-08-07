@@ -9,6 +9,9 @@ import type { ReactionOption } from '@/components/ui/ReactionPickerOverlay';
  */
 export const REPLY_KEY = '__reply__';
 
+/** Sentinel key for the destructive delete slot. */
+export const DELETE_KEY = '__delete__';
+
 /**
  * The chat bar carries the same six reactions the old tap-only popover had,
  * plus reply as a seventh slot — that popover had a trailing reply button, and
@@ -24,3 +27,14 @@ export const CHAT_REACTIONS: ReactionOption[] = [
   { key: '🙏', emoji: '🙏', label: 'شكراً' },
   { key: REPLY_KEY, emoji: '↩️', label: 'رد' },
 ];
+
+/**
+ * Builds the bar for one message. Delete is appended only when the viewer may
+ * actually perform it — showing it otherwise would produce a button that
+ * PostgREST answers with a successful zero-row delete, i.e. silent failure.
+ */
+export function buildChatReactions(canDelete: boolean): ReactionOption[] {
+  return canDelete
+    ? [...CHAT_REACTIONS, { key: DELETE_KEY, emoji: '🗑️', label: 'حذف', tone: 'danger' as const }]
+    : CHAT_REACTIONS;
+}

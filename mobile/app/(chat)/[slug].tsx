@@ -17,7 +17,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { ReactionPickerOverlay } from '@/components/ui/ReactionPickerOverlay';
-import { CHAT_REACTIONS, REPLY_KEY } from '@/constants/chatReactions';
+import { buildChatReactions, DELETE_KEY, REPLY_KEY } from '@/constants/chatReactions';
+import { confirmDelete } from '@/lib/confirmDelete';
 import { OrderAlertCard } from '@/components/chat/OrderAlertCard';
 import { HqLinksBox } from '@/components/chat/HqLinksBox';
 import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
@@ -25,7 +26,7 @@ import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
 import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
 import { TwemojiSticker } from '@/components/chat/TwemojiSticker';
 import { AnimatedGoldBorder } from '@/components/ui/AnimatedGoldBorder';
-import { useAuth } from '@/hooks/useAuth';
+import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
@@ -485,12 +486,22 @@ export default function ChatRoomScreen() {
 
             return (
               <ReactionPickerOverlay
-                reactions={CHAT_REACTIONS}
+                reactions={buildChatReactions(isMine || hasFounderAccess(profile))}
                 align={isMine ? 'end' : 'start'}
                 onSelectReaction={(key) => {
                   // Reply rides in the bar as a seventh slot so long-press
                   // still offers it, exactly as the old popover did.
                   if (key === REPLY_KEY) setReplyTo(item);
+                  else if (key === DELETE_KEY) {
+                    confirmDelete({
+                      kind: 'message',
+                      table: 'chat_messages',
+                      id: item.id,
+                      // Drop it locally too: the realtime DELETE event is the usual
+                      // path, but this keeps the list right if that socket is down.
+                      onDeleted: () => setMessages((cur) => cur.filter((m) => m.id !== item.id)),
+                    });
+                  }
                   else toggleReaction(item.id, key);
                 }}
               >

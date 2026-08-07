@@ -16,7 +16,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { MessageBubble, MessageStatus } from '@/components/chat/MessageBubble';
 import { ReactionPickerOverlay } from '@/components/ui/ReactionPickerOverlay';
-import { CHAT_REACTIONS, REPLY_KEY } from '@/constants/chatReactions';
+import { buildChatReactions, DELETE_KEY, REPLY_KEY } from '@/constants/chatReactions';
+import { confirmDelete } from '@/lib/confirmDelete';
 import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { Avatar } from '@/components/chat/Avatar';
 import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
@@ -351,12 +352,22 @@ export default function DmThread() {
             const status: MessageStatus = item.read_at ? 'read' : 'sent';
             return (
               <ReactionPickerOverlay
-                reactions={CHAT_REACTIONS}
+                reactions={buildChatReactions(isMine)}
                 align={isMine ? 'end' : 'start'}
                 onSelectReaction={(key) => {
                   // Reply rides in the bar as a seventh slot so long-press
                   // still offers it, exactly as the old popover did.
                   if (key === REPLY_KEY) setReplyTo(item);
+                  else if (key === DELETE_KEY) {
+                    confirmDelete({
+                      kind: 'message',
+                      table: 'direct_messages',
+                      id: item.id,
+                      // Drop it locally too: the realtime DELETE event is the usual
+                      // path, but this keeps the list right if that socket is down.
+                      onDeleted: () => setMessages((cur) => cur.filter((m) => m.id !== item.id)),
+                    });
+                  }
                   else pickReaction(item.id, key);
                 }}
               >

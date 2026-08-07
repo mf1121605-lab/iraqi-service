@@ -20,6 +20,9 @@ export interface ReactionOption {
   key: string;
   emoji: string;
   label: string;
+  /** 'danger' renders the slot on a red pill — used for destructive actions
+   *  such as delete, so they never read as just another reaction. */
+  tone?: 'default' | 'danger';
 }
 
 interface Props {
@@ -204,7 +207,14 @@ export function ReactionPickerOverlay({
 
             <View style={styles.row}>
               {reactions.map((r, i) => (
-                <ReactionItem key={r.key} index={i} activeIndex={activeIndex} emoji={r.emoji} width={itemW} />
+                <ReactionItem
+                  key={r.key}
+                  index={i}
+                  activeIndex={activeIndex}
+                  emoji={r.emoji}
+                  width={itemW}
+                  danger={r.tone === 'danger'}
+                />
               ))}
             </View>
           </Animated.View>
@@ -219,11 +229,13 @@ function ReactionItem({
   activeIndex,
   emoji,
   width,
+  danger,
 }: {
   index: number;
   activeIndex: Animated.SharedValue<number>;
   emoji: string;
   width: number;
+  danger?: boolean;
 }) {
   const style = useAnimatedStyle(() => {
     // Distance from the finger drives both scale and lift, so neighbours ease
@@ -241,7 +253,9 @@ function ReactionItem({
 
   return (
     <Animated.View style={[styles.slot, { width }, style]}>
-      <Text style={styles.emoji}>{emoji}</Text>
+      <View style={danger ? styles.dangerPill : undefined}>
+        <Text style={styles.emoji}>{emoji}</Text>
+      </View>
     </Animated.View>
   );
 }
@@ -273,6 +287,14 @@ const styles = StyleSheet.create({
   emoji: { fontSize: EMOJI_SIZE },
 
   labelAnchor: { position: 'absolute', bottom: ROW_H + 6, left: 0, width: 0, alignItems: 'center' },
+  dangerPill: {
+    backgroundColor: 'rgba(239,68,68,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.55)',
+    borderRadius: 999,
+    paddingHorizontal: 5,
+    paddingVertical: 3,
+  },
   labelBubble: {
     backgroundColor: 'rgba(0,0,0,0.82)',
     paddingHorizontal: 10,

@@ -19,7 +19,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { MessageBubble, MessageStatus } from '@/components/chat/MessageBubble';
 import { ReactionPickerOverlay } from '@/components/ui/ReactionPickerOverlay';
-import { CHAT_REACTIONS, REPLY_KEY } from '@/constants/chatReactions';
+import { buildChatReactions, DELETE_KEY, REPLY_KEY } from '@/constants/chatReactions';
+import { confirmDelete } from '@/lib/confirmDelete';
 import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
 import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
@@ -455,12 +456,22 @@ export default function RequestDetail() {
             const status: MessageStatus = item.read_at ? 'read' : 'sent';
             return (
               <ReactionPickerOverlay
-                reactions={CHAT_REACTIONS}
+                reactions={buildChatReactions(isMine)}
                 align={isMine ? 'end' : 'start'}
                 onSelectReaction={(key) => {
                   // Reply rides in the bar as a seventh slot so long-press
                   // still offers it, exactly as the old popover did.
                   if (key === REPLY_KEY) setReplyTo(item);
+                  else if (key === DELETE_KEY) {
+                    confirmDelete({
+                      kind: 'message',
+                      table: 'request_messages',
+                      id: item.id,
+                      // Drop it locally too: the realtime DELETE event is the usual
+                      // path, but this keeps the list right if that socket is down.
+                      onDeleted: () => setMessages((cur) => cur.filter((m) => m.id !== item.id)),
+                    });
+                  }
                   else pickReaction(item.id, key);
                 }}
               >

@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ResizeMode, Video } from 'expo-av';
 import Animated, {
   FadeIn,
+  FadeOutUp,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -28,9 +29,10 @@ import { ScreenBg } from '@/components/ui/ScreenBg';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Icon3D } from '@/components/ui/Icon3D';
 import { ReactionPickerOverlay, type ReactionOption } from '@/components/ui/ReactionPickerOverlay';
+import { confirmDelete } from '@/lib/confirmDelete';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { Avatar } from '@/components/chat/Avatar';
-import { useAuth } from '@/hooks/useAuth';
+import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
@@ -68,6 +70,15 @@ const REACTIONS: { type: string; emoji: string; label: string; colors: [string, 
 const REACTION_MAP = Object.fromEntries(REACTIONS.map((r) => [r.type, r]));
 // Same six types the DB CHECK allows, in the shape the scrubbing picker wants.
 const PICKER_REACTIONS: ReactionOption[] = REACTIONS.map((r) => ({ key: r.type, emoji: r.emoji, label: r.label }));
+const DELETE_KEY = '__delete__';
+// Appended only when the viewer may actually delete: PostgREST answers an
+// RLS-blocked delete with a successful zero-row response, so an ungated button
+// would fail silently.
+function pickerWithDelete(canDelete: boolean): ReactionOption[] {
+  return canDelete
+    ? [...PICKER_REACTIONS, { key: DELETE_KEY, emoji: '🗑️', label: 'حذف', tone: 'danger' as const }]
+    : PICKER_REACTIONS;
+}
 
 function AvatarCircle({ name, size = 38 }: { name: string; size?: number }) {
   const initials = name
@@ -186,7 +197,7 @@ function GlossyButton({
 }
 
 export default function NewsScreen() {
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const { postId: deepLinkedPostId } = useLocalSearchParams<{ postId?: string }>();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -452,13 +463,20 @@ export default function NewsScreen() {
     byParent: Record<string, Comment[]>,
     depth: number,
     postId: string,
+    postAuthorId: string | null,
   ): React.ReactNode {
     const cName = c.author ? `${c.author.given_name} ${c.author.family_name}` : 'مجهول';
     const myReaction = c.reactions.find((r) => r.user_id === session?.user.id);
     const children = byParent[c.id] ?? [];
+    // Comment author, the post's own author, or platform staff — matching the
+    // widened social_comments DELETE policy exactly.
+    const canDeleteComment =
+      c.author?.id === session?.user.id ||
+      postAuthorId === session?.user.id ||
+      hasFounderAccess(profile);
     return (
       <View key={c.id} style={{ marginRight: depth * 20 }}>
-        <Animated.View entering={FadeIn.duration(220)} style={styles.commentRow}>
+        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOutUp.duration(200)} style={styles.commentRow}>
           {c.author ? (
             <Avatar avatarKey={c.author.avatar_key} name={cName} seed={c.author.id} size={depth > 0 ? 24 : 28} />
           ) : (
@@ -474,9 +492,20 @@ export default function NewsScreen() {
               </Pressable>
               <ReactionPickerOverlay
                 style={{ position: 'relative' }}
-                reactions={PICKER_REACTIONS}
+                reactions={pickerWithDelete(canDeleteComment)}
                 align="end"
-                onSelectReaction={(type) => toggleCommentReaction(c, type)}
+                onSelectReaction={(type) => {
+                  if (type === DELETE_KEY) {
+                    confirmDelete({
+                      kind: 'comment',
+                      table: 'social_comments',
+                      id: c.id,
+                      onDeleted: () => setPosts((cur) => cur.map((p) =>
+                        p.id === postId ? { ...p, comments: p.comments.filter((x) => x.id !== c.id) } : p,
+                      )),
+                    });
+                  } else toggleCommentReaction(c, type);
+                }}
               >
                 <Pressable
                   onPress={() => toggleCommentReaction(c, myReaction?.reaction_type ?? 'like')}
@@ -491,7 +520,7 @@ export default function NewsScreen() {
             </View>
           </View>
         </Animated.View>
-        {children.map((child) => renderCommentNode(child, byParent, depth + 1, postId))}
+        {children.map((child) => renderCommentNode(child, byParent, depth + 1, postId, postAuthorId))}
       </View>
     );
   }
@@ -730,9 +759,20 @@ export default function NewsScreen() {
               <View style={styles.actionsRow}>
                 <ReactionPickerOverlay
                   style={{ position: 'relative', flex: 1 }}
-                  reactions={PICKER_REACTIONS}
+                  reactions={pickerWithDelete(
+                    item.author?.id === session?.user.id || hasFounderAccess(profile),
+                  )}
                   align="start"
-                  onSelectReaction={(type) => handleReaction(item.id, type)}
+                  onSelectReaction={(type) => {
+                    if (type === DELETE_KEY) {
+                      confirmDelete({
+                        kind: 'post',
+                        table: 'social_posts',
+                        id: item.id,
+                        onDeleted: () => setPosts((cur) => cur.filter((p) => p.id !== item.id)),
+                      });
+                    } else handleReaction(item.id, type);
+                  }}
                 >
                   <GlossyButton
                     style={styles.actionBtn}
@@ -764,7 +804,7 @@ export default function NewsScreen() {
                   {roots.length === 0 ? (
                     <Text style={styles.noComments}>لا توجد تعليقات بعد</Text>
                   ) : (
-                    roots.map((c) => renderCommentNode(c, byParent, 0, item.id))
+                    roots.map((c) => renderCommentNode(c, byParent, 0, item.id, item.author?.id ?? null))
                   )}
 
                   {reply && (
