@@ -25,6 +25,7 @@ export const CHAT_REACTIONS: ReactionOption[] = [
   { key: '😮', emoji: '😮', label: 'واو' },
   { key: '😢', emoji: '😢', label: 'حزين' },
   { key: '🙏', emoji: '🙏', label: 'شكراً' },
+  { key: '😡', emoji: '😡', label: 'غاضب' },
   { key: REPLY_KEY, emoji: '↩️', label: 'رد' },
 ];
 

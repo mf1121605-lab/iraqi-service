@@ -1,5 +1,5 @@
 import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
-import { Dimensions, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Dimensions, Modal, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -81,8 +81,11 @@ export function ReactionPickerOverlay({
   const wrapRef = useRef<View>(null);
   const [open, setOpen] = useState(false);
   const [activeLabel, setActiveLabel] = useState<string | null>(null);
-  // Bar offset within the wrapper, clamped so it never runs off screen.
+  // Absolute screen position for the bar — it renders inside a Modal now (see
+  // below), not nested inside the wrapped item, so these are real screen
+  // coordinates rather than an offset relative to the wrapper.
   const [rowLeft, setRowLeft] = useState(0);
+  const [rowTop, setRowTop] = useState(0);
 
   const progress = useSharedValue(0);      // 0 hidden, 1 shown
   const activeIndex = useSharedValue(-1);
@@ -91,7 +94,7 @@ export function ReactionPickerOverlay({
   // Measured on layout rather than guessed: the gesture converts an absolute
   // touch X into an emoji index, so it needs the bar's real page position.
   const handleLayout = useCallback(() => {
-    wrapRef.current?.measureInWindow((x, _y, w) => {
+    wrapRef.current?.measureInWindow((x, y, w) => {
       const screenW = Dimensions.get('window').width;
       const raw =
         align === 'start' ? 0 :
@@ -101,7 +104,8 @@ export function ReactionPickerOverlay({
         EDGE_MARGIN,
         Math.min(screenW - rowW - EDGE_MARGIN, x + raw),
       );
-      setRowLeft(clampedAbs - x);
+      setRowLeft(clampedAbs);
+      setRowTop(y - ROW_H - 8);
       rowPageX.value = clampedAbs;
     });
   }, [align, rowW, rowPageX]);
@@ -191,33 +195,43 @@ export function ReactionPickerOverlay({
       <View ref={wrapRef} onLayout={handleLayout} style={style} collapsable={false}>
         {children}
 
+        {/* Rendered through a Modal rather than as a nested absolute child —
+            any ancestor along the way (a post card, a chat bubble, a comment
+            box) is very likely to have overflow:'hidden' for its rounded
+            corners, which would silently clip this bar since it pops up past
+            the wrapped item's own edge. A Modal paints in its own native
+            layer above everything, so no ancestor's overflow can touch it. */}
         {open && (
-          <Animated.View
-            style={[styles.bar, { left: rowLeft, width: rowW }, barStyle]}
-            pointerEvents="none"
-          >
-            {/* Label sits above the bar and tracks the active emoji. Its own
-                wrapper is zero-width and centred on the slot, so the bubble
-                can grow in both directions without shifting the anchor. */}
-            <Animated.View style={[styles.labelAnchor, labelStyle]} pointerEvents="none">
-              <View style={styles.labelBubble}>
-                <Text style={styles.labelText} numberOfLines={1}>{activeLabel ?? ''}</Text>
-              </View>
-            </Animated.View>
+          <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={() => {}}>
+            <View style={StyleSheet.absoluteFill} pointerEvents="none">
+              <Animated.View
+                style={[styles.bar, { left: rowLeft, top: rowTop, width: rowW }, barStyle]}
+                pointerEvents="none"
+              >
+                {/* Label sits above the bar and tracks the active emoji. Its own
+                    wrapper is zero-width and centred on the slot, so the bubble
+                    can grow in both directions without shifting the anchor. */}
+                <Animated.View style={[styles.labelAnchor, labelStyle]} pointerEvents="none">
+                  <View style={styles.labelBubble}>
+                    <Text style={styles.labelText} numberOfLines={1}>{activeLabel ?? ''}</Text>
+                  </View>
+                </Animated.View>
 
-            <View style={styles.row}>
-              {reactions.map((r, i) => (
-                <ReactionItem
-                  key={r.key}
-                  index={i}
-                  activeIndex={activeIndex}
-                  emoji={r.emoji}
-                  width={itemW}
-                  danger={r.tone === 'danger'}
-                />
-              ))}
+                <View style={styles.row}>
+                  {reactions.map((r, i) => (
+                    <ReactionItem
+                      key={r.key}
+                      index={i}
+                      activeIndex={activeIndex}
+                      emoji={r.emoji}
+                      width={itemW}
+                      danger={r.tone === 'danger'}
+                    />
+                  ))}
+                </View>
+              </Animated.View>
             </View>
-          </Animated.View>
+          </Modal>
         )}
       </View>
     </GestureDetector>
@@ -263,13 +277,17 @@ function ReactionItem({
 const styles = StyleSheet.create({
   bar: {
     position: 'absolute',
-    bottom: '100%',
-    marginBottom: 8,
     height: ROW_H,
-    zIndex: 40,
   },
+  // row-reverse because the app runs under the device's real, active RTL
+  // mirroring (confirmed on a real device) — a plain 'row' here auto-mirrors
+  // so array index 0 lands on the right, while indexAt()/labelStyle below
+  // both compute physical left-to-right positions. row-reverse cancels the
+  // mirror back to physical ordering, keeping the finger position, the
+  // rendered emoji, and the label bubble all in agreement — this was the
+  // "dragging right moves the highlight left" bug.
   row: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     height: ROW_H,
     paddingHorizontal: ROW_PAD_H,
