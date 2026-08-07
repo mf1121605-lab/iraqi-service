@@ -652,8 +652,18 @@ export default function NewsScreen() {
             <GlassCard style={styles.postCard} noPad borderRadius={18} borderSpeed={4500 + Math.random() * 2000}>
               {/* Post header */}
               <View style={styles.postHeader}>
-                <Text style={styles.postDate}>{formatDate(item.created_at)}</Text>
                 <View style={styles.authorCluster}>
+                  <Pressable
+                    style={styles.authorRow}
+                    onPress={() => item.author && router.push({ pathname: '/user/[userId]', params: { userId: item.author.id } })}
+                  >
+                    {item.author ? (
+                      <Avatar avatarKey={item.author.avatar_key} name={authorName} seed={item.author.id} size={38} />
+                    ) : (
+                      <AvatarCircle name={authorName} size={38} />
+                    )}
+                    <Text style={styles.authorName}>{authorName}</Text>
+                  </Pressable>
                   {item.author && item.author.id !== session?.user.id && (
                     <Pressable
                       style={[styles.followPill, followingIds.has(item.author.id) && styles.followPillActive]}
@@ -666,18 +676,8 @@ export default function NewsScreen() {
                       </Text>
                     </Pressable>
                   )}
-                  <Pressable
-                    style={styles.authorRow}
-                    onPress={() => item.author && router.push({ pathname: '/user/[userId]', params: { userId: item.author.id } })}
-                  >
-                    <Text style={styles.authorName}>{authorName}</Text>
-                    {item.author ? (
-                      <Avatar avatarKey={item.author.avatar_key} name={authorName} seed={item.author.id} size={38} />
-                    ) : (
-                      <AvatarCircle name={authorName} size={38} />
-                    )}
-                  </Pressable>
                 </View>
+                <Text style={styles.postDate}>{formatDate(item.created_at)}</Text>
               </View>
 
               {/* Content */}
@@ -1039,7 +1039,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  commentAuthor: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold },
+  commentAuthor: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold, textAlign: 'right' },
   commentContent: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.white, lineHeight: 18, textAlign: 'right' },
   commentImage: { width: '100%', height: 120, borderRadius: 8, marginTop: 4 },
   commentMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 },
