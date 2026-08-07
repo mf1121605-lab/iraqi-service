@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
   notFoundText: { fontFamily: FONTS.regular, fontSize: 15, color: COLORS.muted },
 
   navHeader: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingTop: Platform.OS === 'ios' ? 8 : 12,

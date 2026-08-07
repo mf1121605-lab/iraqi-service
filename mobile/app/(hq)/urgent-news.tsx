@@ -165,7 +165,7 @@ export default function HqUrgentNews() {
 const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   denied: { color: COLORS.white, fontFamily: FONTS.bold, fontSize: 18 },
-  header: { flexDirection: 'row-reverse', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   backArrow: { fontSize: 28, color: COLORS.gold, lineHeight: 32 },
   title: { fontFamily: FONTS.bold, fontSize: 17, color: COLORS.white, flex: 1, textAlign: 'right' },

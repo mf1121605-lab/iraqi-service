@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   scroll: { padding: 16, gap: 20 },
 
   header: { gap: 4 },
-  backBtn: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, marginBottom: 8 },
+  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
   backIcon: { fontSize: 22, color: COLORS.gold, lineHeight: 26 },
   backText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.gold },
   headerCenter: { alignItems: 'flex-end', gap: 2 },
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
 
   svcList: { gap: 8 },
   svcRow: {
-    flexDirection: 'row-reverse', alignItems: 'center', gap: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.cardBorder,
     borderRadius: RADIUS.md, paddingHorizontal: 12, paddingVertical: 12,
   },

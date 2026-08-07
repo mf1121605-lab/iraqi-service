@@ -122,7 +122,7 @@ export default function PaymentsScreen() {
 const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   denied: { color: COLORS.white, fontFamily: FONTS.bold, fontSize: 18 },
-  header: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', padding: 16, paddingTop: 8 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, paddingTop: 8 },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(230,171,44,0.1)', alignItems: 'center', justifyContent: 'center' },
   backArrow: { fontSize: 24, color: COLORS.gold, lineHeight: 28 },
   headerTitle: { fontFamily: FONTS.bold, fontSize: 18, color: COLORS.white },

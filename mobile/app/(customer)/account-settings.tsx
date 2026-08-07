@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
   scroll: { padding: 20, gap: 16 },
 
   navHeader: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,

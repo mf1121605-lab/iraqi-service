@@ -191,8 +191,13 @@ export function MessageBubble({
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', marginVertical: 3, paddingHorizontal: 12 },
-  rowMine: { justifyContent: 'flex-end' },
-  rowTheirs: { justifyContent: 'flex-start' },
+  // I18nManager.isRTL is genuinely active on real devices (confirmed via a
+  // founder screenshot showing "mine" rendering on the physical left) — RN
+  // auto-mirrors a plain 'row' container's main axis under RTL, so
+  // flex-end/flex-start here resolve to the OPPOSITE physical side from
+  // their LTR meaning. Swapped so "mine" still lands on the physical right.
+  rowMine: { justifyContent: 'flex-start' },
+  rowTheirs: { justifyContent: 'flex-end' },
   bubbleWrap: { maxWidth: '78%' },
   avatarSlot: { marginEnd: 6, alignSelf: 'flex-end', marginBottom: 2 },
   bubble: {

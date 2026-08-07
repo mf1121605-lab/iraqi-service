@@ -1217,8 +1217,8 @@ const styles = StyleSheet.create({
   quickRejectText: { fontFamily: FONTS.bold, fontSize: 12, color: '#ef4444' },
 
   // ── Chat view ──────────────────────────────────────────────────────────────
-  chatNavBar: { flexDirection: 'row-reverse', alignItems: 'center', paddingHorizontal: 12, paddingTop: Platform.OS === 'ios' ? 8 : 12, paddingBottom: 10, backgroundColor: '#161b22', borderBottomWidth: 1, borderBottomColor: 'rgba(230,171,44,0.15)', gap: 8 },
-  navBar: { flexDirection: 'row-reverse', alignItems: 'center', paddingHorizontal: 12, paddingTop: Platform.OS === 'ios' ? 8 : 12, paddingBottom: 10, gap: 8, borderBottomWidth: 1, borderBottomColor: COLORS.white10 },
+  chatNavBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: Platform.OS === 'ios' ? 8 : 12, paddingBottom: 10, backgroundColor: '#161b22', borderBottomWidth: 1, borderBottomColor: 'rgba(230,171,44,0.15)', gap: 8 },
+  navBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: Platform.OS === 'ios' ? 8 : 12, paddingBottom: 10, gap: 8, borderBottomWidth: 1, borderBottomColor: COLORS.white10 },
   navTitle: { fontFamily: FONTS.bold, fontSize: 15, color: COLORS.white, flex: 1, textAlign: 'center' },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(230,171,44,0.1)', alignItems: 'center', justifyContent: 'center' },
   backIcon: { fontSize: 24, color: COLORS.gold, lineHeight: 28 },
