@@ -17,9 +17,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ResizeMode, Video } from 'expo-av';
 import Animated, {
-  Easing,
   FadeIn,
-  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -29,6 +27,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Icon3D } from '@/components/ui/Icon3D';
+import { ReactionPickerOverlay, type ReactionOption } from '@/components/ui/ReactionPickerOverlay';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { Avatar } from '@/components/chat/Avatar';
 import { useAuth } from '@/hooks/useAuth';
@@ -67,6 +66,8 @@ const REACTIONS: { type: string; emoji: string; label: string; colors: [string, 
   { type: 'angry', emoji: '😡', label: 'غضب',   colors: ['#ff8a5c', '#d6431f'] },
 ];
 const REACTION_MAP = Object.fromEntries(REACTIONS.map((r) => [r.type, r]));
+// Same six types the DB CHECK allows, in the shape the scrubbing picker wants.
+const PICKER_REACTIONS: ReactionOption[] = REACTIONS.map((r) => ({ key: r.type, emoji: r.emoji, label: r.label }));
 
 function AvatarCircle({ name, size = 38 }: { name: string; size?: number }) {
   const initials = name
@@ -184,29 +185,6 @@ function GlossyButton({
   );
 }
 
-// ── Long-press reaction popover — appears above the like button ──
-function ReactionPopover({ onPick, onClose }: { onPick: (type: string) => void; onClose: () => void }) {
-  return (
-    <Animated.View
-      entering={FadeInDown.duration(180).easing(Easing.out(Easing.back(1.4)))}
-      style={styles.popoverWrap}
-    >
-      <View style={styles.popover}>
-        {REACTIONS.map((r) => (
-          <Pressable
-            key={r.type}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}); onPick(r.type); onClose(); }}
-            style={styles.popoverEmojiBtn}
-            hitSlop={4}
-          >
-            <Icon3D emoji={r.emoji} size={34} animation="pulse" />
-          </Pressable>
-        ))}
-      </View>
-    </Animated.View>
-  );
-}
-
 export default function NewsScreen() {
   const { session } = useAuth();
   const { postId: deepLinkedPostId } = useLocalSearchParams<{ postId?: string }>();
@@ -222,8 +200,6 @@ export default function NewsScreen() {
   const [commentImages, setCommentImages] = useState<Record<string, string>>({});
   const [replyingTo, setReplyingTo] = useState<Record<string, { id: string; name: string } | null>>({});
   const [sendingComment, setSendingComment] = useState<string | null>(null);
-  const [openPopoverPostId, setOpenPopoverPostId] = useState<string | null>(null);
-  const [openCommentPopoverId, setOpenCommentPopoverId] = useState<string | null>(null);
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const [mutedVideoId, setMutedVideoId] = useState<Set<string>>(new Set());
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
@@ -496,16 +472,14 @@ export default function NewsScreen() {
               <Pressable onPress={() => setReplyingTo((prev) => ({ ...prev, [postId]: { id: c.id, name: cName } }))}>
                 <Text style={styles.commentReplyBtn}>رد</Text>
               </Pressable>
-              <View style={{ position: 'relative' }}>
-                {openCommentPopoverId === c.id && (
-                  <ReactionPopover
-                    onPick={(type) => toggleCommentReaction(c, type)}
-                    onClose={() => setOpenCommentPopoverId(null)}
-                  />
-                )}
+              <ReactionPickerOverlay
+                style={{ position: 'relative' }}
+                reactions={PICKER_REACTIONS}
+                align="end"
+                onSelectReaction={(type) => toggleCommentReaction(c, type)}
+              >
                 <Pressable
                   onPress={() => toggleCommentReaction(c, myReaction?.reaction_type ?? 'like')}
-                  onLongPress={() => setOpenCommentPopoverId(c.id)}
                   style={styles.commentLikeBtn}
                 >
                   <Text style={[styles.commentLikeIcon, myReaction && { color: COLORS.gold }]}>
@@ -513,7 +487,7 @@ export default function NewsScreen() {
                   </Text>
                   {c.reactions.length > 0 && <Text style={styles.commentLikeCount}>{c.reactions.length}</Text>}
                 </Pressable>
-              </View>
+              </ReactionPickerOverlay>
             </View>
           </View>
         </Animated.View>
@@ -754,26 +728,24 @@ export default function NewsScreen() {
 
               {/* Glossy 3D action row: إعجاب / تعليق / مشاركة */}
               <View style={styles.actionsRow}>
-                <View style={{ position: 'relative', flex: 1 }}>
-                  {openPopoverPostId === item.id && (
-                    <ReactionPopover
-                      onPick={(type) => handleReaction(item.id, type)}
-                      onClose={() => setOpenPopoverPostId(null)}
-                    />
-                  )}
+                <ReactionPickerOverlay
+                  style={{ position: 'relative', flex: 1 }}
+                  reactions={PICKER_REACTIONS}
+                  align="start"
+                  onSelectReaction={(type) => handleReaction(item.id, type)}
+                >
                   <GlossyButton
                     style={styles.actionBtn}
                     active={!!myReaction}
                     colors={myReaction ? (REACTION_MAP[myReaction.reaction_type]?.colors ?? undefined) : undefined}
                     onPress={() => quickToggleLike(item.id)}
-                    onLongPress={() => setOpenPopoverPostId(item.id)}
                   >
                     <Text style={styles.actionEmoji}>{myReaction ? REACTION_MAP[myReaction.reaction_type]?.emoji : '👍'}</Text>
                     <Text style={[styles.actionLabel, myReaction && { color: '#fff' }]}>
                       {myReaction ? REACTION_MAP[myReaction.reaction_type]?.label : 'إعجاب'}
                     </Text>
                   </GlossyButton>
-                </View>
+                </ReactionPickerOverlay>
 
                 <GlossyButton style={styles.actionBtn} onPress={() => toggleComments(item.id)}>
                   <Text style={styles.actionEmoji}>💬</Text>
@@ -1002,26 +974,6 @@ const styles = StyleSheet.create({
   actionBtn: { height: 40 },
   actionEmoji: { fontSize: 16 },
   actionLabel: { fontFamily: FONTS.bold, fontSize: 12, color: COLORS.white70 },
-
-  // Reaction popover
-  popoverWrap: { position: 'absolute', bottom: '100%', left: 0, marginBottom: 8, zIndex: 20 },
-  popover: {
-    flexDirection: 'row',
-    gap: 4,
-    backgroundColor: '#161b22',
-    borderWidth: 1,
-    borderColor: COLORS.goldBorder,
-    borderRadius: 24,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 14,
-    elevation: 10,
-  },
-  popoverEmojiBtn: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
-  popoverEmoji: { fontSize: 24 },
 
   commentsSection: {
     borderTopWidth: 1,

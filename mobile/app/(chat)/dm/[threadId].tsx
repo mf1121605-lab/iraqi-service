@@ -15,7 +15,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { MessageBubble, MessageStatus } from '@/components/chat/MessageBubble';
-import { MessageReactionPopover } from '@/components/chat/MessageReactionPopover';
+import { ReactionPickerOverlay } from '@/components/ui/ReactionPickerOverlay';
+import { CHAT_REACTIONS, REPLY_KEY } from '@/constants/chatReactions';
 import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { Avatar } from '@/components/chat/Avatar';
 import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
@@ -97,7 +98,6 @@ export default function DmThread() {
   const [initializing, setInitializing] = useState(true);
   const [recording, setRecording] = useState(false);
   const [replyTo, setReplyTo] = useState<DmMessage | null>(null);
-  const [reactingId, setReactingId] = useState<string | null>(null);
   const [otherTyping, setOtherTyping] = useState(false);
   const [bgTheme, setBgTheme] = useState<ChatBgTheme>('none');
   const [showBgPicker, setShowBgPicker] = useState(false);
@@ -259,7 +259,6 @@ export default function DmThread() {
 
   async function pickReaction(messageId: string, emoji: string) {
     if (!profile?.id) return;
-    setReactingId(null);
     const msg = messages.find((m) => m.id === messageId);
     const mine = msg?.reactions.find((r) => r.user_id === profile.id);
     if (mine) await supabase.from('direct_message_reactions').delete().eq('message_id', messageId).eq('user_id', profile.id);
@@ -351,14 +350,16 @@ export default function DmThread() {
             const replySource = item.reply_to_id ? messages.find((m) => m.id === item.reply_to_id) : null;
             const status: MessageStatus = item.read_at ? 'read' : 'sent';
             return (
-              <View>
-                {reactingId === item.id && (
-                  <MessageReactionPopover
-                    align={isMine ? 'end' : 'start'}
-                    onPick={(emoji) => pickReaction(item.id, emoji)}
-                    onReply={() => { setReplyTo(item); setReactingId(null); }}
-                  />
-                )}
+              <ReactionPickerOverlay
+                reactions={CHAT_REACTIONS}
+                align={isMine ? 'end' : 'start'}
+                onSelectReaction={(key) => {
+                  // Reply rides in the bar as a seventh slot so long-press
+                  // still offers it, exactly as the old popover did.
+                  if (key === REPLY_KEY) setReplyTo(item);
+                  else pickReaction(item.id, key);
+                }}
+              >
                 <MessageBubble
                   body={item.body ?? ''}
                   isMine={isMine}
@@ -375,9 +376,8 @@ export default function DmThread() {
                   status={isMine ? status : undefined}
                   reactions={summarizeReactions(item.reactions)}
                   replyTo={replySource ? { body: replySource.body ?? '' } : null}
-                  onLongPress={() => setReactingId(reactingId === item.id ? null : item.id)}
                 />
-              </View>
+              </ReactionPickerOverlay>
             );
           }}
           ListEmptyComponent={

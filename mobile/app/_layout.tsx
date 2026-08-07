@@ -14,6 +14,7 @@ import { Tajawal_400Regular, Tajawal_700Bold } from '@expo-google-fonts/tajawal'
 import { Almarai_400Regular, Almarai_700Bold } from '@expo-google-fonts/almarai';
 import { IBMPlexSansArabic_400Regular, IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arabic';
 import { NotoKufiArabic_400Regular, NotoKufiArabic_700Bold } from '@expo-google-fonts/noto-kufi-arabic';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/hooks/useAuth';
 import { useAppUpdates } from '@/hooks/useAppUpdates';
@@ -139,6 +140,11 @@ function RootLayout() {
 
   return (
     <ErrorBoundary>
+      {/* Required by react-native-gesture-handler: without a root view its
+          gestures silently never activate on Android. The app previously had
+          none, which is why earlier drag work had to fall back to
+          PanResponder. flex:1 so it doesn't collapse the tree. */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
           <AppThemeProvider>
@@ -164,6 +170,7 @@ function RootLayout() {
           </AppThemeProvider>
         </AuthProvider>
       </SafeAreaProvider>
+      </GestureHandlerRootView>
     </ErrorBoundary>
   );
 }

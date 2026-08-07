@@ -16,7 +16,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { MessageBubble } from '@/components/chat/MessageBubble';
-import { MessageReactionPopover } from '@/components/chat/MessageReactionPopover';
+import { ReactionPickerOverlay } from '@/components/ui/ReactionPickerOverlay';
+import { CHAT_REACTIONS, REPLY_KEY } from '@/constants/chatReactions';
 import { OrderAlertCard } from '@/components/chat/OrderAlertCard';
 import { HqLinksBox } from '@/components/chat/HqLinksBox';
 import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
@@ -130,7 +131,6 @@ export default function ChatRoomScreen() {
   const [bannedFromRoom, setBannedFromRoom] = useState(false);
   const [recording, setRecording] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
-  const [reactingId, setReactingId] = useState<string | null>(null);
 
   const listRef = useRef<FlatList>(null);
   const lastTypingBroadcast = useRef(0);
@@ -379,7 +379,6 @@ export default function ChatRoomScreen() {
 
   async function toggleReaction(messageId: string, emoji: string) {
     if (!profile) return;
-    setReactingId(null);
     const existing = reactions.find(r => r.message_id === messageId && r.user_id === profile.id);
     if (existing) {
       await supabase.from('chat_message_reactions').delete()
@@ -485,14 +484,16 @@ export default function ChatRoomScreen() {
             }
 
             return (
-              <View>
-                {reactingId === item.id && (
-                  <MessageReactionPopover
-                    align={isMine ? 'end' : 'start'}
-                    onPick={(emoji) => toggleReaction(item.id, emoji)}
-                    onReply={() => { setReplyTo(item); setReactingId(null); }}
-                  />
-                )}
+              <ReactionPickerOverlay
+                reactions={CHAT_REACTIONS}
+                align={isMine ? 'end' : 'start'}
+                onSelectReaction={(key) => {
+                  // Reply rides in the bar as a seventh slot so long-press
+                  // still offers it, exactly as the old popover did.
+                  if (key === REPLY_KEY) setReplyTo(item);
+                  else toggleReaction(item.id, key);
+                }}
+              >
                 <MessageBubble
                   body={item.body ?? ''}
                   isMine={isMine}
@@ -510,7 +511,6 @@ export default function ChatRoomScreen() {
                   reactions={Object.entries(reactionCounts).map(([emoji, count]) => ({ emoji, count, mine: false }))}
                   replyTo={replySource ? { body: replySource.body ?? '', senderName: replySource.sender_display_name ?? undefined } : null}
                   bundled={!!bundled}
-                  onLongPress={() => setReactingId(reactingId === item.id ? null : item.id)}
                 />
                 {/* Reply / moderation row */}
                 <View style={[styles.msgActions, isMine ? styles.msgActionsRight : styles.msgActionsLeft]}>
@@ -523,7 +523,7 @@ export default function ChatRoomScreen() {
                     </Pressable>
                   )}
                 </View>
-              </View>
+              </ReactionPickerOverlay>
             );
           }}
           ListEmptyComponent={
