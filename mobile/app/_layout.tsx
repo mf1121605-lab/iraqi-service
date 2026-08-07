@@ -1,5 +1,5 @@
 import '../global.css';
-import { useCallback, Component, ReactNode } from 'react';
+import { useState, Component, ReactNode } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -28,6 +28,7 @@ import { UiOverridesProvider } from '@/hooks/useUiOverrides';
 import { AppThemeProvider } from '@/hooks/useAppTheme';
 import { DesignModeToggle } from '@/components/ui/DesignModeToggle';
 import { ElementEditorSheet } from '@/components/ui/ElementEditorSheet';
+import { CinematicIntro } from '@/components/ui/CinematicIntro';
 
 // Required to dismiss the OAuth browser session when the app is foregrounded
 WebBrowser.maybeCompleteAuthSession();
@@ -121,31 +122,24 @@ function RootLayout() {
     NotoKufiArabic_400Regular,
     NotoKufiArabic_700Bold,
   });
+  const [showIntro, setShowIntro] = useState(true);
+
   useAppUpdates();
 
-  // The native splash is the ONLY splash. It stays up until the first screen
-  // has actually laid out, then hides — so there is no gap to flash through
-  // and no second, JS-drawn splash to hand off to.
+  // There is exactly one visual handoff on launch: native splash -> intro.
+  // CinematicIntro opens on a frame that reproduces the native splash's logo
+  // size and background precisely, and only hides the native splash once that
+  // frame has laid out — so the swap is invisible. It also owns hideAsync(),
+  // which is why nothing here calls it.
   //
-  // There used to be a CinematicSplash overlay on top of it, which produced
-  // exactly the double-splash the founder reported: the native screen painted
-  // #0d1117 with the logo at one size, then the overlay repainted #060a0f with
-  // the logo at another, then the login screen showed it at a third. It also
-  // played the eagle cry, which the login screen plays again ~4s later.
-  // The cinematic entrance still exists — on the login screen, where the
-  // emblem animates in with that same sound.
-  const onLayoutRoot = useCallback(() => {
-    if (fontsLoaded || fontError) SplashScreen.hideAsync();
-  }, [fontsLoaded, fontError]);
-
   // Don't block on font errors — fall back to system font. Returning null
   // rather than a spinner keeps the native splash as the only thing on screen
-  // during this window; a spinner here was a third distinct visual state.
+  // during this window; a spinner would be a distinct third visual state.
   if (!fontsLoaded && !fontError) return null;
 
   return (
     <ErrorBoundary>
-      <SafeAreaProvider onLayout={onLayoutRoot}>
+      <SafeAreaProvider>
         <AuthProvider>
           <AppThemeProvider>
           <UiOverridesProvider>
@@ -159,6 +153,10 @@ function RootLayout() {
                   <OfflineBanner />
                   <DesignModeToggle />
                   <ElementEditorSheet />
+                  {/* Mounted inside AuthProvider so it can hold the intro until
+                      the session/role has resolved — the screen revealed
+                      underneath is then already the final destination. */}
+                  {showIntro && <CinematicIntro onDone={() => setShowIntro(false)} />}
                 </AmbientMusicProvider>
               </SiteBackgroundProvider>
             </FrameInsetProvider>

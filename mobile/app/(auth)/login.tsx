@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Audio } from 'expo-av';
 import { BlurView } from 'expo-blur';
 import Animated, {
   Easing,
@@ -57,28 +56,14 @@ export default function LoginScreen() {
   const lineWidth     = useSharedValue(0);
 
   useEffect(() => {
-    // Eagle-cry entrance sound, synced with the logo materializing.
-    let sound: Audio.Sound | undefined;
-    (async () => {
-      try {
-        const { sound: s } = await Audio.Sound.createAsync(
-          require('@/assets/sounds/eagle-cry.m4a'),
-        );
-        sound = s;
-        await sound.setVolumeAsync(0.7);
-        await sound.playAsync();
-      } catch {
-        // Silent fallback (e.g. device audio session busy) — visuals still play.
-      }
-    })();
-
+    // No sound here. CinematicIntro plays the eagle cry once per launch, and
+    // this screen mounts underneath it while it is still on top — so playing
+    // it here too fired the same cue twice within a few seconds.
     emblemOpacity.value = withTiming(1, { duration: 500, easing: Easing.out(Easing.ease) });
     emblemScale.value   = withSpring(1, { damping: 8, stiffness: 90 });
     titleOpacity.value  = withDelay(320, withTiming(1, { duration: 450 }));
     titleY.value         = withDelay(320, withTiming(0, { duration: 450, easing: Easing.out(Easing.cubic) }));
     lineWidth.value     = withDelay(580, withTiming(76, { duration: 550, easing: Easing.out(Easing.cubic) }));
-
-    return () => { sound?.unloadAsync(); };
     // Reanimated shared values are stable across renders; this intro
     // sequence is meant to run once on mount only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
