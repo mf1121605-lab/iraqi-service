@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { Avatar } from '@/components/chat/Avatar';
+import { FollowersModal, type FollowTab } from '@/components/profile/FollowersModal';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -81,6 +82,9 @@ export function PublicProfileView({ userId }: { userId: string }) {
   const [dmState, setDmState] = useState<DmState>({ kind: 'none' });
   const [dmBusy, setDmBusy] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  // null = closed. Holds which tab to open on, so the two counters land on
+  // their own list rather than always the first one.
+  const [followSheet, setFollowSheet] = useState<FollowTab | null>(null);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -251,15 +255,21 @@ export function PublicProfileView({ userId }: { userId: string }) {
           {profileData.bio ? <Text style={styles.bio}>{profileData.bio}</Text> : null}
 
           <View style={styles.statsRow}>
-            <View style={styles.statBox}>
+            <Pressable
+              style={({ pressed }) => [styles.statBox, pressed && { opacity: 0.7 }]}
+              onPress={() => setFollowSheet('followers')}
+            >
               <Text style={styles.statNum}>{followerCount}</Text>
               <Text style={styles.statLabel}>متابعون</Text>
-            </View>
+            </Pressable>
             <View style={styles.statDivider} />
-            <View style={styles.statBox}>
+            <Pressable
+              style={({ pressed }) => [styles.statBox, pressed && { opacity: 0.7 }]}
+              onPress={() => setFollowSheet('following')}
+            >
               <Text style={styles.statNum}>{followingCount}</Text>
               <Text style={styles.statLabel}>يتابع</Text>
-            </View>
+            </Pressable>
             <View style={styles.statDivider} />
             <View style={styles.statBox}>
               <Text style={styles.statNum}>{posts.length}</Text>
@@ -319,6 +329,16 @@ export function PublicProfileView({ userId }: { userId: string }) {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Counters open this. It reloads its own counts-independent lists, and
+          on close the profile refreshes so a follow/unfollow made inside the
+          sheet is reflected in the numbers above. */}
+      <FollowersModal
+        visible={followSheet !== null}
+        userId={userId}
+        initialTab={followSheet ?? 'followers'}
+        onClose={() => { setFollowSheet(null); load(); }}
+      />
     </ScreenBg>
   );
 }
