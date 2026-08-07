@@ -217,7 +217,7 @@ export default function AccountSettingsScreen() {
     <ScreenBg>
       <View style={styles.navHeader}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
-          <Text style={styles.backIcon}>‹</Text>
+          <Text style={styles.backIcon}>›</Text>
         </Pressable>
         <Text style={styles.navTitle}>إعدادات الحساب</Text>
         <View style={styles.backBtn} />
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
   scroll: { padding: 20, gap: 16 },
 
   navHeader: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,

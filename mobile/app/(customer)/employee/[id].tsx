@@ -100,7 +100,7 @@ export default function EmployeePublicProfile() {
     <ScreenBg>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Text style={styles.backArrow}>‹</Text>
+          <Text style={styles.backArrow}>›</Text>
         </Pressable>
         <Text style={styles.headerTitle}>الملف الشخصي</Text>
       </View>
@@ -175,7 +175,7 @@ export default function EmployeePublicProfile() {
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,

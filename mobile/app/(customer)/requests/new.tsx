@@ -118,7 +118,7 @@ export default function NewRequest() {
           {/* Header */}
           <View style={styles.header}>
             <Pressable onPress={() => router.back()} style={styles.backBtn}>
-              <Text style={styles.backIcon}>‹</Text>
+              <Text style={styles.backIcon}>›</Text>
               <Text style={styles.backText}>العودة</Text>
             </Pressable>
             <View style={styles.headerCenter}>
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   scroll: { padding: 16, gap: 20 },
 
   header: { gap: 4 },
-  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
+  backBtn: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, marginBottom: 8 },
   backIcon: { fontSize: 22, color: COLORS.gold, lineHeight: 26 },
   backText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.gold },
   headerCenter: { alignItems: 'flex-end', gap: 2 },

@@ -104,7 +104,7 @@ export default function HqUrgentNews() {
     <ScreenBg>
       <View style={s.header}>
         <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={8}>
-          <Text style={s.backArrow}>‹</Text>
+          <Text style={s.backArrow}>›</Text>
         </Pressable>
         <Text style={s.title}>⚡ الأخبار العاجلة</Text>
         <Pressable onPress={() => setShowForm((v) => !v)} style={s.addBtn}>
@@ -165,10 +165,10 @@ export default function HqUrgentNews() {
 const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   denied: { color: COLORS.white, fontFamily: FONTS.bold, fontSize: 18 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  header: { flexDirection: 'row-reverse', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   backArrow: { fontSize: 28, color: COLORS.gold, lineHeight: 32 },
-  title: { fontFamily: FONTS.bold, fontSize: 17, color: COLORS.white, flex: 1 },
+  title: { fontFamily: FONTS.bold, fontSize: 17, color: COLORS.white, flex: 1, textAlign: 'right' },
   addBtn: { backgroundColor: 'rgba(230,171,44,0.15)', borderRadius: RADIUS.sm, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: COLORS.goldBorder },
   addBtnText: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
   scroll: { padding: 14, gap: 10 },

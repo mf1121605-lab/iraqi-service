@@ -375,7 +375,7 @@ export default function RequestDetail() {
         {/* Navigation header */}
         <View style={styles.navHeader}>
           <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
-            <Text style={styles.backIcon}>‹</Text>
+            <Text style={styles.backIcon}>›</Text>
           </Pressable>
           <View style={styles.navCenter}>
             <Text style={styles.navTitle} numberOfLines={1}>{catEmoji} {req.title}</Text>
@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
   notFoundText: { fontFamily: FONTS.regular, fontSize: 15, color: COLORS.muted },
 
   navHeader: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingTop: Platform.OS === 'ios' ? 8 : 12,

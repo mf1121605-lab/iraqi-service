@@ -107,7 +107,7 @@ export default function MatchingScreen() {
       {/* Header */}
       <View style={styles.navHeader}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
-          <Text style={styles.backIcon}>‹</Text>
+          <Text style={styles.backIcon}>›</Text>
         </Pressable>
         <View style={styles.navCenter}>
           <Text style={styles.navTitle}>بانتظار موافقة موظف</Text>
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
 
   navHeader: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingTop: Platform.OS === 'ios' ? 8 : 12,

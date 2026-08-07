@@ -104,7 +104,7 @@ export default function FounderUsersData() {
     <ScreenBg>
       <View style={s.header}>
         <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={8}>
-          <Text style={s.backArrow}>‹</Text>
+          <Text style={s.backArrow}>›</Text>
         </Pressable>
         <Text style={s.title}>🔐 بيانات الأعضاء</Text>
       </View>
@@ -257,10 +257,10 @@ export default function FounderUsersData() {
 const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   denied: { color: COLORS.white, fontFamily: FONTS.bold, fontSize: 18 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  header: { flexDirection: 'row-reverse', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   backArrow: { fontSize: 28, color: COLORS.gold, lineHeight: 32 },
-  title: { fontFamily: FONTS.bold, fontSize: 18, color: COLORS.white },
+  title: { fontFamily: FONTS.bold, fontSize: 18, color: COLORS.white, textAlign: 'right' },
   gateContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
   gateIcon: { fontSize: 48 },
   gateTitle: { fontFamily: FONTS.bold, fontSize: 20, color: COLORS.white },

@@ -434,7 +434,7 @@ export default function ChatRoomScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Text style={styles.backArrow}>‹</Text>
+          <Text style={styles.backArrow}>›</Text>
         </Pressable>
         <View style={styles.roomIconWrap}>
           <Text style={styles.roomIconText}>💬</Text>
@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
   roomFrameInner: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   header: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,

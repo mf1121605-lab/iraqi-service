@@ -115,7 +115,7 @@ export default function ForgotPasswordScreen() {
 
           {/* Back button */}
           <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={12}>
-            <Text style={styles.backIcon}>‹</Text>
+            <Text style={styles.backIcon}>›</Text>
             <Text style={styles.backText}>العودة</Text>
           </Pressable>
 
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   scroll: { flexGrow: 1, padding: 24, gap: 24 },
 
-  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
+  backBtn: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, marginBottom: 4 },
   backIcon: { fontSize: 22, color: COLORS.gold, lineHeight: 26 },
   backText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.gold },
 

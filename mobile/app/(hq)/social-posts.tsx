@@ -85,7 +85,7 @@ export default function HqSocialPosts() {
     <ScreenBg>
       <View style={s.header}>
         <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={8}>
-          <Text style={s.backArrow}>‹</Text>
+          <Text style={s.backArrow}>›</Text>
         </Pressable>
         <Text style={s.title}>📰 منشورات الأخبار</Text>
       </View>
@@ -175,10 +175,10 @@ export default function HqSocialPosts() {
 const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   denied: { color: COLORS.white, fontFamily: FONTS.bold, fontSize: 18 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  header: { flexDirection: 'row-reverse', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   backArrow: { fontSize: 28, color: COLORS.gold, lineHeight: 32 },
-  title: { fontFamily: FONTS.bold, fontSize: 17, color: COLORS.white },
+  title: { fontFamily: FONTS.bold, fontSize: 17, color: COLORS.white, textAlign: 'right' },
   tabs: { flexDirection: 'row', marginHorizontal: 14, marginBottom: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: RADIUS.sm, padding: 3 },
   tabBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: RADIUS.sm - 2 },
   tabBtnActive: { backgroundColor: COLORS.gold },
