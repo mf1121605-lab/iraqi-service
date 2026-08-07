@@ -28,7 +28,11 @@ export default function MatchingScreen() {
   const navigatedRef = useRef(false);
 
   const load = useCallback(async () => {
-    if (!category) return;
+    // Clear the spinner before bailing: returning with loading still true
+    // left this screen spinning forever when the category param was absent,
+    // with no way out but killing the app. The empty state is the honest
+    // thing to show instead.
+    if (!category) { setLoading(false); return; }
 
     // Narrow to the staff the founder assigned to this exact service, when one
     // was chosen. An empty assignment list is read as "no restriction" rather

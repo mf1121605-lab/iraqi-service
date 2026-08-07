@@ -121,7 +121,7 @@ export default function RequestDetail() {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadData = useCallback(async () => {
-    if (!id) return;
+    if (!id) { setLoading(false); return; }
     const [rRes, mRes] = await Promise.all([
       supabase
         .from('requests')

@@ -39,7 +39,7 @@ export function ServiceEmployeesModal({ visible, serviceId, serviceLabel, onClos
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
-    if (!serviceId) return;
+    if (!serviceId) { setLoading(false); return; }
     setLoading(true);
     setError('');
 

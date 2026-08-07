@@ -162,7 +162,10 @@ export default function ChatRoomScreen() {
       // Check ban
       const { data: banRow } = await supabase
         .from('chat_room_bans')
-        .select('id')
+        // No `id` column: the PK is (room_id, banned_user_id). Selecting a
+        // column that doesn't exist made PostgREST reject this query outright,
+        // so banRow was always null and a ban never took effect.
+        .select('room_id')
         .eq('room_id', roomData.id)
         .eq('banned_user_id', profile!.id)
         .maybeSingle();

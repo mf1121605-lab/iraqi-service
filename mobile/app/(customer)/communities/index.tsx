@@ -32,7 +32,7 @@ const STUDENT_ROOMS = [
   },
 ] as const;
 
-type Room = { id: string; slug: string; name: string; member_count?: number };
+type Room = { id: string; slug: string; name_ar: string; member_count?: number };
 
 export default function CommunitiesScreen() {
   const { profile } = useAuth();
@@ -44,7 +44,7 @@ export default function CommunitiesScreen() {
 
     supabase
       .from('chat_rooms')
-      .select('id, slug, name')
+      .select('id, slug, name_ar')
       .in('slug', STUDENT_ROOMS.map((r) => r.slug))
       .then(({ data }) => {
         const map: Record<string, Room> = {};

@@ -19,7 +19,7 @@ const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://iraqi-service.vercel
 
 interface Category {
   key: string;
-  name_ar: string;
+  label_ar: string;
 }
 
 interface NewsLink {
@@ -80,9 +80,12 @@ export default function HqNewsLinks() {
   async function loadCategories() {
     const { data } = await supabase
       .from('categories')
-      .select('key, name_ar')
+      // label_ar / sort_order are the real column names; name_ar and
+      // display_order do not exist on this table, so this query used to be
+      // rejected wholesale and the category dropdown was always empty.
+      .select('key, label_ar')
       .eq('is_active', true)
-      .order('display_order');
+      .order('sort_order');
     setCategories((data ?? []) as Category[]);
   }
 
@@ -296,7 +299,7 @@ export default function HqNewsLinks() {
                     style={[s.chip, form.category === cat.key && s.chipActive]}
                   >
                     <Text style={[s.chipText, form.category === cat.key && s.chipTextActive]}>
-                      {cat.name_ar}
+                      {cat.label_ar}
                     </Text>
                   </Pressable>
                 ))}
@@ -373,7 +376,7 @@ export default function HqNewsLinks() {
               {link.source ? <Text style={s.linkMeta}>{link.source}</Text> : null}
               {link.category ? (
                 <Text style={s.linkCat}>
-                  📁 {categories.find(c => c.key === link.category)?.name_ar ?? link.category}
+                  📁 {categories.find(c => c.key === link.category)?.label_ar ?? link.category}
                 </Text>
               ) : null}
               {link.deadline ? <Text style={s.linkMeta}>📅 {link.deadline}</Text> : null}

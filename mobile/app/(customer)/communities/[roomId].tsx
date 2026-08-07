@@ -29,7 +29,7 @@ type Message = {
   sender?: { given_name: string; family_name: string };
 };
 
-type Room = { id: string; name: string; slug: string };
+type Room = { id: string; name_ar: string; slug: string };
 
 async function uploadCommunityImage(uri: string, userId: string): Promise<string | null> {
   try {
@@ -88,7 +88,7 @@ export default function CommunityRoomScreen() {
     (async () => {
       const { data: roomRow } = await supabase
         .from('chat_rooms')
-        .select('id, name, slug')
+        .select('id, name_ar, slug')
         .eq('id', roomId)
         .maybeSingle();
 
@@ -230,7 +230,7 @@ export default function CommunityRoomScreen() {
           <Text style={styles.backText}>→</Text>
         </Pressable>
         <Text style={styles.roomName} numberOfLines={1}>
-          🏘️ {room?.name ?? '...'}
+          🏘️ {room?.name_ar ?? '...'}
         </Text>
         <View style={{ width: 32 }} />
       </View>
