@@ -148,11 +148,24 @@ export function CinematicIntro({ onDone }: Props) {
   }, [animDone, loading, authTimedOut, fade, onDone]);
 
   // Hiding the native splash from onLayout — not from a timer or an effect —
-  // guarantees this screen's first frame is already painted underneath it.
+  // guarantees this screen's layout pass has already run by the time we ask.
+  // But onLayout only means React *computed* the layout; on Android there can
+  // still be a frame or two before that's actually flushed to the native
+  // surface. hideAsync() in this expo-splash-screen version has no fade
+  // option and hides immediately (confirmed against its own type defs — "you
+  // may see a blank screen briefly" is its own doc warning), so calling it
+  // before the real frame lands underneath shows exactly that: a black flash
+  // between the native splash disappearing and this view actually painting.
+  // Two nested requestAnimationFrame calls push the hide past the next two
+  // native frames, which is the standard workaround for this exact gap.
   function handleLayout(_e: LayoutChangeEvent) {
     if (splashHidden.current) return;
     splashHidden.current = true;
-    SplashScreen.hideAsync().catch(() => {});
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        SplashScreen.hideAsync().catch(() => {});
+      });
+    });
   }
 
   const rootStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
