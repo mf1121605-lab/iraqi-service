@@ -4,7 +4,9 @@
 -- where the "3D Stacked Card Shuffle" candidate preview never actually
 -- showed the employee's specialization/degree, because the RPC powering it
 -- didn't select that column (only the post-match "winner" query did).
-create or replace function public.get_active_employee_candidates(p_category text)
+drop function if exists public.get_active_employee_candidates(text);
+
+create function public.get_active_employee_candidates(p_category text)
 returns table (id uuid, given_name text, family_name text, avatar_key text, specialization text)
 language sql stable security definer set search_path = public as $$
   select id, given_name, family_name, avatar_key, specialization

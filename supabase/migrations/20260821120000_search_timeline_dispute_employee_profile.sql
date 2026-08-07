@@ -123,8 +123,8 @@ as $$
     'request',
     req.title,
     req.title,
-    req.status,
-    req.status,
+    req.status::text,
+    req.status::text,
     '/customer/requests/' || req.id
   from public.requests req
   where req.customer_id = auth.uid()
