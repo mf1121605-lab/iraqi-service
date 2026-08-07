@@ -22,6 +22,7 @@ import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import AnnouncementBanner from '@/components/ui/AnnouncementBanner';
 import { GlassCategoryCard } from '@/components/ui/GlassCategoryCard';
+import { HeroVideoBanner } from '@/components/ui/HeroVideoBanner';
 
 // Emoji + color theme per category key — fallback for unknown keys
 const CAT_THEMES: Record<string, { emoji: string; accent: string; colors: [string, string] }> = {
@@ -217,6 +218,11 @@ export default function CustomerDashboard() {
           <Text style={styles.greeting}>{greeting}</Text>
         </View>
 
+        {/* ── Fixed hero video (bundled with the app, not founder-managed) ── */}
+        <View style={styles.heroWrap}>
+          <HeroVideoBanner />
+        </View>
+
         {/* ── Announcement Carousel ── */}
         {banner ? (
           <View style={styles.bannerWrap}>
@@ -394,6 +400,7 @@ const styles = StyleSheet.create({
   appSub:    { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted },
   greeting:  { fontFamily: FONTS.regular, fontSize: 15, color: COLORS.white70, textAlign: 'right' },
 
+  heroWrap: {},
   bannerWrap: { gap: 10 },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.2)' },
