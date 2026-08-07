@@ -122,7 +122,15 @@ function mimeFor(kind: 'image' | 'video', ext: string): string {
   return 'image/jpeg';
 }
 
-async function uploadMedia(uri: string, folder: string, kind: 'image' | 'video'): Promise<string | null> {
+// 5 minutes — matches the Arabic alert shown when a picked video is longer.
+const MAX_VIDEO_DURATION_MS = 5 * 60 * 1000;
+
+async function uploadMedia(
+  uri: string,
+  folder: string,
+  kind: 'image' | 'video',
+  onProgress?: (pct: number) => void,
+): Promise<string | null> {
   try {
     const ext = uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg');
     const path = `${folder}/${Date.now()}-${Math.round(Math.random() * 1e6)}.${ext}`;
@@ -132,6 +140,44 @@ async function uploadMedia(uri: string, folder: string, kind: 'image' | 'video')
     // data. arrayBuffer() is Supabase's own recommended path for RN.
     const arrayBuffer = await response.arrayBuffer();
     const contentType = mimeFor(kind, ext);
+
+    // supabase-js's own .upload() wraps fetch(), which exposes no upload
+    // progress events in React Native — there is no way to report percentage
+    // through it. A raw XMLHttpRequest against the same Storage REST endpoint
+    // (same auth headers the SDK would send) gives real onprogress ticks,
+    // which matters here since video files can take a while on a weak
+    // connection and the composer needs to show real feedback, not a spinner.
+    if (onProgress) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      if (token && supabaseUrl && anonKey) {
+        const uploadUrl = `${supabaseUrl}/storage/v1/object/site-assets/${path}`;
+        const ok = await new Promise<boolean>((resolve) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', uploadUrl, true);
+          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+          xhr.setRequestHeader('apikey', anonKey);
+          xhr.setRequestHeader('Content-Type', contentType);
+          xhr.setRequestHeader('x-upsert', 'false');
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+          };
+          xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
+          xhr.onerror = () => resolve(false);
+          xhr.send(arrayBuffer);
+        });
+        if (!ok) { console.error('upload failed via xhr'); return null; }
+        onProgress(100);
+        const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
+        return data.publicUrl;
+      }
+      // Fall through to the plain SDK path below if session/env lookup failed.
+    }
+
     const { error } = await supabase.storage.from('site-assets').upload(path, arrayBuffer, { contentType, upsert: false });
     if (error) { console.error('upload failed:', error.message); return null; }
     const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
@@ -211,6 +257,7 @@ export default function NewsScreen() {
   const [commentImages, setCommentImages] = useState<Record<string, string>>({});
   const [replyingTo, setReplyingTo] = useState<Record<string, { id: string; name: string } | null>>({});
   const [sendingComment, setSendingComment] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const [mutedVideoId, setMutedVideoId] = useState<Set<string>>(new Set());
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
@@ -318,8 +365,13 @@ export default function NewsScreen() {
       quality: 0.8,
     });
     if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      if ((asset.duration ?? 0) > MAX_VIDEO_DURATION_MS) {
+        Alert.alert('تنبيه', 'عذراً، الحد الأقصى لطول الفيديو هو 5 دقائق');
+        return;
+      }
       setPickedImages([]);
-      setPickedVideo(result.assets[0].uri);
+      setPickedVideo(asset.uri);
     }
   }
 
@@ -331,7 +383,9 @@ export default function NewsScreen() {
     let imageUrls: string[] = [];
     let videoUrl: string | null = null;
     if (pickedVideo) {
-      videoUrl = await uploadMedia(pickedVideo, `social/${session.user.id}`, 'video');
+      setUploadProgress(0);
+      videoUrl = await uploadMedia(pickedVideo, `social/${session.user.id}`, 'video', setUploadProgress);
+      setUploadProgress(null);
       if (!videoUrl) {
         setPosting(false);
         Alert.alert('تعذّر رفع الفيديو', 'حدث خطأ أثناء رفع الفيديو، حاول مرة أخرى.');
@@ -590,9 +644,19 @@ export default function NewsScreen() {
               {pickedVideo && (
                 <View style={styles.imagePreviewWrap}>
                   <Video source={{ uri: pickedVideo }} style={styles.imagePreview} resizeMode={ResizeMode.COVER} useNativeControls />
-                  <Pressable style={styles.removeImage} onPress={() => setPickedVideo(null)}>
-                    <Text style={styles.removeImageText}>✕</Text>
-                  </Pressable>
+                  {uploadProgress === null && (
+                    <Pressable style={styles.removeImage} onPress={() => setPickedVideo(null)}>
+                      <Text style={styles.removeImageText}>✕</Text>
+                    </Pressable>
+                  )}
+                </View>
+              )}
+              {uploadProgress !== null && (
+                <View style={styles.uploadProgressRow}>
+                  <View style={styles.uploadProgressTrack}>
+                    <View style={[styles.uploadProgressFill, { width: `${uploadProgress}%` }]} />
+                  </View>
+                  <Text style={styles.uploadProgressText}>{uploadProgress}%</Text>
                 </View>
               )}
               <View style={styles.composerActions}>
@@ -891,6 +955,22 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   removeImageText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  uploadProgressRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 14,
+    marginBottom: 8,
+  },
+  uploadProgressTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
+  },
+  uploadProgressFill: { height: '100%', borderRadius: 3, backgroundColor: COLORS.gold },
+  uploadProgressText: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold, minWidth: 32, textAlign: 'left' },
   composerActions: {
     flexDirection: 'row',
     alignItems: 'center',
