@@ -14,6 +14,7 @@ import { Tajawal_400Regular, Tajawal_700Bold } from '@expo-google-fonts/tajawal'
 import { Almarai_400Regular, Almarai_700Bold } from '@expo-google-fonts/almarai';
 import { IBMPlexSansArabic_400Regular, IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arabic';
 import { NotoKufiArabic_400Regular, NotoKufiArabic_700Bold } from '@expo-google-fonts/noto-kufi-arabic';
+import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/hooks/useAuth';
@@ -122,6 +123,12 @@ function RootLayout() {
     IBMPlexSansArabic_700Bold,
     NotoKufiArabic_400Regular,
     NotoKufiArabic_700Bold,
+    // Ionicons ships as a font file too, and its native auto-linking isn't
+    // reliable on every build — the bottom tab bar showed tofu boxes
+    // instead of icons on a real device. Loading it explicitly here, the
+    // same way every other font in this app is already loaded, sidesteps
+    // whatever native-linking gap caused that.
+    ...Ionicons.font,
   });
   const [showIntro, setShowIntro] = useState(true);
 
