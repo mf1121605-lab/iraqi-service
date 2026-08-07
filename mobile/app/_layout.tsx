@@ -1,6 +1,6 @@
 import '../global.css';
-import { useEffect, useState, Component, ReactNode } from 'react';
-import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { useCallback, Component, ReactNode } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -18,7 +18,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/hooks/useAuth';
 import { useAppUpdates } from '@/hooks/useAppUpdates';
 import { CinematicFrame } from '@/components/ui/CinematicFrame';
-import { CinematicSplash } from '@/components/ui/CinematicSplash';
 import { FrameInsetProvider } from '@/hooks/useFrameInset';
 import { AmbientMusicProvider } from '@/hooks/useAmbientMusic';
 import { AmbientMusicIcon } from '@/components/ui/AmbientMusicIcon';
@@ -122,26 +121,31 @@ function RootLayout() {
     NotoKufiArabic_400Regular,
     NotoKufiArabic_700Bold,
   });
-  const [showSplash, setShowSplash] = useState(true);
-
   useAppUpdates();
 
-  useEffect(() => {
+  // The native splash is the ONLY splash. It stays up until the first screen
+  // has actually laid out, then hides — so there is no gap to flash through
+  // and no second, JS-drawn splash to hand off to.
+  //
+  // There used to be a CinematicSplash overlay on top of it, which produced
+  // exactly the double-splash the founder reported: the native screen painted
+  // #0d1117 with the logo at one size, then the overlay repainted #060a0f with
+  // the logo at another, then the login screen showed it at a third. It also
+  // played the eagle cry, which the login screen plays again ~4s later.
+  // The cinematic entrance still exists — on the login screen, where the
+  // emblem animates in with that same sound.
+  const onLayoutRoot = useCallback(() => {
     if (fontsLoaded || fontError) SplashScreen.hideAsync();
   }, [fontsLoaded, fontError]);
 
-  // Don't block on font errors — fall back to system font
-  if (!fontsLoaded && !fontError) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#0d1117', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#e6ab2c" size="large" />
-      </View>
-    );
-  }
+  // Don't block on font errors — fall back to system font. Returning null
+  // rather than a spinner keeps the native splash as the only thing on screen
+  // during this window; a spinner here was a third distinct visual state.
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <ErrorBoundary>
-      <SafeAreaProvider>
+      <SafeAreaProvider onLayout={onLayoutRoot}>
         <AuthProvider>
           <AppThemeProvider>
           <UiOverridesProvider>
@@ -155,7 +159,6 @@ function RootLayout() {
                   <OfflineBanner />
                   <DesignModeToggle />
                   <ElementEditorSheet />
-                  {showSplash && <CinematicSplash onDone={() => setShowSplash(false)} />}
                 </AmbientMusicProvider>
               </SiteBackgroundProvider>
             </FrameInsetProvider>
