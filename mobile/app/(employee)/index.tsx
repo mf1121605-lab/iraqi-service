@@ -78,6 +78,8 @@ interface RequestItem {
   assigned_employee_id: string | null;
   customer_id: string;
   created_at: string;
+  service_id: string | null;
+  service: { label_ar: string } | null;
 }
 
 interface QuickRequest {
@@ -218,9 +220,14 @@ export default function EmployeeDashboard() {
     supabase.rpc('expire_stale_claims').then(() => {});
     const { data } = await supabase
       .from('requests')
-      .select('id, title, category, status, assigned_employee_id, customer_id, created_at')
+      // service_id + its label lets the queue show the exact sub-service the
+      // customer picked (e.g. "تحديث البيان السنوي") instead of only the
+      // broad category — the founder's dynamic category-services system
+      // already captures this at submission time, but the queue never
+      // surfaced it before.
+      .select('id, title, category, status, assigned_employee_id, customer_id, created_at, service_id, service:category_services(label_ar)')
       .order('created_at', { ascending: false });
-    setQueue((data ?? []) as RequestItem[]);
+    setQueue((data ?? []) as unknown as RequestItem[]);
     setRefreshing(false);
   }, []);
 
@@ -1093,7 +1100,9 @@ export default function EmployeeDashboard() {
                             <Text style={styles.myBadgeText}>طلبي</Text>
                           </View>
                         )}
-                        <Text style={styles.reqCategory}>{req.category}</Text>
+                        <Text style={styles.reqCategory}>
+                          {req.service?.label_ar ?? categories.find((c) => c.key === req.category)?.label_ar ?? req.category}
+                        </Text>
                       </View>
                     </View>
                   </Pressable>

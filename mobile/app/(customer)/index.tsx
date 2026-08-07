@@ -413,8 +413,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 10, paddingVertical: 16,
   },
-  ctaIcon:  { fontSize: 22, color: '#1a1000', fontFamily: FONTS.bold },
-  ctaLabel: { fontFamily: FONTS.bold, fontSize: 17, color: '#1a1000' },
+  ctaIcon: {
+    fontSize: 22, color: '#ffffff', fontFamily: FONTS.bold,
+    textShadowColor: 'rgba(0,0,0,0.45)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
+  },
+  ctaLabel: {
+    fontFamily: FONTS.bold, fontSize: 17, color: '#ffffff',
+    textShadowColor: 'rgba(0,0,0,0.45)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
+  },
 
   section: { gap: 10 },
 

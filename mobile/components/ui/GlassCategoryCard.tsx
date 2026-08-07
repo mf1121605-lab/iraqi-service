@@ -3,6 +3,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ResizeMode, Video } from 'expo-av';
 import { FONTS } from '@/constants/theme';
+import { AnimatedGoldBorder } from './AnimatedGoldBorder';
 
 /** Muted luxury gold, per the brief. */
 const GOLD = '#D4AF37';
@@ -37,62 +38,67 @@ export function GlassCategoryCard({ category, onPress }: Props) {
   const isVideo = !!icon_video_url;
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-    >
-      {/* Glass fill. BlurView carries it on devices that support it; the
-          translucent backdrop underneath is what shows through elsewhere,
-          so the card never renders as a flat black box. */}
-      <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
-      <View style={styles.tint} pointerEvents="none" />
+    // Static gold border replaced with the same Skia-driven shimmering border
+    // used on GlassCard elsewhere — these are the app's "main service tiles",
+    // which the founder asked to carry a glowing animated border, not a flat one.
+    <AnimatedGoldBorder borderRadius={16} borderWidth={1.5} innerBg="transparent" fillHeight={false} style={styles.cardWrap}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      >
+        {/* Glass fill. BlurView carries it on devices that support it; the
+            translucent backdrop underneath is what shows through elsewhere,
+            so the card never renders as a flat black box. */}
+        <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+        <View style={styles.tint} pointerEvents="none" />
 
-      {mediaUrl ? (
-        <View style={styles.mediaWrap}>
-          {isVideo ? (
-            <Video
-              source={{ uri: mediaUrl }}
+        {mediaUrl ? (
+          <View style={styles.mediaWrap}>
+            {isVideo ? (
+              <Video
+                source={{ uri: mediaUrl }}
+                style={StyleSheet.absoluteFill}
+                resizeMode={ResizeMode.COVER}
+                shouldPlay
+                isLooping
+                isMuted
+              />
+            ) : (
+              <Image source={{ uri: mediaUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            )}
+            <LinearGradient
+              colors={['transparent', 'rgba(10,10,10,0.35)', 'rgba(10,10,10,0.92)']}
+              locations={[0, 0.55, 1]}
               style={StyleSheet.absoluteFill}
-              resizeMode={ResizeMode.COVER}
-              shouldPlay
-              isLooping
-              isMuted
+              pointerEvents="none"
             />
-          ) : (
-            <Image source={{ uri: mediaUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-          )}
-          <LinearGradient
-            colors={['transparent', 'rgba(10,10,10,0.35)', 'rgba(10,10,10,0.92)']}
-            locations={[0, 0.55, 1]}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
-          <Text style={styles.titleOverMedia} numberOfLines={2}>{label}</Text>
-        </View>
-      ) : (
-        <View style={styles.plainRow}>
-          <Text style={styles.chevron}>‹</Text>
-          <Text style={styles.titlePlain} numberOfLines={2}>{label}</Text>
-          <Text style={styles.emoji}>{emoji ?? '📁'}</Text>
-        </View>
-      )}
-    </Pressable>
+            <Text style={styles.titleOverMedia} numberOfLines={2}>{label}</Text>
+          </View>
+        ) : (
+          <View style={styles.plainRow}>
+            <Text style={styles.chevron}>‹</Text>
+            <Text style={styles.titlePlain} numberOfLines={2}>{label}</Text>
+            <Text style={styles.emoji}>{emoji ?? '📁'}</Text>
+          </View>
+        )}
+      </Pressable>
+    </AnimatedGoldBorder>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: 16,   // per the brief, not the app's RADIUS.lg (20)
-    borderWidth: 1.5,
-    borderColor: GOLD,
-    overflow: 'hidden',
+  cardWrap: {
     marginBottom: 14,
-    backgroundColor: 'rgba(20,20,20,0.70)',
     shadowColor: GOLD,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
+  },
+  card: {
+    borderRadius: 16,   // per the brief, not the app's RADIUS.lg (20)
+    overflow: 'hidden',
+    backgroundColor: 'rgba(20,20,20,0.70)',
   },
   pressed: { opacity: 0.85, transform: [{ scale: 0.995 }] },
   tint: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(20,20,20,0.55)' },
