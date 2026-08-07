@@ -21,7 +21,7 @@ const CAT_LABELS: Record<string, string> = {
 // realtime listener on the request row navigates to the chat the
 // moment any employee claims it — no tap-to-select here at all.
 export default function MatchingScreen() {
-  const { requestId, category } = useLocalSearchParams<{ requestId: string; category: string }>();
+  const { requestId, category, serviceId } = useLocalSearchParams<{ requestId: string; category: string; serviceId?: string }>();
   const [candidates, setCandidates] = useState<EmployeeCandidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [matched, setMatched] = useState(false);
@@ -29,12 +29,29 @@ export default function MatchingScreen() {
 
   const load = useCallback(async () => {
     if (!category) return;
+
+    // Narrow to the staff the founder assigned to this exact service, when one
+    // was chosen. An empty assignment list is read as "no restriction" rather
+    // than "nobody" — otherwise every service predating service_employees
+    // would show zero available staff.
+    let allowed: Set<string> | null = null;
+    if (serviceId) {
+      const { data: rows } = await supabase
+        .from('service_employees')
+        .select('employee_id')
+        .eq('service_id', serviceId);
+      const ids = (rows ?? []).map((r) => (r as { employee_id: string }).employee_id);
+      if (ids.length > 0) allowed = new Set(ids);
+    }
+
     const { data } = await supabase.rpc('get_active_employee_candidates', {
       p_category: category,
     });
-    setCandidates((data as EmployeeCandidate[]) ?? []);
+    const all = (data as EmployeeCandidate[]) ?? [];
+    const permitted = allowed;
+    setCandidates(permitted ? all.filter((c) => permitted.has(c.id)) : all);
     setLoading(false);
-  }, [category]);
+  }, [category, serviceId]);
 
   useEffect(() => { load(); }, [load]);
 

@@ -21,6 +21,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import AnnouncementBanner from '@/components/ui/AnnouncementBanner';
+import { GlassCategoryCard } from '@/components/ui/GlassCategoryCard';
 
 // Emoji + color theme per category key — fallback for unknown keys
 const CAT_THEMES: Record<string, { emoji: string; accent: string; colors: [string, string] }> = {
@@ -32,10 +33,13 @@ const CAT_THEMES: Record<string, { emoji: string; accent: string; colors: [strin
 const DEFAULT_THEME = { emoji: '🔹', accent: '#e6ab2c', colors: ['#1a1a2e', '#0f0f1a'] as [string, string] };
 
 type Category = {
-  id: string;
+  // No `id` here: categories' primary key is `key` (a slug), and the select
+  // no longer asks for a column the table doesn't use as its identity.
   key: string;
   label_ar: string;
   section_type: string | null;
+  icon_path: string | null;
+  icon_video_url: string | null;
 };
 
 type Announcement = {
@@ -99,9 +103,13 @@ export default function CustomerDashboard() {
     const [cats, ann, urgent, links] = await Promise.all([
       supabase
         .from('categories')
-        .select('id, key, label_ar, section_type')
+        // sort_order, NOT display_order: categories has no display_order
+        // column (announcements does). Ordering by a column that doesn't
+        // exist made PostgREST reject the query, so `cats.data` was null and
+        // the services section rendered empty on every launch.
+        .select('key, label_ar, section_type, icon_path, icon_video_url')
         .eq('is_active', true)
-        .order('display_order', { ascending: true }),
+        .order('sort_order', { ascending: true }),
       supabase
         .from('announcements')
         .select('id, title_ar, description_ar, motion_graphic_key')
@@ -232,23 +240,6 @@ export default function CustomerDashboard() {
           </View>
         ) : null}
 
-        {/* ── Quick Action ── */}
-        <FireGlowWrap borderRadius={RADIUS.md} style={styles.ctaBtn}>
-          <Pressable
-            style={({ pressed }) => [styles.ctaPressable, pressed && styles.ctaBtnPressed]}
-            onPress={() => router.push('/(customer)/requests/new')}
-          >
-            <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFill} />
-            <LinearGradient
-              colors={['rgba(249,115,22,0.55)', 'rgba(220,38,38,0.42)', 'rgba(230,171,44,0.35)']}
-              style={styles.ctaGrad}
-            >
-              <Text style={styles.ctaIcon}>＋</Text>
-              <Text style={styles.ctaLabel}>تقديم طلب جديد</Text>
-            </LinearGradient>
-          </Pressable>
-        </FireGlowWrap>
-
         {/* ── Urgent News ── */}
         {urgentNews.length > 0 && (
           <View style={styles.section}>
@@ -265,6 +256,23 @@ export default function CustomerDashboard() {
             ))}
           </View>
         )}
+
+        {/* ── Quick Action ── */}
+        <FireGlowWrap borderRadius={RADIUS.md} style={styles.ctaBtn}>
+          <Pressable
+            style={({ pressed }) => [styles.ctaPressable, pressed && styles.ctaBtnPressed]}
+            onPress={() => router.push('/(customer)/requests/new')}
+          >
+            <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFill} />
+            <LinearGradient
+              colors={['rgba(249,115,22,0.55)', 'rgba(220,38,38,0.42)', 'rgba(230,171,44,0.35)']}
+              style={styles.ctaGrad}
+            >
+              <Text style={styles.ctaIcon}>＋</Text>
+              <Text style={styles.ctaLabel}>تقديم طلب جديد</Text>
+            </LinearGradient>
+          </Pressable>
+        </FireGlowWrap>
 
         {/* ── Services ── */}
         {services.length > 0 && (
@@ -311,28 +319,24 @@ export default function CustomerDashboard() {
   );
 }
 
+// Vertical glass cards, one under another, each showing the founder's
+// uploaded cover when there is one. Replaces the two-column emoji grid.
 function CategoryGrid({ items }: { items: Category[] }) {
   return (
-    <View style={styles.catGrid}>
-      {items.map((cat) => {
-        const theme = CAT_THEMES[cat.key] ?? DEFAULT_THEME;
-        return (
-          <Pressable
-            key={cat.key}
-            style={({ pressed }) => [styles.catTouchable, pressed && styles.catPressed]}
-            onPress={() => router.push({ pathname: '/(customer)/requests/new', params: { category: cat.key } })}
-          >
-            <LinearGradient colors={theme.colors} style={styles.catCard}>
-              <View style={[styles.catAccentDot, { backgroundColor: theme.accent + '40' }]} />
-              <Text style={styles.catEmoji}>{theme.emoji}</Text>
-              <Text style={styles.catLabel}>{cat.label_ar}</Text>
-              <View style={[styles.catPill, { backgroundColor: theme.accent + '22', borderColor: theme.accent + '55' }]}>
-                <Text style={[styles.catPillText, { color: theme.accent }]}>اختر</Text>
-              </View>
-            </LinearGradient>
-          </Pressable>
-        );
-      })}
+    <View>
+      {items.map((cat) => (
+        <GlassCategoryCard
+          key={cat.key}
+          category={{
+            key: cat.key,
+            label: cat.label_ar,
+            icon_path: cat.icon_path ?? null,
+            icon_video_url: cat.icon_video_url ?? null,
+            emoji: (CAT_THEMES[cat.key] ?? DEFAULT_THEME).emoji,
+          }}
+          onPress={() => router.push({ pathname: '/(customer)/requests/new', params: { category: cat.key } })}
+        />
+      ))}
     </View>
   );
 }

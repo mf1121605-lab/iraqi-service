@@ -28,7 +28,8 @@ const CAT_THEMES: Record<string, { emoji: string; accent: string; colors: [strin
 };
 const DEFAULT_THEME = { emoji: '🔹', accent: '#e6ab2c', colors: ['#1a1a2e', '#0f0f1a'] as [string, string] };
 
-type Category = { id: string; key: string; label_ar: string };
+type Category = { key: string; label_ar: string };
+type Service  = { id: string; label_ar: string; description: string | null };
 
 export default function NewRequest() {
   const { session } = useAuth();
@@ -42,10 +43,14 @@ export default function NewRequest() {
   const [loadingCats, setLoadingCats] = useState(true);
   const [error, setError] = useState('');
 
+  // Services belonging to the chosen category, and which one was picked.
+  const [services, setServices] = useState<Service[]>([]);
+  const [serviceId, setServiceId] = useState('');
+
   const loadCategories = useCallback(async () => {
     const { data } = await supabase
       .from('categories')
-      .select('id, key, label_ar')
+      .select('key, label_ar')
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
     if (data) setCategories(data as Category[]);
@@ -53,6 +58,19 @@ export default function NewRequest() {
   }, []);
 
   useEffect(() => { loadCategories(); }, [loadCategories]);
+
+  // Only the services the founder attached to THIS category.
+  useEffect(() => {
+    setServiceId('');
+    if (!category) { setServices([]); return; }
+    supabase
+      .from('category_services')
+      .select('id, label_ar, description')
+      .eq('category_key', category)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .then(({ data }) => setServices((data ?? []) as Service[]));
+  }, [category]);
 
   async function handleSubmit() {
     setError('');
@@ -66,6 +84,10 @@ export default function NewRequest() {
       .insert({
         customer_id: session.user.id,
         category,
+        // Recorded so the employee sees the exact service picked, not just
+        // the broad category. Nullable: a customer may still describe a
+        // request that matches none of the listed services.
+        service_id: serviceId || null,
         title: title.trim(),
         description: description.trim() || null,
         status: 'submitted',
@@ -80,7 +102,12 @@ export default function NewRequest() {
     }
     // Search for an available employee next, instead of jumping straight
     // to a chat with nobody assigned yet.
-    router.replace({ pathname: '/(customer)/requests/matching', params: { requestId: data.id, category } });
+    // matching only shows employees assigned to this service when one was
+    // chosen; otherwise it falls back to the whole category as before.
+    router.replace({
+      pathname: '/(customer)/requests/matching',
+      params: { requestId: data.id, category, ...(serviceId ? { serviceId } : {}) },
+    });
   }
 
   return (
@@ -147,6 +174,46 @@ export default function NewRequest() {
               </View>
             )}
           </View>
+
+          {/* Service picker — only appears once a category is chosen, and
+              only if the founder has defined services for it. A category with
+              no services still submits fine; service_id just stays null. */}
+          {category !== '' && services.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>الخدمة المطلوبة</Text>
+                <Text style={styles.sectionIcon}>📋</Text>
+              </View>
+              <View style={styles.svcList}>
+                {services.map((svc) => {
+                  const selected = serviceId === svc.id;
+                  return (
+                    <Pressable
+                      key={svc.id}
+                      onPress={() => setServiceId(selected ? '' : svc.id)}
+                      style={({ pressed }) => [
+                        styles.svcRow,
+                        selected && styles.svcRowOn,
+                        pressed && { opacity: 0.8 },
+                      ]}
+                    >
+                      <View style={[styles.svcRadio, selected && styles.svcRadioOn]}>
+                        {selected && <View style={styles.svcRadioDot} />}
+                      </View>
+                      <View style={styles.svcTextWrap}>
+                        <Text style={[styles.svcLabel, selected && { color: COLORS.gold }]} numberOfLines={2}>
+                          {svc.label_ar}
+                        </Text>
+                        {svc.description ? (
+                          <Text style={styles.svcDesc} numberOfLines={2}>{svc.description}</Text>
+                        ) : null}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
           {/* Form section */}
           <View style={styles.section}>
@@ -234,6 +301,23 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontFamily: FONTS.bold, fontSize: 15, color: COLORS.gold },
   sectionIcon: { fontSize: 16 },
+
+  svcList: { gap: 8 },
+  svcRow: {
+    flexDirection: 'row-reverse', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.cardBorder,
+    borderRadius: RADIUS.md, paddingHorizontal: 12, paddingVertical: 12,
+  },
+  svcRowOn: { borderColor: COLORS.gold, backgroundColor: 'rgba(230,171,44,0.10)' },
+  svcRadio: {
+    width: 20, height: 20, borderRadius: 10, borderWidth: 1.5,
+    borderColor: COLORS.white40, alignItems: 'center', justifyContent: 'center',
+  },
+  svcRadioOn: { borderColor: COLORS.gold },
+  svcRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.gold },
+  svcTextWrap: { flex: 1 },
+  svcLabel: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.white, textAlign: 'right' },
+  svcDesc: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.muted, textAlign: 'right', marginTop: 2 },
 
   catsLoader: { height: 80, alignItems: 'center', justifyContent: 'center' },
 

@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { ServiceEmployeesModal } from '@/components/founder/ServiceEmployeesModal';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 interface CategoryService {
@@ -31,6 +32,8 @@ export default function CategoryServicesScreen() {
   const [labelCkb, setLabelCkb] = useState('');
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  // Which service's staff assignment sheet is open, if any.
+  const [assigning, setAssigning] = useState<{ id: string; label: string } | null>(null);
 
   async function loadAll() {
     const [catRes, svcRes] = await Promise.all([
@@ -155,6 +158,13 @@ export default function CategoryServicesScreen() {
                       <Text style={s.deleteBtnText}>✕</Text>
                     </Pressable>
                     <Pressable
+                      onPress={() => setAssigning({ id: svc.id, label: svc.label_ar })}
+                      style={s.assignBtn}
+                      hitSlop={6}
+                    >
+                      <Text style={s.assignBtnText}>👥 الموظفون</Text>
+                    </Pressable>
+                    <Pressable
                       onPress={() => toggleActive(svc)}
                       style={[s.activeBadge, { backgroundColor: svc.is_active ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.1)' }]}
                     >
@@ -171,6 +181,12 @@ export default function CategoryServicesScreen() {
         )}
         <View style={{ height: 40 }} />
       </ScrollView>
+      <ServiceEmployeesModal
+        visible={assigning !== null}
+        serviceId={assigning?.id ?? null}
+        serviceLabel={assigning?.label ?? ''}
+        onClose={() => setAssigning(null)}
+      />
     </ScreenBg>
   );
 }
@@ -196,6 +212,11 @@ const s = StyleSheet.create({
   goldBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: '#000' },
   errorText: { fontFamily: FONTS.bold, fontSize: 12, color: '#ef4444', textAlign: 'right' },
   catHeader: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold, textAlign: 'right', marginBottom: 6, marginTop: 4 },
+  assignBtn: {
+    backgroundColor: 'rgba(230,171,44,0.12)', borderWidth: 1, borderColor: COLORS.goldBorder,
+    borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 5,
+  },
+  assignBtnText: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold },
   svcRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.cardBorder, borderRadius: RADIUS.sm, padding: 10, marginBottom: 6, gap: 8 },
   svcLabel: { flex: 1, fontFamily: FONTS.bold, fontSize: 13, color: COLORS.white, textAlign: 'right' },
   activeBadge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
