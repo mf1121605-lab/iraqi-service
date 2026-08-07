@@ -4,6 +4,9 @@ import {
   Alert,
   FlatList,
   Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   RefreshControl,
   Share,
@@ -262,6 +265,13 @@ export default function NewsScreen() {
   const [mutedVideoId, setMutedVideoId] = useState<Set<string>>(new Set());
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [followBusyId, setFollowBusyId] = useState<string | null>(null);
+  const [menuPostId, setMenuPostId] = useState<string | null>(null);
+  const [editPostId, setEditPostId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [reportPostId, setReportPostId] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
 
   const loadFollowing = useCallback(async () => {
     if (!session?.user.id) return;
@@ -495,6 +505,64 @@ export default function NewsScreen() {
 
   function sharePost(post: Post) {
     Share.share({ message: post.content ?? 'منشور من منصة الخدمات العراقية' }).catch(() => {});
+  }
+
+  function startEdit(post: Post) {
+    setMenuPostId(null);
+    setEditPostId(post.id);
+    setEditText(post.content ?? '');
+  }
+
+  async function saveEdit() {
+    if (!editPostId) return;
+    setEditSaving(true);
+    const { error, count } = await supabase
+      .from('social_posts')
+      .update({ content: editText.trim() || null }, { count: 'exact' })
+      .eq('id', editPostId);
+    setEditSaving(false);
+    if (error) { Alert.alert('تعذّر الحفظ', error.message); return; }
+    if (!count) { Alert.alert('تعذّر الحفظ', 'لا تملك صلاحية تعديل هذا المنشور.'); return; }
+    const savedText = editText.trim() || null;
+    setPosts((cur) => cur.map((p) => (p.id === editPostId ? { ...p, content: savedText } : p)));
+    setEditPostId(null);
+  }
+
+  function startDelete(post: Post) {
+    setMenuPostId(null);
+    Alert.alert('حذف المنشور', 'هل أنت متأكد من حذف المنشور نهائياً؟', [
+      { text: 'إلغاء', style: 'cancel' },
+      {
+        text: 'حذف',
+        style: 'destructive',
+        onPress: async () => {
+          const { error, count } = await supabase.from('social_posts').delete({ count: 'exact' }).eq('id', post.id);
+          if (error) { Alert.alert('تعذّر الحذف', error.message); return; }
+          if (!count) { Alert.alert('تعذّر الحذف', 'لا تملك صلاحية حذف هذا المنشور.'); return; }
+          setPosts((cur) => cur.filter((p) => p.id !== post.id));
+        },
+      },
+    ]);
+  }
+
+  function startReport(post: Post) {
+    setMenuPostId(null);
+    setReportPostId(post.id);
+    setReportReason('');
+  }
+
+  async function submitReport() {
+    if (!reportPostId || !session?.user.id || !reportReason.trim()) return;
+    setReportSubmitting(true);
+    const { error } = await supabase.from('post_reports').insert({
+      post_id: reportPostId,
+      reporter_id: session.user.id,
+      reason: reportReason.trim(),
+    });
+    setReportSubmitting(false);
+    if (error) { Alert.alert('تعذّر الإرسال', error.message); return; }
+    setReportPostId(null);
+    Alert.alert('تم الإرسال', 'شكراً لك، سيتم مراجعة البلاغ من قبل الإدارة.');
   }
 
   function formatDate(iso: string) {
@@ -741,7 +809,12 @@ export default function NewsScreen() {
                     </Pressable>
                   )}
                 </View>
-                <Text style={styles.postDate}>{formatDate(item.created_at)}</Text>
+                <View style={styles.postHeaderRight}>
+                  <Text style={styles.postDate}>{formatDate(item.created_at)}</Text>
+                  <Pressable style={styles.postMenuBtn} onPress={() => setMenuPostId(item.id)} hitSlop={8}>
+                    <Text style={styles.postMenuDots}>⋯</Text>
+                  </Pressable>
+                </View>
               </View>
 
               {/* Content */}
@@ -921,6 +994,108 @@ export default function NewsScreen() {
           );
         }}
       />
+
+      {/* Post options: three-dot menu → Edit / Delete / Report */}
+      <Modal visible={!!menuPostId} transparent animationType="fade" onRequestClose={() => setMenuPostId(null)}>
+        <Pressable style={styles.menuOverlay} onPress={() => setMenuPostId(null)}>
+          <Pressable style={styles.menuSheet} onPress={(e) => e.stopPropagation()}>
+            {(() => {
+              const post = posts.find((p) => p.id === menuPostId);
+              if (!post) return null;
+              const isMine = post.author?.id === session?.user.id;
+              const canDelete = isMine || hasFounderAccess(profile);
+              return (
+                <>
+                  {isMine && (
+                    <Pressable style={styles.menuItem} onPress={() => startEdit(post)}>
+                      <Text style={styles.menuItemText}>✏️ تعديل المنشور</Text>
+                    </Pressable>
+                  )}
+                  {canDelete && (
+                    <Pressable style={styles.menuItem} onPress={() => startDelete(post)}>
+                      <Text style={[styles.menuItemText, styles.menuItemDanger]}>🗑️ حذف المنشور</Text>
+                    </Pressable>
+                  )}
+                  {!isMine && (
+                    <Pressable style={styles.menuItem} onPress={() => startReport(post)}>
+                      <Text style={styles.menuItemText}>🚩 إبلاغ</Text>
+                    </Pressable>
+                  )}
+                  <Pressable style={styles.menuItem} onPress={() => setMenuPostId(null)}>
+                    <Text style={styles.menuItemCancel}>إلغاء</Text>
+                  </Pressable>
+                </>
+              );
+            })()}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Edit post */}
+      <Modal visible={!!editPostId} transparent animationType="fade" onRequestClose={() => setEditPostId(null)}>
+        <KeyboardAvoidingView
+          style={styles.menuOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.editCard}>
+            <Text style={styles.editTitle}>تعديل المنشور</Text>
+            <TextInput
+              value={editText}
+              onChangeText={setEditText}
+              placeholder="اكتب نص المنشور..."
+              placeholderTextColor={COLORS.white40}
+              style={styles.editInput}
+              textAlign="right"
+              multiline
+              numberOfLines={4}
+              maxLength={2000}
+            />
+            <View style={styles.editActions}>
+              <Pressable style={styles.editCancelBtn} onPress={() => setEditPostId(null)}>
+                <Text style={styles.editCancelText}>إلغاء</Text>
+              </Pressable>
+              <Pressable style={styles.editSaveBtn} onPress={saveEdit} disabled={editSaving}>
+                {editSaving ? <ActivityIndicator color="#000" size="small" /> : <Text style={styles.editSaveText}>حفظ</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Report post */}
+      <Modal visible={!!reportPostId} transparent animationType="fade" onRequestClose={() => setReportPostId(null)}>
+        <KeyboardAvoidingView
+          style={styles.menuOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.editCard}>
+            <Text style={styles.editTitle}>الإبلاغ عن المنشور</Text>
+            <TextInput
+              value={reportReason}
+              onChangeText={setReportReason}
+              placeholder="اكتب سبب البلاغ..."
+              placeholderTextColor={COLORS.white40}
+              style={styles.editInput}
+              textAlign="right"
+              multiline
+              numberOfLines={4}
+              maxLength={500}
+            />
+            <View style={styles.editActions}>
+              <Pressable style={styles.editCancelBtn} onPress={() => setReportPostId(null)}>
+                <Text style={styles.editCancelText}>إلغاء</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.editSaveBtn, !reportReason.trim() && styles.postBtnDisabled]}
+                onPress={submitReport}
+                disabled={reportSubmitting || !reportReason.trim()}
+              >
+                {reportSubmitting ? <ActivityIndicator color="#000" size="small" /> : <Text style={styles.editSaveText}>إرسال البلاغ</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScreenBg>
   );
 }
@@ -1006,6 +1181,56 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   postDate: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.muted },
+  postHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  postMenuBtn: { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
+  postMenuDots: { fontSize: 18, color: COLORS.muted, fontWeight: '700' },
+  menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  menuSheet: {
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: '#161b22',
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(230,171,44,0.25)',
+    overflow: 'hidden',
+  },
+  menuItem: {
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  menuItemText: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.white, textAlign: 'center' },
+  menuItemDanger: { color: '#ef4444' },
+  menuItemCancel: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.muted, textAlign: 'center' },
+  editCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#161b22',
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(230,171,44,0.25)',
+    padding: 16,
+    gap: 12,
+  },
+  editTitle: { fontFamily: FONTS.bold, fontSize: 15, color: COLORS.gold, textAlign: 'right' },
+  editInput: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    padding: 12,
+    minHeight: 90,
+    color: COLORS.white,
+    fontFamily: FONTS.regular,
+    fontSize: 13,
+    textAlignVertical: 'top',
+  },
+  editActions: { flexDirection: 'row', gap: 10, justifyContent: 'flex-end' },
+  editCancelBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+  editCancelText: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.white70 },
+  editSaveBtn: { backgroundColor: COLORS.gold, paddingHorizontal: 18, paddingVertical: 10, borderRadius: RADIUS.sm, minWidth: 70, alignItems: 'center' },
+  editSaveText: { fontFamily: FONTS.bold, fontSize: 13, color: '#000' },
   authorCluster: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   followPill: {
