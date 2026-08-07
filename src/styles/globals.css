@@ -15,6 +15,7 @@
 html {
   scroll-behavior: smooth;
   min-height: 100svh;
+  direction: rtl;
 }
 
 .scrollbar-none {
