@@ -13,18 +13,18 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Canvas, LinearGradient, Path, Skia, vec } from '@shopify/react-native-skia';
 import { Easing, useDerivedValue, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { useFrameColor } from '@/hooks/useFrameColor';
-import { useFrameEnabled } from '@/hooks/useFrameEnabled';
+import { useFrameStyle } from '@/hooks/useFrameStyle';
 
 const CORNER = 28;  // px — corner accent size
-const LINE   = 2;   // border line thickness
 const SWEEP_MS = 3200;
 
 export function CinematicFrame() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const color = useFrameColor();
-  const enabled = useFrameEnabled();
+  // Thickness and corner rounding are founder-controlled; they were fixed
+  // constants before, so the settings screen had colour and on/off but no
+  // control over the frame's weight.
+  const { color, enabled, width: LINE, radius: cornerRadius } = useFrameStyle();
 
   const topInset = insets.top;
   const frameW = width;
@@ -47,7 +47,7 @@ export function CinematicFrame() {
     path.moveTo(CORNER, y);
     path.lineTo(frameW - CORNER, y);
     return path;
-  }, [frameW]);
+  }, [frameW, LINE]);
 
   const band = frameW * 0.5;
   const gradStart = useDerivedValue(() => vec(progress.value * (frameW + band) - band, 0));
@@ -75,8 +75,8 @@ export function CinematicFrame() {
       </View>
 
       {/* Top corner accents only — no bottom rail at all */}
-      <CornerAccent pos="tl" topInset={topInset} color={color} />
-      <CornerAccent pos="tr" topInset={topInset} color={color} />
+      <CornerAccent pos="tl" topInset={topInset} color={color} line={LINE} radius={cornerRadius} />
+      <CornerAccent pos="tr" topInset={topInset} color={color} line={LINE} radius={cornerRadius} />
     </View>
   );
 }
@@ -85,10 +85,14 @@ function CornerAccent({
   pos,
   topInset,
   color,
+  line,
+  radius,
 }: {
   pos: 'tl' | 'tr';
   topInset: number;
   color: string;
+  line: number;
+  radius: number;
 }) {
   const isLeft = pos === 'tl';
   const posStyle = {
@@ -101,10 +105,10 @@ function CornerAccent({
       <View
         style={[
           styles.cornerLine,
-          { backgroundColor: color + 'a6' },
+          { backgroundColor: color + 'a6', borderRadius: radius },
           {
             width: CORNER,
-            height: LINE,
+            height: line,
             top: 0,
             left: isLeft ? 0 : undefined,
             right: !isLeft ? 0 : undefined,
@@ -114,9 +118,9 @@ function CornerAccent({
       <View
         style={[
           styles.cornerLine,
-          { backgroundColor: color + 'a6' },
+          { backgroundColor: color + 'a6', borderRadius: radius },
           {
-            width: LINE,
+            width: line,
             height: CORNER,
             top: 0,
             left: isLeft ? 0 : undefined,
@@ -144,6 +148,5 @@ const styles = StyleSheet.create({
   },
   cornerLine: {
     position: 'absolute',
-    borderRadius: 1,
   },
 });

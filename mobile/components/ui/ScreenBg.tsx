@@ -22,14 +22,15 @@ interface Props {
 export function ScreenBg({ children, noTopPad }: Props) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
-  const { imageUrl, color, particlesEnabled } = useSiteBackground();
+  const { imageUrl, color, baseColor, particlesEnabled } = useSiteBackground();
 
   return (
     <View style={styles.root}>
       {/* ── Skia canvas: real radial gradients ─────────────────────── */}
       <Canvas key={`canvas-${width}-${height}`} style={StyleSheet.absoluteFill} pointerEvents="none">
-        {/* Base #0d1117 */}
-        <Rect x={0} y={0} width={width} height={height} color="#0d1117" />
+        {/* Deep base — founder-controlled (founder_settings.bg_color), was a
+            hardcoded #0d1117 so the colour picker had no effect on mobile. */}
+        <Rect x={0} y={0} width={width} height={height} color={baseColor ?? '#0d1117'} />
 
         {/* Top-center gold aurora — mirrors web radial at 50% -5% */}
         <Rect x={0} y={0} width={width} height={height}>
@@ -70,11 +71,15 @@ export function ScreenBg({ children, noTopPad }: Props) {
 
       {/* ── Founder-set background image/color — dim layer above the
           default gradient, still visible underneath, matches the web ── */}
-      {color ? (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: color }]} pointerEvents="none" />
-      ) : imageUrl ? (
+      {/* Tint and image are independent layers. They used to be an either/or
+          chain, so setting a colour silently hid an uploaded background image
+          and there was no way to have both. */}
+      {color && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: color, opacity: 0.55 }]} pointerEvents="none" />
+      )}
+      {imageUrl && (
         <Image source={{ uri: imageUrl }} style={[StyleSheet.absoluteFill, { opacity: 0.35 }]} resizeMode="cover" />
-      ) : null}
+      )}
 
       {/* ── Ambient particle effect — independent layer on top of whatever
           background is active, founder-toggleable ── */}
@@ -91,6 +96,8 @@ export function ScreenBg({ children, noTopPad }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    // Matches the Skia base rect so there is no flash of the old default
+    // before the canvas paints.
     backgroundColor: '#0d1117',
   },
   content: {

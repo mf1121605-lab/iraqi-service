@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Pressable, ScrollView,
+  ActivityIndicator, Alert, Image, Pressable, ScrollView,
   StyleSheet, Switch, Text, TextInput, View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { ScreenBg } from '@/components/ui/ScreenBg';
@@ -34,6 +35,10 @@ interface FounderSettings {
   announcement_text_ckb: string | null;
   frame_color: string | null;
   frame_enabled: boolean | null;
+  frame_width: number | null;
+  frame_radius: number | null;
+  background_image_path: string | null;
+  background_color: string | null;
   particles_enabled: boolean | null;
   // Added by the app-theme migration; read live by hooks/useAppTheme.tsx.
   app_font_family: string | null;
@@ -77,6 +82,9 @@ const BG_PRESETS = [
   { hex: '#1a0f00', label: 'بني داكن' },
 ];
 
+const FRAME_WIDTHS = [1, 2, 3, 4, 6];
+const FRAME_RADII  = [0, 1, 4, 8, 14];
+
 const FRAME_COLOR_PRESETS = [
   { hex: '#e6ab2c', label: 'ذهبي' },
   { hex: '#3b82f6', label: 'أزرق' },
@@ -86,7 +94,7 @@ const FRAME_COLOR_PRESETS = [
   { hex: '#e2e8f0', label: 'فضي' },
 ];
 
-const TEXT_FIELDS: { key: keyof Omit<FounderSettings, 'id' | 'accent_color' | 'bg_color' | 'announcement_enabled' | 'frame_color' | 'frame_enabled' | 'particles_enabled'>; label: string; multiline?: boolean }[] = [
+const TEXT_FIELDS: { key: keyof Omit<FounderSettings, 'id' | 'accent_color' | 'bg_color' | 'announcement_enabled' | 'frame_color' | 'frame_enabled' | 'particles_enabled' | 'frame_width' | 'frame_radius' | 'background_image_path' | 'background_color'>; label: string; multiline?: boolean }[] = [
   { key: 'hero_title_ar', label: 'العنوان الرئيسي (عربي)' },
   { key: 'hero_title_ckb', label: 'العنوان الرئيسي (كردي)' },
   { key: 'hero_subtitle_ar', label: 'العنوان الفرعي (عربي)', multiline: true },
@@ -123,6 +131,10 @@ function emptyForm(): Omit<FounderSettings, 'id'> {
     announcement_text_ckb: '',
     frame_color: '#e6ab2c',
     frame_enabled: true,
+    frame_width: 2,
+    frame_radius: 1,
+    background_image_path: '',
+    background_color: '',
     particles_enabled: true,
     app_font_family: 'Cairo',
     app_text_color: '',
@@ -136,6 +148,7 @@ export default function SettingsScreen() {
   const [form, setForm] = useState<Omit<FounderSettings, 'id'>>(emptyForm());
   const [dataLoading, setDataLoading] = useState(true);
   const [audioUploading, setAudioUploading] = useState(false);
+  const [bgUploading, setBgUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -178,6 +191,10 @@ export default function SettingsScreen() {
           announcement_text_ckb: s.announcement_text_ckb ?? '',
           frame_color: s.frame_color ?? '#e6ab2c',
           frame_enabled: s.frame_enabled ?? true,
+          frame_width: s.frame_width ?? 2,
+          frame_radius: s.frame_radius ?? 1,
+          background_image_path: s.background_image_path ?? '',
+          background_color: s.background_color ?? '',
           particles_enabled: s.particles_enabled ?? true,
           app_font_family: s.app_font_family ?? 'Cairo',
           app_text_color: s.app_text_color ?? '',
@@ -223,6 +240,41 @@ export default function SettingsScreen() {
     }
     setForm((f) => ({ ...f, site_ambient_audio_url: url }));
     Alert.alert('تم الرفع', 'اضغط "حفظ الإعدادات" لتثبيت الموسيقى الجديدة.');
+  }
+
+  // Background image goes to the same bucket/flow as every other upload, and
+  // stores the resulting public URL in background_image_path — the column
+  // ScreenBg already reads.
+  async function pickBackgroundImage() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('الصلاحية مرفوضة', 'يحتاج التطبيق إذن الوصول للصور لاختيار خلفية.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.9,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const uri = result.assets[0].uri;
+    const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+
+    setBgUploading(true);
+    const { url, error } = await uploadToStorage(
+      uri,
+      'site-assets',
+      `backgrounds/${Date.now()}.${ext}`,
+      `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+    );
+    setBgUploading(false);
+
+    if (!url) {
+      Alert.alert('تعذّر رفع صورة الخلفية', error ?? 'سبب غير معروف');
+      return;
+    }
+    setForm((f) => ({ ...f, background_image_path: url }));
+    Alert.alert('تم الرفع', 'اضغط "حفظ الإعدادات" لتثبيت الخلفية الجديدة.');
   }
 
   async function handleSave() {
@@ -382,6 +434,97 @@ export default function SettingsScreen() {
                 />
                 <Text style={s.switchLabel}>{form.frame_enabled ? 'الإطار مفعّل' : 'الإطار متوقف'}</Text>
               </View>
+
+              <Text style={[s.fieldLabel, { marginTop: 12 }]}>سمك الإطار: {form.frame_width ?? 2}px</Text>
+              <View style={s.scaleRow}>
+                {FRAME_WIDTHS.map((w) => {
+                  const on = (form.frame_width ?? 2) === w;
+                  return (
+                    <Pressable
+                      key={w}
+                      onPress={() => setForm((f) => ({ ...f, frame_width: w }))}
+                      style={[s.scaleChip, on && s.fontChipOn]}
+                    >
+                      <Text style={[s.fontChipText, on && { color: COLORS.gold }]}>{w}px</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={[s.fieldLabel, { marginTop: 10 }]}>انحناء زوايا الإطار: {form.frame_radius ?? 1}px</Text>
+              <View style={s.scaleRow}>
+                {FRAME_RADII.map((r) => {
+                  const on = (form.frame_radius ?? 1) === r;
+                  return (
+                    <Pressable
+                      key={r}
+                      onPress={() => setForm((f) => ({ ...f, frame_radius: r }))}
+                      style={[s.scaleChip, on && s.fontChipOn]}
+                    >
+                      <Text style={[s.fontChipText, on && { color: COLORS.gold }]}>{r}px</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* ── App background: image + tint ── */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>🖼️ خلفية التطبيق</Text>
+              <Text style={s.hint}>
+                ترتيب الطبقات: اللون الأساسي أعلاه، ثم صبغة الخلفية، ثم الصورة. كلها اختيارية ويمكن دمجها.
+              </Text>
+
+              <Pressable
+                onPress={pickBackgroundImage}
+                disabled={bgUploading}
+                style={({ pressed }) => [s.audioPickBtn, pressed && { opacity: 0.8 }]}
+              >
+                {bgUploading
+                  ? <ActivityIndicator color={COLORS.gold} size="small" />
+                  : <Text style={s.audioPickBtnText}>
+                      {form.background_image_path ? '🔁 استبدال صورة الخلفية' : '⬆️ رفع صورة خلفية'}
+                    </Text>}
+              </Pressable>
+
+              {form.background_image_path ? (
+                <View style={s.audioCurrentRow}>
+                  <Pressable
+                    onPress={() => setForm((f) => ({ ...f, background_image_path: '' }))}
+                    style={s.audioClearBtn}
+                  >
+                    <Text style={s.audioClearText}>حذف</Text>
+                  </Pressable>
+                  <Image
+                    source={{ uri: form.background_image_path }}
+                    style={s.bgPreview}
+                    resizeMode="cover"
+                  />
+                </View>
+              ) : (
+                <Text style={s.hint}>لا توجد صورة خلفية — التدرّج الافتراضي فقط.</Text>
+              )}
+
+              <Text style={[s.fieldLabel, { marginTop: 12 }]}>صبغة الخلفية (فوق التدرّج)</Text>
+              <View style={s.presetRow}>
+                {BG_PRESETS.map((p) => (
+                  <Pressable
+                    key={p.hex}
+                    onPress={() => setForm((f) => ({
+                      ...f,
+                      background_color: f.background_color === p.hex ? '' : p.hex,
+                    }))}
+                    style={[s.colorSwatch, { backgroundColor: p.hex, borderColor: 'rgba(255,255,255,0.3)' }, form.background_color === p.hex && s.swatchSelected]}
+                  >
+                    {form.background_color === p.hex && <Text style={s.swatchTick}>✓</Text>}
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={s.hint}>
+                {form.background_color
+                  ? `مفعّلة: ${form.background_color} — اضغط اللون نفسه لإلغائها.`
+                  : 'غير مفعّلة — اضغط لوناً لإضافة صبغة فوق التدرّج.'}
+              </Text>
             </View>
 
             {/* ── Text content ── */}
@@ -700,6 +843,7 @@ const s = StyleSheet.create({
     paddingVertical: 6,
   },
   audioClearText: { fontFamily: FONTS.bold, fontSize: 11, color: '#ef4444' },
+  bgPreview: { flex: 1, height: 70, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.cardBorder },
   successBanner: { backgroundColor: 'rgba(34,197,94,0.15)', borderWidth: 1, borderColor: 'rgba(34,197,94,0.3)', borderRadius: RADIUS.sm, padding: 10 },
   successText: { fontFamily: FONTS.bold, fontSize: 13, color: '#22c55e', textAlign: 'center' },
   goldBtn: { backgroundColor: COLORS.gold, borderRadius: RADIUS.md, paddingVertical: 13, alignItems: 'center' },
