@@ -10,6 +10,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method not allowed' });
   }
 
+  try {
   const ip = getClientIp(req) ?? 'unknown';
   const rl = await checkRateLimit(`recovery-q:${ip}`, 10, 60);
   if (rl.limited) {
@@ -28,4 +29,8 @@ export default async function handler(req, res) {
     .maybeSingle();
 
   return res.status(200).json({ questionId: data?.recovery_question_id ?? null });
+  } catch (err) {
+    console.error('recovery-question: unhandled error', err);
+    return res.status(500).json({ error: err?.message ?? 'unexpected server error' });
+  }
 }

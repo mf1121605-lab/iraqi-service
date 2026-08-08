@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -114,6 +115,26 @@ export default function NotificationsScreen() {
     setMarkingAll(false);
   }
 
+  async function handleDelete(id: string) {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    await supabase.from('notifications').delete().eq('id', id);
+  }
+
+  function confirmClearAll() {
+    if (!notifications.length) return;
+    Alert.alert('مسح كل الإشعارات', 'هل تريد حذف كل الإشعارات نهائياً؟', [
+      { text: 'إلغاء', style: 'cancel' },
+      {
+        text: 'مسح الكل',
+        style: 'destructive',
+        onPress: async () => {
+          setNotifications([]);
+          await supabase.from('notifications').delete().eq('user_id', session!.user.id);
+        },
+      },
+    ]);
+  }
+
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   if (loading) {
@@ -125,7 +146,7 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -144,19 +165,29 @@ export default function NotificationsScreen() {
             )}
           </View>
 
-          {unreadCount > 0 && (
-            <Pressable
-              style={({ pressed }) => [styles.markAllBtn, pressed && { opacity: 0.7 }]}
-              onPress={markAllRead}
-              disabled={markingAll}
-            >
-              {markingAll ? (
-                <ActivityIndicator color={COLORS.gold} size="small" />
-              ) : (
-                <Text style={styles.markAllText}>تحديد الكل كمقروء ✓</Text>
-              )}
-            </Pressable>
-          )}
+          <View style={styles.headerBtnRow}>
+            {unreadCount > 0 && (
+              <Pressable
+                style={({ pressed }) => [styles.markAllBtn, pressed && { opacity: 0.7 }]}
+                onPress={markAllRead}
+                disabled={markingAll}
+              >
+                {markingAll ? (
+                  <ActivityIndicator color={COLORS.gold} size="small" />
+                ) : (
+                  <Text style={styles.markAllText}>تحديد الكل كمقروء ✓</Text>
+                )}
+              </Pressable>
+            )}
+            {notifications.length > 0 && (
+              <Pressable
+                style={({ pressed }) => [styles.clearAllBtn, pressed && { opacity: 0.7 }]}
+                onPress={confirmClearAll}
+              >
+                <Text style={styles.clearAllText}>مسح الكل 🗑️</Text>
+              </Pressable>
+            )}
+          </View>
         </View>
 
         {notifications.length === 0 ? (
@@ -200,6 +231,10 @@ export default function NotificationsScreen() {
                       <Text style={styles.body} numberOfLines={2}>{notif.body}</Text>
                     ) : null}
                   </View>
+
+                  <Pressable onPress={() => handleDelete(notif.id)} style={styles.deleteBtn} hitSlop={8}>
+                    <Text style={styles.deleteIcon}>🗑️</Text>
+                  </Pressable>
                 </Pressable>
               );
             })}
@@ -240,6 +275,19 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   markAllText: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
+  headerBtnRow: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
+  clearAllBtn: {
+    alignSelf: 'flex-end',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(239,68,68,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.25)',
+    borderRadius: RADIUS.md,
+  },
+  clearAllText: { fontFamily: FONTS.bold, fontSize: 13, color: '#ef4444' },
+  deleteBtn: { paddingHorizontal: 12, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
+  deleteIcon: { fontSize: 15 },
 
   emptyState: {
     alignItems: 'center',

@@ -1,7 +1,7 @@
 import '../global.css';
-import { useEffect, useState, Component, ReactNode } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
-import { Stack } from 'expo-router';
+import { useState, Component, ReactNode } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as WebBrowser from 'expo-web-browser';
@@ -10,29 +10,89 @@ import {
   Cairo_400Regular,
   Cairo_700Bold,
 } from '@expo-google-fonts/cairo';
+import { Tajawal_400Regular, Tajawal_700Bold } from '@expo-google-fonts/tajawal';
+import { Almarai_400Regular, Almarai_700Bold } from '@expo-google-fonts/almarai';
+import { IBMPlexSansArabic_400Regular, IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arabic';
+import { NotoKufiArabic_400Regular, NotoKufiArabic_700Bold } from '@expo-google-fonts/noto-kufi-arabic';
+import { Ionicons } from '@expo/vector-icons';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/hooks/useAuth';
+import { useAppUpdates } from '@/hooks/useAppUpdates';
 import { CinematicFrame } from '@/components/ui/CinematicFrame';
-import { CinematicSplash } from '@/components/ui/CinematicSplash';
+import { FrameInsetProvider } from '@/hooks/useFrameInset';
+import { AmbientMusicProvider } from '@/hooks/useAmbientMusic';
+import { AmbientMusicIcon } from '@/components/ui/AmbientMusicIcon';
+import { SiteBackgroundProvider } from '@/hooks/useSiteBackground';
+import * as Sentry from '@sentry/react-native';
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
+import { UiOverridesProvider } from '@/hooks/useUiOverrides';
+import { AppThemeProvider } from '@/hooks/useAppTheme';
+import { DesignModeToggle } from '@/components/ui/DesignModeToggle';
+import { ElementEditorSheet } from '@/components/ui/ElementEditorSheet';
+import { CinematicIntro } from '@/components/ui/CinematicIntro';
+import { InAppNotificationBanner } from '@/components/ui/InAppNotificationBanner';
 
 // Required to dismiss the OAuth browser session when the app is foregrounded
 WebBrowser.maybeCompleteAuthSession();
 
+// No-op until EXPO_PUBLIC_SENTRY_DSN is set (same pattern as VAPID_KEY
+// elsewhere in this codebase — a missing secret disables the feature
+// instead of crashing). Once the founder creates a free Sentry project
+// and gives us the DSN, this starts reporting silent crashes immediately
+// with zero other code changes.
+const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
+Sentry.init({
+  dsn: SENTRY_DSN,
+  enabled: !!SENTRY_DSN,
+  tracesSampleRate: 0.2,
+});
+
+// Reverted: forcing native RTL here fought with the manual per-component
+// `textAlign: 'right'` styling used throughout the app (built without
+// native RTL in mind), producing broken multi-line text — the first
+// line right-aligned, every wrapped line after it left-aligned. The
+// manual styling alone was correct; forcing system-level RTL on top of
+// it was the regression, not a fix.
+
 SplashScreen.preventAutoHideAsync();
 
-// Error boundary to catch any JS crash and show a message instead of blank screen
+// Error boundary to catch any JS crash and show a recoverable screen
+// instead of a blank/frozen app. Previously this only printed the raw
+// error.message with no way out — a crash anywhere left the user stuck
+// with nothing to do but force-quit. Now it offers a retry (re-mounts the
+// subtree, which resolves any crash caused by transient/stale state) and
+// a "go to home" escape hatch (re-runs app/index.tsx's routing from
+// scratch, which resolves crashes tied to a specific broken screen).
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
-  state = { error: null };
+  state = { error: null as string | null };
   static getDerivedStateFromError(e: Error) {
     return { error: e.message };
   }
+  componentDidCatch(error: Error, info: { componentStack: string }) {
+    console.error('ErrorBoundary caught a crash:', error, info.componentStack);
+    Sentry.captureException(error, { contexts: { react: { componentStack: info.componentStack } } });
+  }
+  handleRetry = () => this.setState({ error: null });
+  handleGoHome = () => {
+    this.setState({ error: null });
+    router.replace('/');
+  };
   render() {
     if (this.state.error) {
       return (
-        <View style={{ flex: 1, backgroundColor: '#0d1117', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <Text style={{ color: '#ef4444', fontSize: 14, textAlign: 'center' }}>
-            {this.state.error}
-          </Text>
+        <View style={errorStyles.container}>
+          <Text style={errorStyles.emoji}>⚠️</Text>
+          <Text style={errorStyles.title}>حدث خطأ غير متوقع</Text>
+          <Text style={errorStyles.message}>{this.state.error}</Text>
+          <View style={errorStyles.actions}>
+            <Pressable style={errorStyles.retryBtn} onPress={this.handleRetry}>
+              <Text style={errorStyles.retryText}>إعادة المحاولة</Text>
+            </Pressable>
+            <Pressable style={errorStyles.homeBtn} onPress={this.handleGoHome}>
+              <Text style={errorStyles.homeText}>العودة للرئيسية</Text>
+            </Pressable>
+          </View>
         </View>
       );
     }
@@ -40,36 +100,88 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: string |
   }
 }
 
-export default function RootLayout() {
+const errorStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0d1117', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 8 },
+  emoji: { fontSize: 40, marginBottom: 8 },
+  title: { color: '#fff', fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  message: { color: '#ef4444', fontSize: 13, textAlign: 'center', marginBottom: 16 },
+  actions: { flexDirection: 'row', gap: 12 },
+  retryBtn: { backgroundColor: '#e6ab2c', borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12 },
+  retryText: { color: '#0d1117', fontWeight: '700', fontSize: 14 },
+  homeBtn: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12 },
+  homeText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+});
+
+function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Cairo_400Regular,
     Cairo_700Bold,
+    Tajawal_400Regular,
+    Tajawal_700Bold,
+    Almarai_400Regular,
+    Almarai_700Bold,
+    IBMPlexSansArabic_400Regular,
+    IBMPlexSansArabic_700Bold,
+    NotoKufiArabic_400Regular,
+    NotoKufiArabic_700Bold,
+    // Ionicons ships as a font file too, and its native auto-linking isn't
+    // reliable on every build — the bottom tab bar showed tofu boxes
+    // instead of icons on a real device. Loading it explicitly here, the
+    // same way every other font in this app is already loaded, sidesteps
+    // whatever native-linking gap caused that.
+    ...Ionicons.font,
   });
-  const [showSplash, setShowSplash] = useState(true);
+  const [showIntro, setShowIntro] = useState(true);
 
-  useEffect(() => {
-    if (fontsLoaded || fontError) SplashScreen.hideAsync();
-  }, [fontsLoaded, fontError]);
+  useAppUpdates();
 
-  // Don't block on font errors — fall back to system font
-  if (!fontsLoaded && !fontError) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#0d1117', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#e6ab2c" size="large" />
-      </View>
-    );
-  }
+  // There is exactly one visual handoff on launch: native splash -> intro.
+  // CinematicIntro opens on a frame that reproduces the native splash's logo
+  // size and background precisely, and only hides the native splash once that
+  // frame has laid out — so the swap is invisible. It also owns hideAsync(),
+  // which is why nothing here calls it.
+  //
+  // Don't block on font errors — fall back to system font. Returning null
+  // rather than a spinner keeps the native splash as the only thing on screen
+  // during this window; a spinner would be a distinct third visual state.
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <ErrorBoundary>
+      {/* Required by react-native-gesture-handler: without a root view its
+          gestures silently never activate on Android. The app previously had
+          none, which is why earlier drag work had to fall back to
+          PanResponder. flex:1 so it doesn't collapse the tree. */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
-          <StatusBar style="light" backgroundColor="#0d1117" />
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />
-          <CinematicFrame />
-          {showSplash && <CinematicSplash onDone={() => setShowSplash(false)} />}
+          <AppThemeProvider>
+          <UiOverridesProvider>
+            <FrameInsetProvider>
+              <SiteBackgroundProvider>
+                <AmbientMusicProvider>
+                  <StatusBar style="light" backgroundColor="#0d1117" />
+                  <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />
+                  <CinematicFrame />
+                  <AmbientMusicIcon />
+                  <OfflineBanner />
+                  <InAppNotificationBanner />
+                  <DesignModeToggle />
+                  <ElementEditorSheet />
+                  {/* Mounted inside AuthProvider so it can hold the intro until
+                      the session/role has resolved — the screen revealed
+                      underneath is then already the final destination. */}
+                  {showIntro && <CinematicIntro onDone={() => setShowIntro(false)} />}
+                </AmbientMusicProvider>
+              </SiteBackgroundProvider>
+            </FrameInsetProvider>
+          </UiOverridesProvider>
+          </AppThemeProvider>
         </AuthProvider>
       </SafeAreaProvider>
+      </GestureHandlerRootView>
     </ErrorBoundary>
   );
 }
+
+export default Sentry.wrap(RootLayout);

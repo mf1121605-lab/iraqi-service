@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,13 +10,28 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
-import { MessageBubble } from '@/components/chat/MessageBubble';
+import { MessageBubble, MessageStatus } from '@/components/chat/MessageBubble';
+import { ReactionPickerOverlay } from '@/components/ui/ReactionPickerOverlay';
+import { buildChatReactions, DELETE_KEY, REPLY_KEY } from '@/constants/chatReactions';
+import { confirmDelete } from '@/lib/confirmDelete';
+import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { Avatar } from '@/components/chat/Avatar';
+import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
+import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { uploadMediaSmart, type UploadHandle } from '@/lib/resumableUpload';
+import { setActiveChat } from '@/lib/activeChatTracker';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+import { playSound } from '@/utils/soundFX';
+import { ChatBgTheme, getChatBgTheme, setChatBgTheme } from '@/utils/chatBackgroundPrefs';
+import { CHAT_DOCUMENT_MIME_TYPES } from '@/constants/documentMimeTypes';
 
 interface OtherUser {
   id: string;
@@ -31,13 +46,59 @@ interface DmMessage {
   sender_id: string;
   body: string | null;
   attachment_url: string | null;
+  reply_to_id: string | null;
+  read_at: string | null;
   created_at: string;
   message_type: string | null;
+  reactions: { emoji: string; user_id: string }[];
 }
 
 function displayNameFor(p: OtherUser | null): string {
   if (!p) return 'عضو';
   return [p.given_name, p.family_name].filter(Boolean).join(' ') || 'عضو';
+}
+
+async function uploadAttachment(
+  uri: string,
+  userId: string,
+  kind: 'image' | 'voice' | 'video' | 'file',
+  onProgress?: (pct: number) => void,
+  onHandle?: (handle: UploadHandle) => void,
+  fileName?: string,
+  mimeType?: string,
+): Promise<string | null> {
+  try {
+    const ext = kind === 'voice'
+      ? 'm4a'
+      : kind === 'file'
+        ? (fileName?.split('.').pop()?.toLowerCase() ?? 'bin')
+        : (uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg'));
+    const path = `chat/${userId}/${Date.now()}.${ext}`;
+    const contentType = kind === 'voice'
+      ? 'audio/m4a'
+      : kind === 'video'
+        ? `video/${ext === 'mov' ? 'quicktime' : ext}`
+        : kind === 'file'
+          ? (mimeType ?? 'application/octet-stream')
+          : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+    // Dispatches by file size: small images go through a plain single-
+    // request upload; long voice notes and videos go through the chunked,
+    // resumable TUS path — see lib/resumableUpload.ts.
+    let publicUrl: string | null = null;
+    let uploadErr: Error | null = null;
+    await uploadMediaSmart(uri, 'site-assets', path, contentType, {
+      onProgress,
+      onHandle,
+      onSuccess: (url) => { publicUrl = url; },
+      onError: (err) => { uploadErr = err; },
+    });
+    if (uploadErr) { console.error('upload failed:', uploadErr); return null; }
+    return publicUrl;
+  } catch (err) {
+    console.error('upload failed:', err);
+    return null;
+  }
 }
 
 const TEMPLATES = {
@@ -46,18 +107,44 @@ const TEMPLATES = {
   payment:      'رسوم الخدمة هي: [المبلغ]. يمكنك الدفع عبر:',
 };
 
+const TYPING_TIMEOUT_MS = 3000;
+const TYPING_BROADCAST_INTERVAL_MS = 2000;
+
 export default function DmThread() {
   const { threadId } = useLocalSearchParams<{ threadId: string }>();
+
+  // Lets the global in-app notification banner know not to pop up for a
+  // message that just landed in the DM thread already open on screen.
+  useEffect(() => {
+    if (threadId) setActiveChat({ type: 'dm', threadId });
+    return () => setActiveChat(null);
+  }, [threadId]);
   const { profile, loading } = useAuth();
 
   const [otherUser, setOtherUser] = useState<OtherUser | null>(null);
   const [messages, setMessages] = useState<DmMessage[]>([]);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const uploadHandleRef = useRef<UploadHandle | null>(null);
+
+  // Stops an in-flight upload if the user navigates away mid-upload —
+  // otherwise it keeps running against a screen that's already gone.
+  useEffect(() => () => { uploadHandleRef.current?.abort(); }, []);
   const [notFound, setNotFound] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const [recording, setRecording] = useState(false);
+  const [replyTo, setReplyTo] = useState<DmMessage | null>(null);
+  const [otherTyping, setOtherTyping] = useState(false);
+  const [bgTheme, setBgTheme] = useState<ChatBgTheme>('none');
+  const [showBgPicker, setShowBgPicker] = useState(false);
 
-  const listRef = useRef<FlatList>(null);
+  useEffect(() => { getChatBgTheme().then(setBgTheme); }, []);
+
+  const listRef = useRef<FlashList<DmMessage>>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const lastTypingBroadcast = useRef(0);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!profile || !threadId) return;
@@ -67,11 +154,11 @@ export default function DmThread() {
     function loadMessages() {
       supabase
         .from('direct_messages')
-        .select('id, sender_id, body, attachment_url, created_at, message_type')
+        .select('id, sender_id, body, attachment_url, reply_to_id, read_at, created_at, message_type, reactions:direct_message_reactions(emoji, user_id)')
         .eq('thread_id', threadId)
         .order('created_at')
         .then(({ data }) => {
-          if (active) setMessages(data ?? []);
+          if (active) setMessages((data ?? []) as unknown as DmMessage[]);
         });
     }
 
@@ -101,15 +188,37 @@ export default function DmThread() {
       channel = supabase
         .channel(`dm-thread-${threadId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'direct_messages', filter: `thread_id=eq.${threadId}` }, loadMessages)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'direct_message_reactions' }, loadMessages)
+        .on('broadcast', { event: 'typing' }, (payload) => {
+          const { userId } = payload.payload as { userId: string };
+          if (userId === profile!.id) return;
+          setOtherTyping(true);
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = setTimeout(() => setOtherTyping(false), TYPING_TIMEOUT_MS);
+        })
         .subscribe();
+      channelRef.current = channel;
     }
 
     init();
     return () => {
       active = false;
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (channel) supabase.removeChannel(channel);
     };
+    // Deliberately depends on the stable id, not the whole profile object —
+    // reconnecting this realtime channel on every unrelated profile field
+    // change would be wasteful (same convention throughout this codebase).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id, threadId]);
+
+  const broadcastTyping = useCallback(() => {
+    if (!channelRef.current || !profile) return;
+    const now = Date.now();
+    if (now - lastTypingBroadcast.current < TYPING_BROADCAST_INTERVAL_MS) return;
+    lastTypingBroadcast.current = now;
+    channelRef.current.send({ type: 'broadcast', event: 'typing', payload: { userId: profile.id } });
+  }, [profile]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -117,18 +226,177 @@ export default function DmThread() {
     }
   }, [messages.length]);
 
+  // Mark the other party's messages as read once viewed.
+  useEffect(() => {
+    if (!profile?.id) return;
+    const unread = messages.filter((m) => m.sender_id !== profile.id && !m.read_at);
+    if (unread.length === 0) return;
+    supabase.from('direct_messages').update({ read_at: new Date().toISOString() }).in('id', unread.map((m) => m.id)).then(() => {});
+  }, [messages, profile?.id]);
+
   async function handleSend() {
     const text = body.trim();
     if (!text || !profile || !threadId) return;
     setSending(true);
     setBody('');
+    const replyId = replyTo?.id ?? null;
+    setReplyTo(null);
     await supabase.from('direct_messages').insert({
       thread_id: threadId,
       sender_id: profile.id,
       body: text,
+      message_type: 'text',
+      reply_to_id: replyId,
     });
+    playSound('messageSent');
     setSending(false);
   }
+
+  async function pickAndSendImage() {
+    if (!profile || !threadId) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الصور والفيديوهات من إعدادات الجهاز لإرسال المرفقات.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.8 });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    const isVideo = asset.type === 'video';
+    setSending(true);
+    setUploadProgress(0);
+    const url = await uploadAttachment(
+      asset.uri, profile.id, isVideo ? 'video' : 'image', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; },
+    );
+    uploadHandleRef.current = null;
+    setUploadProgress(null);
+    if (url) {
+      await supabase.from('direct_messages').insert({
+        thread_id: threadId, sender_id: profile.id, body: isVideo ? '🎬 فيديو' : '📷 صورة',
+        message_type: isVideo ? 'video' : 'image', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+      });
+      setReplyTo(null);
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع المرفق، حاول مرة أخرى.');
+    }
+    setSending(false);
+  }
+
+  async function pickAndSendDocument() {
+    if (!profile || !threadId) return;
+    const result = await DocumentPicker.getDocumentAsync({ type: CHAT_DOCUMENT_MIME_TYPES, copyToCacheDirectory: true });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    setSending(true);
+    setUploadProgress(0);
+    const url = await uploadAttachment(
+      asset.uri, profile.id, 'file', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; }, asset.name, asset.mimeType,
+    );
+    uploadHandleRef.current = null;
+    setUploadProgress(null);
+    if (url) {
+      await supabase.from('direct_messages').insert({
+        thread_id: threadId, sender_id: profile.id, body: `📎 ${asset.name}`,
+        message_type: 'file', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+      });
+      setReplyTo(null);
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع الملف، حاول مرة أخرى.');
+    }
+    setSending(false);
+  }
+
+  async function sendVoice(uri: string, durationMs: number) {
+    if (!profile || !threadId) return;
+    setRecording(false);
+    if (durationMs < 800) return;
+    setSending(true);
+    setUploadProgress(0);
+    const url = await uploadAttachment(
+      uri, profile.id, 'voice', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; },
+    );
+    uploadHandleRef.current = null;
+    setUploadProgress(null);
+    if (url) {
+      await supabase.from('direct_messages').insert({
+        thread_id: threadId, sender_id: profile.id, body: '🎤 رسالة صوتية',
+        message_type: 'voice', attachment_url: url,
+      });
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع الرسالة الصوتية، حاول مرة أخرى.');
+    }
+    setSending(false);
+  }
+
+  async function pickReaction(messageId: string, emoji: string) {
+    if (!profile?.id) return;
+    const msg = messages.find((m) => m.id === messageId);
+    const mine = msg?.reactions.find((r) => r.user_id === profile.id);
+    if (mine) await supabase.from('direct_message_reactions').delete().eq('message_id', messageId).eq('user_id', profile.id);
+    if (!mine || mine.emoji !== emoji) {
+      await supabase.from('direct_message_reactions').insert({ message_id: messageId, user_id: profile.id, emoji });
+      playSound('reaction');
+    }
+  }
+
+  function summarizeReactions(reactions: { emoji: string; user_id: string }[]) {
+    const counts: Record<string, number> = {};
+    reactions.forEach((r) => { counts[r.emoji] = (counts[r.emoji] ?? 0) + 1; });
+    return Object.entries(counts).map(([emoji, count]) => ({ emoji, count, mine: false }));
+  }
+
+  // Stable across renders driven by anything other than messages/profile/
+  // otherUser/replyTo changing.
+  const renderMessage = useCallback(({ item }: { item: DmMessage }) => {
+    const isMine = item.sender_id === profile!.id;
+    const replySource = item.reply_to_id ? messages.find((m) => m.id === item.reply_to_id) : null;
+    const status: MessageStatus = item.read_at ? 'read' : 'sent';
+    return (
+      <ReactionPickerOverlay
+        reactions={buildChatReactions(isMine)}
+        align={isMine ? 'end' : 'start'}
+        onSelectReaction={(key) => {
+          // Reply rides in the bar as a seventh slot so long-press
+          // still offers it, exactly as the old popover did.
+          if (key === REPLY_KEY) setReplyTo(item);
+          else if (key === DELETE_KEY) {
+            confirmDelete({
+              kind: 'message',
+              table: 'direct_messages',
+              id: item.id,
+              // Drop it locally too: the realtime DELETE event is the usual
+              // path, but this keeps the list right if that socket is down.
+              onDeleted: () => setMessages((cur) => cur.filter((m) => m.id !== item.id)),
+            });
+          }
+          else pickReaction(item.id, key);
+        }}
+      >
+        <MessageBubble
+          body={item.body ?? ''}
+          isMine={isMine}
+          senderAvatarKey={!isMine ? otherUser?.avatar_key : undefined}
+          onSenderPress={!isMine && otherUser ? () => router.push({ pathname: '/user/[userId]', params: { userId: otherUser.id } }) : undefined}
+          timestamp={item.created_at}
+          messageType={item.message_type ?? undefined}
+          attachmentUrl={item.attachment_url}
+          attachmentType={
+            item.message_type === 'image' ? 'image' :
+            item.message_type === 'voice' ? 'voice' :
+            item.message_type === 'video' ? 'video' :
+            item.message_type === 'file' ? 'file' : null
+          }
+          status={isMine ? status : undefined}
+          reactions={summarizeReactions(item.reactions)}
+          replyTo={replySource ? { body: replySource.body ?? '' } : null}
+        />
+      </ReactionPickerOverlay>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, profile, otherUser]);
 
   async function applyTemplate(key: keyof typeof TEMPLATES) {
     setBody(TEMPLATES[key]);
@@ -155,11 +423,12 @@ export default function DmThread() {
   }
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
+      <ChatBackgroundLayer theme={bgTheme} />
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Text style={styles.backArrow}>‹</Text>
+          <Text style={styles.backArrow}>›</Text>
         </Pressable>
         <Avatar
           avatarKey={otherUser?.avatar_key}
@@ -171,9 +440,20 @@ export default function DmThread() {
           <Text style={styles.headerName} numberOfLines={1}>
             {displayNameFor(otherUser)}
           </Text>
-          <Text style={styles.headerSub}>محادثة خاصة</Text>
+          <Text style={[styles.headerSub, otherTyping && styles.headerSubTyping]}>
+            {otherTyping ? 'يكتب...' : 'محادثة خاصة'}
+          </Text>
         </View>
+        <Pressable onPress={() => setShowBgPicker(true)} style={styles.bgBtn} hitSlop={8}>
+          <Text style={styles.bgBtnIcon}>🎨</Text>
+        </Pressable>
       </View>
+      <ChatBackgroundPicker
+        visible={showBgPicker}
+        current={bgTheme}
+        onSelect={(t) => { setBgTheme(t); setChatBgTheme(t); setShowBgPicker(false); }}
+        onClose={() => setShowBgPicker(false)}
+      />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -181,26 +461,13 @@ export default function DmThread() {
         keyboardVerticalOffset={0}
       >
         {/* Messages */}
-        <FlatList
+        <FlashList
           ref={listRef}
           data={messages}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.msgList}
-          renderItem={({ item, index }) => {
-            const isMine = item.sender_id === profile!.id;
-            const prev = messages[index - 1];
-            const bundled = prev && prev.sender_id === item.sender_id &&
-              new Date(item.created_at).getTime() - new Date(prev.created_at).getTime() < 120_000;
-            return (
-              <MessageBubble
-                body={item.body ?? ''}
-                isMine={isMine}
-                timestamp={item.created_at}
-                messageType={item.message_type ?? undefined}
-                bundled={!!bundled}
-              />
-            );
-          }}
+          estimatedItemSize={80}
+          renderItem={renderMessage}
           ListEmptyComponent={
             <View style={styles.center}>
               <Text style={styles.emptyText}>لا توجد رسائل بعد</Text>
@@ -225,29 +492,72 @@ export default function DmThread() {
           </View>
         )}
 
+        {/* Reply preview */}
+        {replyTo && (
+          <View style={styles.replyBar}>
+            <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
+              <Text style={styles.replyBarClose}>✕</Text>
+            </Pressable>
+            <Text style={styles.replyBarText} numberOfLines={1}>الرد على: {replyTo.body}</Text>
+          </View>
+        )}
+
         {/* Input */}
-        <View style={styles.inputRow}>
-          <TextInput
-            value={body}
-            onChangeText={setBody}
-            placeholder="اكتب رسالة..."
-            placeholderTextColor={COLORS.white40}
-            style={styles.input}
-            multiline
-            textAlign="right"
-          />
-          <Pressable
-            onPress={handleSend}
-            disabled={sending || !body.trim()}
-            style={({ pressed }) => [styles.sendBtn, (sending || !body.trim()) && styles.sendBtnDisabled, pressed && styles.sendBtnPressed]}
-          >
-            <Text style={styles.sendIcon}>↑</Text>
-          </Pressable>
-        </View>
+        {recording ? (
+          <VoiceRecorderBar onSend={sendVoice} onCancel={() => setRecording(false)} />
+        ) : (
+          <>
+          {uploadProgress !== null && (
+            <View style={uploadBarStyles.row}>
+              <View style={uploadBarStyles.track}>
+                <View style={[uploadBarStyles.fill, { width: `${uploadProgress}%` }]} />
+              </View>
+              <Text style={uploadBarStyles.text}>{uploadProgress}%</Text>
+            </View>
+          )}
+          <View style={styles.inputRow}>
+            {body.trim() ? (
+              <Pressable
+                onPress={handleSend}
+                disabled={sending}
+                style={({ pressed }) => [styles.sendBtn, sending && styles.sendBtnDisabled, pressed && styles.sendBtnPressed]}
+              >
+                {sending ? <ActivityIndicator color="#000" size="small" /> : <Ionicons name="arrow-up" size={22} color="#000" />}
+              </Pressable>
+            ) : (
+              <Pressable style={styles.micBtn} onPress={() => setRecording(true)} disabled={sending}>
+                <Text style={styles.micIcon}>🎤</Text>
+              </Pressable>
+            )}
+            <TextInput
+              value={body}
+              onChangeText={(t) => { setBody(t); broadcastTyping(); }}
+              placeholder="اكتب رسالة..."
+              placeholderTextColor={COLORS.white40}
+              style={styles.input}
+              multiline
+              textAlign="right"
+            />
+            <Pressable style={styles.imageBtn} onPress={pickAndSendDocument} disabled={sending}>
+              <Text style={styles.imageBtnIcon}>📎</Text>
+            </Pressable>
+            <Pressable style={styles.imageBtn} onPress={pickAndSendImage} disabled={sending}>
+              <Text style={styles.imageBtnIcon}>🖼️</Text>
+            </Pressable>
+          </View>
+          </>
+        )}
       </KeyboardAvoidingView>
     </ScreenBg>
   );
 }
+
+const uploadBarStyles = StyleSheet.create({
+  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingBottom: 6 },
+  track: { flex: 1, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 3, backgroundColor: COLORS.gold },
+  text: { fontFamily: FONTS.bold, fontSize: 10, color: COLORS.gold, minWidth: 28, textAlign: 'left' },
+});
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
@@ -279,6 +589,9 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     textAlign: 'right',
   },
+  headerSubTyping: { color: COLORS.gold, fontFamily: FONTS.bold },
+  bgBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
+  bgBtnIcon: { fontSize: 15 },
   headerSub: {
     fontFamily: FONTS.regular,
     fontSize: 11,
@@ -313,6 +626,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.gold,
   },
+  replyBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: COLORS.goldDim,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.goldBorder,
+  },
+  replyBarClose: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
+  replyBarText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12, color: COLORS.gold, textAlign: 'right' },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -337,6 +662,10 @@ const styles = StyleSheet.create({
     maxHeight: 120,
     textAlign: 'right',
   },
+  imageBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
+  imageBtnIcon: { fontSize: 17 },
+  micBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(230,171,44,0.12)', borderWidth: 1, borderColor: COLORS.goldBorder, alignItems: 'center', justifyContent: 'center' },
+  micIcon: { fontSize: 18 },
   sendBtn: {
     width: 44,
     height: 44,

@@ -17,7 +17,9 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://kxtsoyessegtarusiiov.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dHNveWVzc2VndGFydXNpaW92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5MzExMjcsImV4cCI6MjA5OTUwNzEyN30.4oaLj6eP1PijapLRGKFQV8fPcp_9HtV06XXgt5uzg_4",
-        "EXPO_PUBLIC_APP_URL": "https://iraqi-service.vercel.app"
+        "EXPO_PUBLIC_APP_URL": "https://iraqi-service.vercel.app",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://86a1494306b2b92094c90e0e862197d4@o4511859520307200.ingest.de.sentry.io/4511859535315024",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "production": {
@@ -28,7 +30,9 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://kxtsoyessegtarusiiov.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dHNveWVzc2VndGFydXNpaW92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5MzExMjcsImV4cCI6MjA5OTUwNzEyN30.4oaLj6eP1PijapLRGKFQV8fPcp_9HtV06XXgt5uzg_4",
-        "EXPO_PUBLIC_APP_URL": "https://iraqi-service.vercel.app"
+        "EXPO_PUBLIC_APP_URL": "https://iraqi-service.vercel.app",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://86a1494306b2b92094c90e0e862197d4@o4511859520307200.ingest.de.sentry.io/4511859535315024",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     }
   },

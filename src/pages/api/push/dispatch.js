@@ -37,7 +37,7 @@ export default async function handler(req, res) {
 
   const payload = JSON.stringify({ title, body, link });
 
-  await Promise.all(
+  const webPushDispatch = Promise.all(
     (subscriptions ?? []).map(async (subscription) => {
       try {
         await webpush.sendNotification(
@@ -54,6 +54,47 @@ export default async function handler(req, res) {
       }
     })
   );
+
+  // Native mobile app tokens (Expo push service) — separate table/format
+  // from the web's VAPID subscriptions above, dispatched the same way.
+  const expoPushDispatch = (async () => {
+    const { data: tokens } = await supabaseAdmin
+      .from('push_tokens')
+      .select('id, expo_push_token')
+      .eq('user_id', userId);
+    if (!tokens?.length) return;
+
+    const messages = tokens.map((t) => ({
+      to: t.expo_push_token,
+      title,
+      body,
+      data: { link },
+    }));
+
+    let result;
+    try {
+      const resp = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(messages),
+      });
+      result = await resp.json();
+    } catch {
+      return;
+    }
+
+    // Expo reports per-message errors (e.g. DeviceNotRegistered) instead of
+    // an HTTP failure — prune any token Expo says is no longer valid.
+    const tickets = Array.isArray(result?.data) ? result.data : [];
+    const staleIds = tickets
+      .map((ticket, i) => (ticket.status === 'error' && ticket.details?.error === 'DeviceNotRegistered' ? tokens[i]?.id : null))
+      .filter(Boolean);
+    if (staleIds.length) {
+      await supabaseAdmin.from('push_tokens').delete().in('id', staleIds);
+    }
+  })();
+
+  await Promise.all([webPushDispatch, expoPushDispatch]);
 
   return res.status(200).json({ dispatched: subscriptions?.length ?? 0 });
 }

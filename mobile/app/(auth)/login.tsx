@@ -1,21 +1,35 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import { BlurView } from 'expo-blur';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
 import { GoldButton } from '@/components/ui/GoldButton';
 import { GoldInput } from '@/components/ui/GoldInput';
 import { GoldCard } from '@/components/ui/GoldCard';
+import { CinematicEmblem } from '@/components/ui/CinematicEmblem';
+import { AnimatedGoldBorder } from '@/components/ui/AnimatedGoldBorder';
+import { AnimatedLoginGlow } from '@/components/ui/AnimatedLoginGlow';
+import { GoogleGLogo } from '@/components/ui/GoogleGLogo';
+import { AboutPrivacyModal } from '@/components/ui/AboutPrivacyModal';
+import { ThemedText, ThemedBox } from '@/components/ui/Themed';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 export default function LoginScreen() {
@@ -24,6 +38,46 @@ export default function LoginScreen() {
   const [loading, setLoading]       = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError]           = useState('');
+  const [infoModal, setInfoModal]   = useState<'about' | 'privacy' | null>(null);
+
+  // ── Entrance choreography ──────────────────────────────────────────
+  // The login form itself (cardOpacity/cardY, previously gating the
+  // entire card behind a ~1.2s sequential fade delayed 680ms) is
+  // deliberately no longer part of this animation — confirmed via a
+  // real device screenshot that it can render invisible (opacity stuck
+  // at 0, still occupying layout space) if that delayed animation
+  // stalls or the screen is captured slightly early. The functional
+  // login form must never depend on an animation completing to become
+  // visible. Logo/title entrance stays purely cosmetic.
+  const emblemOpacity = useSharedValue(0);
+  const emblemScale   = useSharedValue(0.4);
+  const titleOpacity  = useSharedValue(0);
+  const titleY        = useSharedValue(14);
+  const lineWidth     = useSharedValue(0);
+
+  useEffect(() => {
+    // No sound here. CinematicIntro plays the eagle cry once per launch, and
+    // this screen mounts underneath it while it is still on top — so playing
+    // it here too fired the same cue twice within a few seconds.
+    emblemOpacity.value = withTiming(1, { duration: 500, easing: Easing.out(Easing.ease) });
+    emblemScale.value   = withSpring(1, { damping: 8, stiffness: 90 });
+    titleOpacity.value  = withDelay(320, withTiming(1, { duration: 450 }));
+    titleY.value         = withDelay(320, withTiming(0, { duration: 450, easing: Easing.out(Easing.cubic) }));
+    lineWidth.value     = withDelay(580, withTiming(76, { duration: 550, easing: Easing.out(Easing.cubic) }));
+    // Reanimated shared values are stable across renders; this intro
+    // sequence is meant to run once on mount only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const emblemStyle = useAnimatedStyle(() => ({
+    opacity: emblemOpacity.value,
+    transform: [{ scale: emblemScale.value }],
+  }));
+  const titleStyle = useAnimatedStyle(() => ({
+    opacity: titleOpacity.value,
+    transform: [{ translateY: titleY.value }],
+  }));
+  const lineStyle = useAnimatedStyle(() => ({ width: lineWidth.value }));
 
   async function handleLogin() {
     if (!identifier.trim() || !password.trim()) {
@@ -113,147 +167,174 @@ export default function LoginScreen() {
 
   return (
     <ScreenBg>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      {/* Slowly drifting gold glow orbs behind everything — GPU Skia */}
+      <AnimatedLoginGlow />
 
-          {/* Logo + Title — cinematic emblem matching web's .cinematic-emblem */}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
+        {/* flexGrow:1 + justifyContent:center makes this behave EXACTLY like a
+            fixed, non-scrolling centred screen whenever the content fits — but
+            it scrolls instead of clipping when it doesn't. The previous plain
+            View clipped overflow symmetrically: on a real device that cut the
+            logo off at the top AND pushed the register / من نحن / سياسة الخصوصية
+            row off the bottom entirely, which read as "the links are missing". */}
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+        >
+
+          {/* Logo — full brand mark (eagle + baked-in platform name), materializes with the eagle cry */}
           <View style={styles.header}>
-            {/* Outer gold ring glow */}
-            <View style={styles.emblemOuter}>
-              {/* Middle decorative ring */}
-              <View style={styles.emblemMid} />
-              {/* Core circle */}
-              <View style={styles.emblemCore}>
-                <Text style={styles.logoEmoji}>🏛️</Text>
-              </View>
-            </View>
-            <Text style={styles.appName}>خدماتي</Text>
-            <Text style={styles.subtitle}>منصة الخدمات العراقية</Text>
+            <Animated.View style={emblemStyle}>
+              <CinematicEmblem size={108} />
+            </Animated.View>
+            <Animated.Text style={[styles.appName, titleStyle]}>خدماتي</Animated.Text>
+            <Animated.View style={[styles.subtitleLine, lineStyle]} />
           </View>
 
-          {/* Login Card */}
-          <GoldCard style={styles.card}>
-            <Text style={styles.cardTitle}>تسجيل الدخول</Text>
+          {/* Login Card — spinning gold shimmer border via Skia. Not gated
+              behind any entrance animation. Confirmed via two rounds of
+              real-device testing that AnimatedGoldBorder's inner wrapper
+              defaults to flex:1, which needs the root to have an EXPLICIT
+              HEIGHT to size reliably — width alone (cardBorder) was not
+              enough, the card still rendered at 0 height. fillHeight=false
+              switches the inner wrapper to content-driven sizing instead,
+              which is what a card with dynamic height (error text
+              appearing/disappearing) actually needs. */}
+          <View style={styles.cardWrap}>
+            <AnimatedGoldBorder borderRadius={RADIUS.xl} borderWidth={1.5} innerBg="transparent" speed={3200} style={styles.cardBorder} fillHeight={false}>
+              <GoldCard style={styles.card}>
+                <ThemedText id="login.cardTitle" label="عنوان بطاقة تسجيل الدخول" bold style={styles.cardTitle}>تسجيل الدخول</ThemedText>
 
-            <View style={styles.fields}>
-              <GoldInput
-                label="اسم المستخدم أو البريد الإلكتروني"
-                value={identifier}
-                onChangeText={setIdentifier}
-                placeholder="username أو email@example.com"
-                keyboardType="default"
-                autoCapitalize="none"
-              />
-              <GoldInput
-                label="كلمة المرور"
-                value={password}
-                onChangeText={setPassword}
-                placeholder="كلمة المرور"
-                secureToggle
-              />
-              {error ? <Text style={styles.error}>{error}</Text> : null}
-              <GoldButton label="دخول" onPress={handleLogin} loading={loading} />
-              <Pressable
-                style={styles.forgotBtn}
-                onPress={() => router.push('/(auth)/forgot-password')}
-              >
-                <Text style={styles.forgotText}>نسيت كلمة المرور؟</Text>
-              </Pressable>
-            </View>
+                <View style={styles.fields}>
+                  <GoldInput
+                    label="اسم المستخدم أو البريد الإلكتروني"
+                    value={identifier}
+                    onChangeText={setIdentifier}
+                    placeholder="username أو email@example.com"
+                    keyboardType="default"
+                    autoCapitalize="none"
+                  />
+                  <GoldInput
+                    label="كلمة المرور"
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="كلمة المرور"
+                    secureToggle
+                  />
+                  {error ? <ThemedText id="login.errorText" label="نص رسالة الخطأ" style={styles.error}>{error}</ThemedText> : null}
+                  <GoldButton label="دخول" onPress={handleLogin} loading={loading} />
+                  <Pressable
+                    style={styles.forgotBtn}
+                    onPress={() => router.push('/(auth)/forgot-password')}
+                  >
+                    <ThemedText id="login.forgotText" label="نص نسيت كلمة المرور" style={styles.forgotText}>نسيت كلمة المرور؟</ThemedText>
+                  </Pressable>
+                </View>
 
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>أو</Text>
-              <View style={styles.dividerLine} />
-            </View>
+                {/* Divider */}
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <ThemedText id="login.dividerText" label='نص الفاصل "أو"' style={styles.dividerText}>أو</ThemedText>
+                  <View style={styles.dividerLine} />
+                </View>
 
-            {/* Google Sign-In — cinematic gold style */}
-            <Pressable
-              style={({ pressed }) => [styles.googleBtn, pressed && styles.googleBtnPressed]}
-              onPress={handleGoogleSignIn}
-              disabled={googleLoading}
-            >
-              <Text style={styles.googleIcon}>G</Text>
-              <Text style={styles.googleText}>
-                {googleLoading ? 'جاري الاتصال...' : 'الدخول بحساب Google'}
-              </Text>
+                {/* Google Sign-In — raised 3D button with the real Google "G" mark */}
+                <Pressable
+                  style={({ pressed }) => [styles.googleBtn, pressed && styles.googleBtnPressed]}
+                  onPress={handleGoogleSignIn}
+                  disabled={googleLoading}
+                >
+                  <ThemedBox id="login.googleBadge" label="خلفية شارة غوغل" style={styles.googleBadge}>
+                    <GoogleGLogo size={18} />
+                  </ThemedBox>
+                  <ThemedText id="login.googleText" label="نص زر الدخول بغوغل" bold style={styles.googleText}>
+                    {googleLoading ? 'جاري الاتصال...' : 'الدخول بحساب Google'}
+                  </ThemedText>
+                </Pressable>
+              </GoldCard>
+            </AnimatedGoldBorder>
+          </View>
+
+          {/* إنشاء حساب جديد / من نحن / سياسة الخصوصية — one consistent row of
+              glass link boxes with a shimmering animated gold border.
+              Previously the register link sat in its own separate text row
+              above these two; merging all three into a single row both
+              matches the requested layout and reclaims the vertical space
+              that was pushing this whole row off the bottom of the screen.
+              fillHeight={false}: AnimatedGoldBorder's inner wrapper defaults
+              to flex:1, which collapses to 0 height without an explicit
+              parent height — content-driven sizing is what these need.
+              flexWrap lets a long label drop to a second line on a narrow
+              device instead of overflowing its box. */}
+          <View style={styles.infoRow}>
+            <Pressable style={({ pressed }) => pressed && { opacity: 0.8 }} onPress={() => router.push('/(auth)/register')}>
+              <AnimatedGoldBorder borderRadius={RADIUS.sm} borderWidth={1.25} innerBg="transparent" speed={3200} innerStyle={styles.infoBtn} fillHeight={false}>
+                <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
+                <ThemedText id="login.registerLink" label="رابط إنشاء حساب" bold style={styles.infoBtnTextGold}>إنشاء حساب جديد</ThemedText>
+              </AnimatedGoldBorder>
             </Pressable>
-          </GoldCard>
-
-          {/* Register link */}
-          <View style={styles.linkRow}>
-            <Text style={styles.linkText}>ليس لديك حساب؟ </Text>
-            <Link href="/(auth)/register">
-              <Text style={styles.link}>إنشاء حساب</Text>
-            </Link>
+            <Pressable style={({ pressed }) => pressed && { opacity: 0.8 }} onPress={() => setInfoModal('about')}>
+              <AnimatedGoldBorder borderRadius={RADIUS.sm} borderWidth={1.25} innerBg="transparent" speed={3200} innerStyle={styles.infoBtn} fillHeight={false}>
+                <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
+                <ThemedText id="login.aboutBtnText" label="نص زر من نحن" bold style={styles.infoBtnText}>من نحن</ThemedText>
+              </AnimatedGoldBorder>
+            </Pressable>
+            <Pressable style={({ pressed }) => pressed && { opacity: 0.8 }} onPress={() => setInfoModal('privacy')}>
+              <AnimatedGoldBorder borderRadius={RADIUS.sm} borderWidth={1.25} innerBg="transparent" speed={3200} innerStyle={styles.infoBtn} fillHeight={false}>
+                <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
+                <ThemedText id="login.privacyBtnText" label="نص زر سياسة الخصوصية" bold style={styles.infoBtnText}>سياسة الخصوصية</ThemedText>
+              </AnimatedGoldBorder>
+            </Pressable>
           </View>
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <AboutPrivacyModal variant={infoModal} onClose={() => setInfoModal(null)} />
     </ScreenBg>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  scroll: { flexGrow: 1, padding: 24, justifyContent: 'center', gap: 28 },
+  scroll: { flexGrow: 1, padding: 20, paddingVertical: 14, justifyContent: 'center', gap: 12 },
 
-  header: { alignItems: 'center', gap: 12 },
-  // cinematic-emblem: outer glow halo
-  emblemOuter: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(245,158,11,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.20)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#e6ab2c',
+  header: { alignItems: 'center', gap: 4 },
+  appName:  { fontFamily: FONTS.bold,    fontSize: 24, color: COLORS.gold,  letterSpacing: 0.5 },
+  subtitleLine: {
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: COLORS.gold,
+    overflow: 'hidden',
+    shadowColor: COLORS.gold,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.55,
-    shadowRadius: 28,
-    elevation: 10,
+    shadowOpacity: 0.7,
+    shadowRadius: 6,
   },
-  // inner decorative ring
-  emblemMid: {
-    position: 'absolute',
-    width: 82,
-    height: 82,
-    borderRadius: 41,
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.35)',
-    backgroundColor: 'transparent',
-  },
-  // core filled circle
-  emblemCore: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: 'rgba(230,171,44,0.14)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(230,171,44,0.60)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoEmoji: { fontSize: 32 },
-  appName:  { fontFamily: FONTS.bold,    fontSize: 30, color: COLORS.gold,  letterSpacing: 0.5 },
-  subtitle: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.muted },
 
-  card:      { gap: 0 },
+  // AnimatedGoldBorder measures its own size from onLayout and needs an
+  // unambiguous width to resolve reliably — every other usage in the app
+  // passes explicit width/height; this is the one spot with dynamic
+  // content height, so only width is fixed (via %), height stays auto.
+  // Confirmed via a real device screen recording that omitting this
+  // entirely can leave the whole card invisible (0-size) with no error.
+  cardWrap:   { width: '100%' },
+  cardBorder: { width: '100%' },
+  card:      { gap: 0, borderWidth: 0, padding: 16 },
   cardTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 20,
+    fontSize: 18,
     color: COLORS.white,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
-  fields: { gap: 14 },
+  fields: { gap: 10 },
 
   error: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.red, textAlign: 'center' },
 
-  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 16 },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 8 },
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
   dividerText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
 
@@ -262,23 +343,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    paddingVertical: 13,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
     borderRadius: RADIUS.md,
     backgroundColor: 'rgba(230,171,44,0.07)',
     borderWidth: 1,
     borderColor: 'rgba(230,171,44,0.45)',
+    borderTopColor: 'rgba(255,255,255,0.18)',
+    borderBottomWidth: 2,
+    borderBottomColor: 'rgba(0,0,0,0.30)',
     shadowColor: '#e6ab2c',
-    shadowOffset: { width: 0, height: 0 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
-    shadowRadius: 12,
+    shadowRadius: 14,
     elevation: 6,
   },
-  googleBtnPressed: { opacity: 0.75 },
-  googleIcon: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: COLORS.gold,
-    fontFamily: 'System',
+  googleBtnPressed: { opacity: 0.8, transform: [{ scale: 0.99 }] },
+  googleBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.30,
+    shadowRadius: 4,
+    elevation: 3,
   },
   googleText: {
     fontFamily: FONTS.bold,
@@ -286,10 +378,16 @@ const styles = StyleSheet.create({
     color: COLORS.gold,
   },
 
-  linkRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  linkText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.muted },
-  link:     { fontFamily: FONTS.bold,    fontSize: 14, color: COLORS.gold },
-
   forgotBtn: { alignSelf: 'center', paddingVertical: 4 },
   forgotText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
+
+  // Three link boxes on one line. flexWrap is the safety valve: on a narrow
+  // device the longest label ("سياسة الخصوصية") drops to a second line
+  // instead of overflowing, which is what happened when these boxes were
+  // given hardcoded pixel widths.
+  infoRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 2 },
+  infoBtn: { paddingHorizontal: 12, paddingVertical: 7, alignItems: 'center', justifyContent: 'center' },
+  infoBtnText: { fontFamily: FONTS.bold, fontSize: 12, color: '#ffffff' },
+  // The register link is the primary action of the three — gold, not white.
+  infoBtnTextGold: { fontFamily: FONTS.bold, fontSize: 12, color: COLORS.gold },
 });

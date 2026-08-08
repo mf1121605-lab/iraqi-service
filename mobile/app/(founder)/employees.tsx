@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Modal, Pressable,
+  ActivityIndicator, Modal, Pressable,
   ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
-import { useAuth } from '@/hooks/useAuth';
+import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
@@ -141,13 +141,13 @@ export default function EmployeesScreen() {
   }
 
   if (loading) return <ScreenBg><View style={s.center}><ActivityIndicator color={COLORS.gold} /></View></ScreenBg>;
-  if (!profile || profile.role !== 'founder') return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
+  if (!hasFounderAccess(profile)) return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
 
   return (
     <ScreenBg>
       <View style={s.header}>
         <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={8}>
-          <Text style={s.backArrow}>‹</Text>
+          <Text style={s.backArrow}>›</Text>
         </Pressable>
         <Text style={s.headerTitle}>إدارة الموظفين</Text>
         <Pressable onPress={() => { setShowForm((v) => !v); setFormError(''); }} style={s.addBtn}>

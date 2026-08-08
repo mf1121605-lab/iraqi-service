@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
-import { useAuth } from '@/hooks/useAuth';
+import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
@@ -68,7 +68,7 @@ export default function StatsScreen() {
   }, [profile]);
 
   if (loading) return <ScreenBg><View style={s.center}><ActivityIndicator color={COLORS.gold} /></View></ScreenBg>;
-  if (!profile || profile.role !== 'founder') return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
+  if (!hasFounderAccess(profile)) return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
 
   const statusTotal = statusTally ? Object.values(statusTally).reduce((a, b) => a + b, 0) : 0;
   const roleTotal = roleTally ? Object.values(roleTally).reduce((a, b) => a + b, 0) : 0;
@@ -76,7 +76,7 @@ export default function StatsScreen() {
   return (
     <ScreenBg>
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={8}><Text style={s.backArrow}>‹</Text></Pressable>
+        <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={8}><Text style={s.backArrow}>›</Text></Pressable>
         <Text style={s.headerTitle}>الإحصائيات</Text>
         <View style={{ width: 40 }} />
       </View>

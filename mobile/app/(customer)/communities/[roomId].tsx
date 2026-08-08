@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
@@ -29,19 +29,22 @@ type Message = {
   sender?: { given_name: string; family_name: string };
 };
 
-type Room = { id: string; name: string; slug: string };
+type Room = { id: string; name_ar: string; slug: string };
 
 async function uploadCommunityImage(uri: string, userId: string): Promise<string | null> {
   try {
     const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
     const path = `community/${userId}/${Date.now()}.${ext}`;
     const response = await fetch(uri);
-    const blob = await response.blob();
-    const { error } = await supabase.storage.from('site-assets').upload(path, blob, {
+    // React Native's Blob polyfill is unreliable for binary upload bodies —
+    // it can report the correct size while silently sending empty/corrupted
+    // data. arrayBuffer() is Supabase's own recommended path for RN.
+    const arrayBuffer = await response.arrayBuffer();
+    const { error } = await supabase.storage.from('site-assets').upload(path, arrayBuffer, {
       contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
       upsert: false,
     });
-    if (error) return null;
+    if (error) { console.error('upload failed:', error.message); return null; }
     const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
     return data.publicUrl;
   } catch {
@@ -85,7 +88,7 @@ export default function CommunityRoomScreen() {
     (async () => {
       const { data: roomRow } = await supabase
         .from('chat_rooms')
-        .select('id, name, slug')
+        .select('id, name_ar, slug')
         .eq('id', roomId)
         .maybeSingle();
 
@@ -138,11 +141,14 @@ export default function CommunityRoomScreen() {
     return () => { supabase.removeChannel(channel); };
   }, [roomId]);
 
-  // Auto-scroll when messages load
+  // Auto-scroll once when messages finish loading — deliberately not
+  // re-running on every subsequent message (messages.length) so it doesn't
+  // yank a user who's scrolled up reading history back down on new activity.
   useEffect(() => {
     if (messages.length > 0 && !loading) {
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 100);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
   async function handleSend() {
@@ -224,7 +230,7 @@ export default function CommunityRoomScreen() {
           <Text style={styles.backText}>→</Text>
         </Pressable>
         <Text style={styles.roomName} numberOfLines={1}>
-          🏘️ {room?.name ?? '...'}
+          🏘️ {room?.name_ar ?? '...'}
         </Text>
         <View style={{ width: 32 }} />
       </View>
@@ -256,7 +262,9 @@ export default function CommunityRoomScreen() {
                     <Image
                       source={{ uri: msg.attachment_url }}
                       style={styles.attachmentImage}
-                      resizeMode="cover"
+                      contentFit="cover"
+                      cachePolicy="memory-disk"
+                      transition={150}
                     />
                   ) : null}
                   {msg.body ? (
@@ -372,7 +380,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
 
-  msgText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.white, lineHeight: 22 },
+  msgText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.white, lineHeight: 22, textAlign: 'right', writingDirection: 'rtl' },
   msgTime: { fontFamily: FONTS.regular, fontSize: 10, color: COLORS.muted, textAlign: 'right', marginTop: 3 },
 
   inputRow: {

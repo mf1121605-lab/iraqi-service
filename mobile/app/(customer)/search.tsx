@@ -10,13 +10,12 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
-import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 interface SearchResult {
   id: string;
-  result_type: 'category' | 'request';
+  result_type: 'category' | 'request' | 'employee' | 'post' | 'message';
   title_ar: string;
   title_ckb: string | null;
   subtitle_ar: string | null;
@@ -27,15 +26,20 @@ interface SearchResult {
 const TYPE_LABELS: Record<string, string> = {
   category: 'فئة',
   request: 'طلب',
+  employee: 'موظف',
+  post: 'منشور',
+  message: 'رسالة',
 };
 
 const TYPE_ICONS: Record<string, string> = {
   category: '🏷️',
   request: '📋',
+  employee: '👤',
+  post: '📰',
+  message: '💬',
 };
 
 export default function CustomerSearch() {
-  const { profile } = useAuth();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -63,16 +67,52 @@ export default function CustomerSearch() {
   }, [query]);
 
   function handleResultPress(item: SearchResult) {
-    if (item.result_type === 'request') {
+    if (item.result_type === 'request' || item.result_type === 'message') {
       const id = item.href.split('/').pop();
       if (id) router.push(`/(customer)/requests/${id}`);
     } else if (item.result_type === 'category') {
       router.push('/(customer)/');
+    } else if (item.result_type === 'employee') {
+      router.push({ pathname: '/(customer)/employee/[id]', params: { id: item.id } });
+    } else if (item.result_type === 'post') {
+      router.push({ pathname: '/(customer)/news', params: { postId: item.id } });
     }
   }
 
   const categories = results?.filter(r => r.result_type === 'category') ?? [];
   const requests = results?.filter(r => r.result_type === 'request') ?? [];
+  const employees = results?.filter(r => r.result_type === 'employee') ?? [];
+  const posts = results?.filter(r => r.result_type === 'post') ?? [];
+  const messages = results?.filter(r => r.result_type === 'message') ?? [];
+
+  function ResultSection({ label, items }: { label: string; items: SearchResult[] }) {
+    if (items.length === 0) return null;
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>{label}</Text>
+        {items.map(item => (
+          <Pressable
+            key={item.id}
+            style={({ pressed }) => [styles.resultCard, pressed && styles.pressed]}
+            onPress={() => handleResultPress(item)}
+          >
+            <View style={styles.iconCircle}>
+              <Text style={styles.iconEmoji}>{TYPE_ICONS[item.result_type]}</Text>
+            </View>
+            <View style={styles.resultInfo}>
+              <Text style={styles.resultTitle} numberOfLines={1}>{item.title_ar}</Text>
+              {item.subtitle_ar && (
+                <Text style={styles.resultSub} numberOfLines={1}>{item.subtitle_ar}</Text>
+              )}
+            </View>
+            <View style={styles.typePill}>
+              <Text style={styles.typeText}>{TYPE_LABELS[item.result_type]}</Text>
+            </View>
+          </Pressable>
+        ))}
+      </View>
+    );
+  }
 
   return (
     <ScreenBg>
@@ -115,60 +155,11 @@ export default function CustomerSearch() {
 
         {!searching && results && results.length > 0 && (
           <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-            {categories.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>الفئات</Text>
-                {categories.map(item => (
-                  <Pressable
-                    key={item.id}
-                    style={({ pressed }) => [styles.resultCard, pressed && styles.pressed]}
-                    onPress={() => handleResultPress(item)}
-                  >
-                    <View style={styles.iconCircle}>
-                      <Text style={styles.iconEmoji}>{TYPE_ICONS[item.result_type]}</Text>
-                    </View>
-                    <View style={styles.resultInfo}>
-                      <Text style={styles.resultTitle} numberOfLines={1}>
-                        {item.title_ar}
-                      </Text>
-                      {item.subtitle_ar && (
-                        <Text style={styles.resultSub} numberOfLines={1}>{item.subtitle_ar}</Text>
-                      )}
-                    </View>
-                    <View style={styles.typePill}>
-                      <Text style={styles.typeText}>{TYPE_LABELS[item.result_type]}</Text>
-                    </View>
-                  </Pressable>
-                ))}
-              </View>
-            )}
-            {requests.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>الطلبات</Text>
-                {requests.map(item => (
-                  <Pressable
-                    key={item.id}
-                    style={({ pressed }) => [styles.resultCard, pressed && styles.pressed]}
-                    onPress={() => handleResultPress(item)}
-                  >
-                    <View style={styles.iconCircle}>
-                      <Text style={styles.iconEmoji}>{TYPE_ICONS[item.result_type]}</Text>
-                    </View>
-                    <View style={styles.resultInfo}>
-                      <Text style={styles.resultTitle} numberOfLines={1}>
-                        {item.title_ar}
-                      </Text>
-                      {item.subtitle_ar && (
-                        <Text style={styles.resultSub} numberOfLines={1}>{item.subtitle_ar}</Text>
-                      )}
-                    </View>
-                    <View style={styles.typePill}>
-                      <Text style={styles.typeText}>{TYPE_LABELS[item.result_type]}</Text>
-                    </View>
-                  </Pressable>
-                ))}
-              </View>
-            )}
+            <ResultSection label="الفئات" items={categories} />
+            <ResultSection label="الطلبات" items={requests} />
+            <ResultSection label="الموظفون" items={employees} />
+            <ResultSection label="المنشورات" items={posts} />
+            <ResultSection label="الرسائل" items={messages} />
           </ScrollView>
         )}
       </View>

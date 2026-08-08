@@ -10,13 +10,19 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { ScreenBg } from '@/components/ui/ScreenBg';
+import { Icon3D } from '@/components/ui/Icon3D';
+import { FireGlowWrap } from '@/components/ui/FireGlowWrap';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import AnnouncementBanner from '@/components/ui/AnnouncementBanner';
+import { GlassCategoryCard } from '@/components/ui/GlassCategoryCard';
+import { HeroVideoBanner } from '@/components/ui/HeroVideoBanner';
 
 // Emoji + color theme per category key — fallback for unknown keys
 const CAT_THEMES: Record<string, { emoji: string; accent: string; colors: [string, string] }> = {
@@ -28,10 +34,13 @@ const CAT_THEMES: Record<string, { emoji: string; accent: string; colors: [strin
 const DEFAULT_THEME = { emoji: '🔹', accent: '#e6ab2c', colors: ['#1a1a2e', '#0f0f1a'] as [string, string] };
 
 type Category = {
-  id: string;
+  // No `id` here: categories' primary key is `key` (a slug), and the select
+  // no longer asks for a column the table doesn't use as its identity.
   key: string;
   label_ar: string;
   section_type: string | null;
+  icon_path: string | null;
+  icon_video_url: string | null;
 };
 
 type Announcement = {
@@ -55,7 +64,7 @@ type NewsLink = {
 };
 
 export default function CustomerDashboard() {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const [categories, setCategories]     = useState<Category[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [urgentNews, setUrgentNews]       = useState<UrgentNews[]>([]);
@@ -63,15 +72,45 @@ export default function CustomerDashboard() {
   const [bannerIdx, setBannerIdx]         = useState(0);
   const [loading, setLoading]             = useState(true);
   const [refreshing, setRefreshing]       = useState(false);
+  const [unreadCount, setUnreadCount]     = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  // Notifications lost its own bottom tab (bar is now focused on news +
+  // messages) — this bell is its only remaining entry point, so it needs
+  // to own the unread badge that used to live on the tab bar.
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!userId) return;
+
+    async function fetchUnread() {
+      const { count } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId as string)
+        .eq('is_read', false);
+      setUnreadCount(count ?? 0);
+    }
+
+    fetchUnread();
+    const channel = supabase
+      .channel(`notif-badge-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, fetchUnread)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [session?.user.id]);
 
   const loadData = useCallback(async () => {
     const [cats, ann, urgent, links] = await Promise.all([
       supabase
         .from('categories')
-        .select('id, key, label_ar, section_type')
+        // sort_order, NOT display_order: categories has no display_order
+        // column (announcements does). Ordering by a column that doesn't
+        // exist made PostgREST reject the query, so `cats.data` was null and
+        // the services section rendered empty on every launch.
+        .select('key, label_ar, section_type, icon_path, icon_video_url')
         .eq('is_active', true)
-        .order('display_order', { ascending: true }),
+        .order('sort_order', { ascending: true }),
       supabase
         .from('announcements')
         .select('id, title_ar, description_ar, motion_graphic_key')
@@ -132,7 +171,7 @@ export default function CustomerDashboard() {
   const tools     = categories.filter((c) => c.section_type === 'tools');
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.gold} />}
@@ -143,22 +182,40 @@ export default function CustomerDashboard() {
           <View style={styles.headerRow}>
             <View style={styles.logoRow}>
               <View style={styles.logoBadge}>
-                <Text style={styles.logoEmoji}>🏛️</Text>
+                <Image
+                  source={require('@/assets/full-logo-transparent.png')}
+                  style={styles.logoImage}
+                  contentFit="contain"
+                />
               </View>
               <View>
                 <Text style={styles.appName}>خدماتي</Text>
                 <Text style={styles.appSub}>منصة الخدمات العراقية</Text>
               </View>
             </View>
-            <Pressable
-              onPress={() => router.push('/(customer)/search')}
-              style={({ pressed }) => [styles.searchBtn, pressed && { opacity: 0.7 }]}
-              hitSlop={8}
-            >
-              <Text style={styles.searchIcon}>🔍</Text>
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable
+                onPress={() => router.push('/(customer)/notifications')}
+                style={({ pressed }) => pressed && { opacity: 0.7 }}
+                hitSlop={8}
+              >
+                <Icon3D emoji="🔔" size={40} badge={unreadCount} animation={unreadCount > 0 ? 'pulse' : 'none'} />
+              </Pressable>
+              <Pressable
+                onPress={() => router.push('/(customer)/search')}
+                style={({ pressed }) => pressed && { opacity: 0.7 }}
+                hitSlop={8}
+              >
+                <Icon3D emoji="🔍" size={40} animation="none" />
+              </Pressable>
+            </View>
           </View>
           <Text style={styles.greeting}>{greeting}</Text>
+        </View>
+
+        {/* ── Fixed hero video (bundled with the app, not founder-managed) ── */}
+        <View style={styles.heroWrap}>
+          <HeroVideoBanner />
         </View>
 
         {/* ── Announcement Carousel ── */}
@@ -184,17 +241,6 @@ export default function CustomerDashboard() {
           </View>
         ) : null}
 
-        {/* ── Quick Action ── */}
-        <Pressable
-          style={({ pressed }) => [styles.ctaBtn, pressed && styles.ctaBtnPressed]}
-          onPress={() => router.push('/(customer)/requests/new')}
-        >
-          <LinearGradient colors={['#e6ab2c', '#c9882a']} style={styles.ctaGrad}>
-            <Text style={styles.ctaIcon}>＋</Text>
-            <Text style={styles.ctaLabel}>تقديم طلب جديد</Text>
-          </LinearGradient>
-        </Pressable>
-
         {/* ── Urgent News ── */}
         {urgentNews.length > 0 && (
           <View style={styles.section}>
@@ -212,6 +258,23 @@ export default function CustomerDashboard() {
           </View>
         )}
 
+        {/* ── Quick Action ── */}
+        <FireGlowWrap borderRadius={RADIUS.md} style={styles.ctaBtn}>
+          <Pressable
+            style={({ pressed }) => [styles.ctaPressable, pressed && styles.ctaBtnPressed]}
+            onPress={() => router.push('/(customer)/requests/new')}
+          >
+            <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFill} />
+            <LinearGradient
+              colors={['rgba(249,115,22,0.55)', 'rgba(220,38,38,0.42)', 'rgba(230,171,44,0.35)']}
+              style={styles.ctaGrad}
+            >
+              <Text style={styles.ctaIcon}>＋</Text>
+              <Text style={styles.ctaLabel}>تقديم طلب جديد</Text>
+            </LinearGradient>
+          </Pressable>
+        </FireGlowWrap>
+
         {/* ── Services ── */}
         {services.length > 0 && (
           <View style={styles.section}>
@@ -227,24 +290,6 @@ export default function CustomerDashboard() {
             <CategoryGrid items={tools} />
           </View>
         )}
-
-        {/* ── Quick shortcuts row ── */}
-        <View style={styles.shortcutsRow}>
-          <Pressable
-            style={({ pressed }) => [styles.shortcutCard, pressed && { opacity: 0.8 }]}
-            onPress={() => router.push('/(customer)/news')}
-          >
-            <Text style={styles.shortcutEmoji}>📰</Text>
-            <Text style={styles.shortcutTitle}>آخر الأخبار</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [styles.shortcutCard, pressed && { opacity: 0.8 }]}
-            onPress={() => router.push('/(chat)/')}
-          >
-            <Text style={styles.shortcutEmoji}>💬</Text>
-            <Text style={styles.shortcutTitle}>الرسائل الخاصة</Text>
-          </Pressable>
-        </View>
 
         {/* ── News Links ── */}
         {newsLinks.length > 0 && (
@@ -275,28 +320,24 @@ export default function CustomerDashboard() {
   );
 }
 
+// Vertical glass cards, one under another, each showing the founder's
+// uploaded cover when there is one. Replaces the two-column emoji grid.
 function CategoryGrid({ items }: { items: Category[] }) {
   return (
-    <View style={styles.catGrid}>
-      {items.map((cat) => {
-        const theme = CAT_THEMES[cat.key] ?? DEFAULT_THEME;
-        return (
-          <Pressable
-            key={cat.key}
-            style={({ pressed }) => [styles.catTouchable, pressed && styles.catPressed]}
-            onPress={() => router.push({ pathname: '/(customer)/requests/new', params: { category: cat.key } })}
-          >
-            <LinearGradient colors={theme.colors} style={styles.catCard}>
-              <View style={[styles.catAccentDot, { backgroundColor: theme.accent + '40' }]} />
-              <Text style={styles.catEmoji}>{theme.emoji}</Text>
-              <Text style={styles.catLabel}>{cat.label_ar}</Text>
-              <View style={[styles.catPill, { backgroundColor: theme.accent + '22', borderColor: theme.accent + '55' }]}>
-                <Text style={[styles.catPillText, { color: theme.accent }]}>اختر</Text>
-              </View>
-            </LinearGradient>
-          </Pressable>
-        );
-      })}
+    <View>
+      {items.map((cat) => (
+        <GlassCategoryCard
+          key={cat.key}
+          category={{
+            key: cat.key,
+            label: cat.label_ar,
+            icon_path: cat.icon_path ?? null,
+            icon_video_url: cat.icon_video_url ?? null,
+            emoji: (CAT_THEMES[cat.key] ?? DEFAULT_THEME).emoji,
+          }}
+          onPress={() => router.push({ pathname: '/(customer)/requests/new', params: { category: cat.key } })}
+        />
+      ))}
     </View>
   );
 }
@@ -305,7 +346,7 @@ function SectionHeader({ title, icon }: { title: string; icon: string }) {
   return (
     <View style={secStyles.row}>
       <View style={secStyles.line} />
-      <Text style={secStyles.icon}>{icon}</Text>
+      <Icon3D emoji={icon} size={26} animation="none" />
       <Text style={secStyles.title}>{title}</Text>
     </View>
   );
@@ -314,7 +355,6 @@ function SectionHeader({ title, icon }: { title: string; icon: string }) {
 const secStyles = StyleSheet.create({
   row:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   title: { fontFamily: FONTS.bold, fontSize: 16, color: COLORS.white, textAlign: 'right' },
-  icon:  { fontSize: 16 },
   line:  { flex: 1, height: 1, backgroundColor: 'rgba(230,171,44,0.2)' },
 });
 
@@ -322,16 +362,10 @@ const styles = StyleSheet.create({
   center: { flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: 16, gap: 20 },
 
-  header:    { gap: 12, paddingTop: 8 },
+  header:    { gap: 12 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   logoRow:   { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  searchBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(230,171,44,0.1)',
-    borderWidth: 1, borderColor: 'rgba(230,171,44,0.3)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  searchIcon: { fontSize: 18 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   logoBadge: {
     width: 52, height: 52, borderRadius: 26,
     backgroundColor: 'rgba(230,171,44,0.12)',
@@ -340,24 +374,34 @@ const styles = StyleSheet.create({
     shadowColor: '#e6ab2c', shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.35, shadowRadius: 10, elevation: 6,
   },
-  logoEmoji: { fontSize: 24 },
+  // Same single brand asset used app-wide (login/register/splash) — real
+  // aspect ratio of full-logo-transparent.png is 900×823.
+  logoImage: { width: 38, height: 38 * (823 / 900) },
   appName:   { fontFamily: FONTS.bold, fontSize: 22, color: COLORS.gold, letterSpacing: 0.5 },
   appSub:    { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted },
   greeting:  { fontFamily: FONTS.regular, fontSize: 15, color: COLORS.white70, textAlign: 'right' },
 
+  heroWrap: {},
   bannerWrap: { gap: 10 },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.2)' },
   dotActive: { backgroundColor: COLORS.gold, width: 20, borderRadius: 3 },
 
-  ctaBtn:        { borderRadius: RADIUS.md, overflow: 'hidden', elevation: 6 },
+  ctaBtn:        {},
+  ctaPressable:  { borderRadius: RADIUS.md, overflow: 'hidden' },
   ctaBtnPressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
   ctaGrad: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 10, paddingVertical: 16,
   },
-  ctaIcon:  { fontSize: 22, color: '#1a1000', fontFamily: FONTS.bold },
-  ctaLabel: { fontFamily: FONTS.bold, fontSize: 17, color: '#1a1000' },
+  ctaIcon: {
+    fontSize: 22, color: '#ffffff', fontFamily: FONTS.bold,
+    textShadowColor: 'rgba(0,0,0,0.45)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
+  },
+  ctaLabel: {
+    fontFamily: FONTS.bold, fontSize: 17, color: '#ffffff',
+    textShadowColor: 'rgba(0,0,0,0.45)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
+  },
 
   section: { gap: 10 },
 
@@ -394,20 +438,6 @@ const styles = StyleSheet.create({
   },
   catPill:     { borderRadius: 12, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 3, marginTop: 2 },
   catPillText: { fontFamily: FONTS.bold, fontSize: 11 },
-
-  shortcutsRow: { flexDirection: 'row', gap: 12 },
-  shortcutCard: {
-    flex: 1,
-    backgroundColor: '#161b22',
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.2)',
-    padding: 16,
-    alignItems: 'center',
-    gap: 8,
-  },
-  shortcutEmoji: { fontSize: 28 },
-  shortcutTitle: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.white, textAlign: 'center' },
 
   communityCard: {
     backgroundColor: '#161b22', borderRadius: RADIUS.md,

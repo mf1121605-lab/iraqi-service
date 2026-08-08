@@ -3,8 +3,8 @@ import { router } from 'expo-router';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -15,12 +15,98 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
+import { FlashList } from '@shopify/flash-list';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { ScreenBg } from '@/components/ui/ScreenBg';
+import { HapticPressable } from '@/components/ui/HapticPressable';
 import { Avatar } from '@/components/chat/Avatar';
-import { MessageBubble } from '@/components/chat/MessageBubble';
+import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
+import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
+import { ChatBgTheme, getChatBgTheme, setChatBgTheme } from '@/utils/chatBackgroundPrefs';
+import { MessageBubble, MessageStatus } from '@/components/chat/MessageBubble';
+import { ReactionPickerOverlay } from '@/components/ui/ReactionPickerOverlay';
+import { buildChatReactions, DELETE_KEY, REPLY_KEY } from '@/constants/chatReactions';
+import { confirmDelete } from '@/lib/confirmDelete';
+import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { uploadMediaSmart, type UploadHandle } from '@/lib/resumableUpload';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+import { playSound } from '@/utils/soundFX';
+import {
+  CREDIT_COMMISSION_RATE,
+  CREDIT_PAYMENT_NOTE,
+  PAYMENT_METHOD_LABELS,
+  PaymentMethod,
+  creditFinalAmount,
+} from '@/utils/paymentMethods';
+import { CHAT_DOCUMENT_MIME_TYPES } from '@/constants/documentMimeTypes';
+
+const PAYMENT_METHOD_OPTIONS: PaymentMethod[] = ['mastercard', 'zaincash', 'credit'];
+
+async function uploadAttachment(
+  uri: string,
+  userId: string,
+  kind: 'image' | 'voice' | 'video' | 'file',
+  onProgress?: (pct: number) => void,
+  onHandle?: (handle: UploadHandle) => void,
+  fileName?: string,
+  mimeType?: string,
+): Promise<string | null> {
+  try {
+    const ext = kind === 'voice'
+      ? 'm4a'
+      : kind === 'file'
+        ? (fileName?.split('.').pop()?.toLowerCase() ?? 'bin')
+        : (uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg'));
+    const path = `chat/${userId}/${Date.now()}.${ext}`;
+    const contentType = kind === 'voice'
+      ? 'audio/m4a'
+      : kind === 'video'
+        ? `video/${ext === 'mov' ? 'quicktime' : ext}`
+        : kind === 'file'
+          ? (mimeType ?? 'application/octet-stream')
+          : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+    // Dispatches by file size: small images go through a plain single-
+    // request upload; long voice notes and videos go through the chunked,
+    // resumable TUS path — see lib/resumableUpload.ts.
+    let publicUrl: string | null = null;
+    let uploadErr: Error | null = null;
+    await uploadMediaSmart(uri, 'site-assets', path, contentType, {
+      onProgress,
+      onHandle,
+      onSuccess: (url) => { publicUrl = url; },
+      onError: (err) => { uploadErr = err; },
+    });
+    if (uploadErr) { console.error('upload failed:', uploadErr); return null; }
+    return publicUrl;
+  } catch (err) {
+    console.error('upload failed:', err);
+    return null;
+  }
+}
+
+// Same upload approach onboarding.tsx uses for a self-avatar photo:
+// arrayBuffer() rather than RN's unreliable Blob polyfill, uploaded to the
+// self-writable avatars/{userId}/ path (site_assets_write_own_avatar).
+async function uploadOwnPhoto(uri: string, userId: string): Promise<string | null> {
+  try {
+    const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const path = `avatars/${userId}/${Date.now()}.${ext}`;
+    const response = await fetch(uri);
+    const arrayBuffer = await response.arrayBuffer();
+    const contentType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    const { error } = await supabase.storage.from('site-assets').upload(path, arrayBuffer, { contentType, upsert: false });
+    if (error) { console.error('avatar upload failed:', error.message); return null; }
+    return path;
+  } catch {
+    return null;
+  }
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -30,11 +116,15 @@ type QueueTab = 'requests' | 'quick';
 interface RequestItem {
   id: string;
   title: string;
+  description: string | null;
   category: string;
   status: string;
   assigned_employee_id: string | null;
   customer_id: string;
   created_at: string;
+  service_id: string | null;
+  service: { label_ar: string } | null;
+  customer: { given_name: string | null; family_name: string | null; phone: string | null } | null;
 }
 
 interface QuickRequest {
@@ -51,9 +141,11 @@ interface Message {
   sender_id: string;
   body: string | null;
   attachment_url: string | null;
+  reply_to_id: string | null;
   message_type: string | null;
   created_at: string;
   read_at: string | null;
+  reactions: { emoji: string; user_id: string }[];
 }
 
 interface HistoryEntry {
@@ -65,34 +157,30 @@ interface HistoryEntry {
 
 interface Category {
   key: string;
-  name_ar: string;
+  label_ar: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+// Matches the real `request_status` enum — submitted is the only initial
+// value; there is no separate pending/in_progress/completed/cancelled set.
 const STATUS_LABELS: Record<string, string> = {
-  pending:       'قيد الانتظار',
-  in_progress:   'قيد المعالجة',
+  submitted:     'قيد الانتظار',
   in_review:     'تحت المراجعة',
   needs_changes: 'يحتاج تعديلات',
   approved:      'موافق عليه',
   rejected:      'مرفوض',
-  completed:     'مكتمل',
-  cancelled:     'ملغى',
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  pending:       '#f59e0b',
-  in_progress:   '#3b82f6',
+  submitted:     '#f59e0b',
   in_review:     '#8b5cf6',
   needs_changes: '#f97316',
   approved:      '#22c55e',
   rejected:      '#ef4444',
-  completed:     '#22c55e',
-  cancelled:     '#6b7280',
 };
 
-const EMPLOYEE_STATUS_OPTIONS = ['in_progress', 'in_review', 'needs_changes', 'approved', 'rejected', 'completed', 'cancelled'];
+const EMPLOYEE_STATUS_OPTIONS = ['in_review', 'needs_changes', 'approved', 'rejected'];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -116,6 +204,7 @@ const pill = StyleSheet.create({
 
 export default function EmployeeDashboard() {
   const { profile, signOut, refreshProfile } = useAuth();
+  const fullName = [profile?.given_name, profile?.family_name].filter(Boolean).join(' ') || 'الموظف';
 
   // Navigation
   const [view, setView] = useState<ScreenView>('list');
@@ -132,12 +221,32 @@ export default function EmployeeDashboard() {
   const [customer, setCustomer] = useState<{ id: string; given_name: string | null; avatar_key: string | null } | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const flatListRef = useRef<FlatList>(null);
+  const [customerTyping, setCustomerTyping] = useState(false);
+  const [bgTheme, setBgTheme] = useState<ChatBgTheme>('none');
+  const [showBgPicker, setShowBgPicker] = useState(false);
+
+  useEffect(() => { getChatBgTheme().then(setBgTheme); }, []);
+  const flatListRef = useRef<FlashList<Message>>(null);
+  const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const lastTypingBroadcast = useRef(0);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Chat input
   const [messageBody, setMessageBody] = useState('');
   const [sending, setSending] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const uploadHandleRef = useRef<UploadHandle | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [loadingChat, setLoadingChat] = useState(false);
+
+  // This screen never unmounts between the queue/chat/profile sub-views —
+  // `view`/`selectedId` just switch which JSX the same component returns —
+  // so a plain unmount-only cleanup would miss "tapped back to the queue
+  // mid-upload" or "opened a different request's chat mid-upload". Keying
+  // the effect on both means it also re-fires (and aborts) on those
+  // transitions, on top of covering the real unmount case.
+  useEffect(() => () => { uploadHandleRef.current?.abort(); }, [view, selectedId]);
 
   // Status update
   const [showStatusForm, setShowStatusForm] = useState(false);
@@ -148,7 +257,7 @@ export default function EmployeeDashboard() {
 
   // Payment
   const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'zaincash' | 'qi_card'>('zaincash');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mastercard');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [paymentSaving, setPaymentSaving] = useState(false);
@@ -156,10 +265,19 @@ export default function EmployeeDashboard() {
 
   // Profile settings
   const [specialization, setSpecialization] = useState('');
+  const [qualification, setQualification] = useState('');
+  const [isActive, setIsActive] = useState(true);
+  const [avatarKey, setAvatarKey] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [activeServices, setActiveServices] = useState<string[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
+
+  // Accept/reject preview for an unclaimed request
+  const [previewRequest, setPreviewRequest] = useState<RequestItem | null>(null);
+  const [declineReason, setDeclineReason] = useState('');
+  const [decisionSaving, setDecisionSaving] = useState(false);
 
   // ── Load queue ────────────────────────────────────────────────────────────
 
@@ -167,9 +285,14 @@ export default function EmployeeDashboard() {
     supabase.rpc('expire_stale_claims').then(() => {});
     const { data } = await supabase
       .from('requests')
-      .select('id, title, category, status, assigned_employee_id, customer_id, created_at')
+      // service_id + its label lets the queue show the exact sub-service the
+      // customer picked (e.g. "تحديث البيان السنوي") instead of only the
+      // broad category — the founder's dynamic category-services system
+      // already captures this at submission time, but the queue never
+      // surfaced it before.
+      .select('id, title, description, category, status, assigned_employee_id, customer_id, created_at, service_id, service:category_services(label_ar), customer:profiles!customer_id(given_name, family_name, phone)')
       .order('created_at', { ascending: false });
-    setQueue((data ?? []) as RequestItem[]);
+    setQueue((data ?? []) as unknown as RequestItem[]);
     setRefreshing(false);
   }, []);
 
@@ -189,12 +312,15 @@ export default function EmployeeDashboard() {
     (async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('specialization, active_services')
+        .select('specialization, active_services, qualification, is_active, avatar_key')
         .eq('id', profile.id)
         .single();
       if (data) {
         setSpecialization(data.specialization ?? '');
         setActiveServices(data.active_services ?? []);
+        setQualification(data.qualification ?? '');
+        setIsActive(data.is_active ?? true);
+        setAvatarKey(data.avatar_key ?? null);
       }
       setProfileLoaded(true);
     })();
@@ -205,8 +331,8 @@ export default function EmployeeDashboard() {
   useEffect(() => {
     supabase
       .from('categories')
-      .select('key, name_ar')
-      .order('display_order')
+      .select('key, label_ar')
+      .order('sort_order')
       .then(({ data }) => { if (data) setCategories(data as Category[]); });
   }, []);
 
@@ -240,10 +366,37 @@ export default function EmployeeDashboard() {
         event: '*', schema: 'public', table: 'request_messages',
         filter: `request_id=eq.${selectedId}`,
       }, () => loadDetail(selectedId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'request_message_reactions' }, () => loadDetail(selectedId))
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+
+    const typingChannel = supabase
+      .channel(`request-typing-${selectedId}`)
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        const { senderId } = payload.payload as { senderId: string };
+        if (senderId === profile?.id) return;
+        setCustomerTyping(true);
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => setCustomerTyping(false), 3000);
+      })
+      .subscribe();
+    typingChannelRef.current = typingChannel;
+
+    return () => {
+      supabase.removeChannel(channel);
+      supabase.removeChannel(typingChannel);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      setCustomerTyping(false);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
+
+  const broadcastTyping = useCallback(() => {
+    if (!typingChannelRef.current || !profile?.id) return;
+    const now = Date.now();
+    if (now - lastTypingBroadcast.current < 2000) return;
+    lastTypingBroadcast.current = now;
+    typingChannelRef.current.send({ type: 'broadcast', event: 'typing', payload: { senderId: profile.id } });
+  }, [profile?.id]);
 
   // ── Auto-scroll on new messages ───────────────────────────────────────────
 
@@ -260,7 +413,7 @@ export default function EmployeeDashboard() {
     const [{ data: msgRows }, { data: histRows }, { data: reqRow }] = await Promise.all([
       supabase
         .from('request_messages')
-        .select('id, sender_id, body, attachment_url, message_type, created_at, read_at')
+        .select('id, sender_id, body, attachment_url, reply_to_id, message_type, created_at, read_at, reactions:request_message_reactions(emoji, user_id)')
         .eq('request_id', requestId)
         .order('created_at'),
       supabase
@@ -307,16 +460,52 @@ export default function EmployeeDashboard() {
     setShowPaymentForm(false);
     setShowHistory(false);
     setMessageBody('');
+    setReplyTo(null);
     setView('chat');
     loadDetail(req.id);
   }
 
-  async function claimRequest(requestId: string) {
-    if (!profile) return;
-    await supabase.from('requests').update({ assigned_employee_id: profile.id }).eq('id', requestId);
+  function openPreview(req: RequestItem) {
+    setPreviewRequest(req);
+    setDeclineReason('');
+  }
+
+  // موافق ✅ — accept_request() does the same claim the old instant button
+  // did (assigned_employee_id + status='in_review'), but only after
+  // verifying eligibility server-side; the customer's chat/notification
+  // are unchanged, they already fire off any status change.
+  async function handleAcceptPreview() {
+    if (!profile || !previewRequest) return;
+    setDecisionSaving(true);
+    const { data, error } = await supabase.rpc('accept_request', { p_request_id: previewRequest.id });
+    setDecisionSaving(false);
+    if (error) {
+      Alert.alert('تعذّر القبول', error.message);
+      return;
+    }
+    const accepted = previewRequest;
+    setPreviewRequest(null);
     await loadQueue();
-    const req = queue?.find((r) => r.id === requestId);
-    if (req) openChat({ ...req, assigned_employee_id: profile.id });
+    openChat({ ...accepted, assigned_employee_id: profile.id, status: (data?.status as string) ?? 'in_review' });
+  }
+
+  // غير موافق ❌ — logs the decline (with an optional reason) and drops
+  // the request out of this supervisor's own queue; it stays visible to
+  // any other supervisor still eligible for its category/service.
+  async function handleDeclinePreview() {
+    if (!previewRequest) return;
+    setDecisionSaving(true);
+    const { error } = await supabase.rpc('decline_request', {
+      p_request_id: previewRequest.id,
+      p_reason: declineReason.trim() || null,
+    });
+    setDecisionSaving(false);
+    if (error) {
+      Alert.alert('تعذّر الرفض', error.message);
+      return;
+    }
+    setPreviewRequest(null);
+    loadQueue();
   }
 
   async function handleStatusUpdate() {
@@ -339,19 +528,175 @@ export default function EmployeeDashboard() {
     if (!text || !profile || !selectedId) return;
     setSending(true);
     setMessageBody('');
+    const replyId = replyTo?.id ?? null;
+    setReplyTo(null);
     await supabase.from('request_messages').insert({
       request_id: selectedId,
       sender_id: profile.id,
       body: text,
       message_type: 'text',
+      reply_to_id: replyId,
     });
+    playSound('messageSent');
     setSending(false);
   }
+
+  async function pickAndSendImage() {
+    if (!profile || !selectedId) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الصور والفيديوهات من إعدادات الجهاز لإرسال المرفقات.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.8 });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    const isVideo = asset.type === 'video';
+    setSending(true);
+    setUploadProgress(0);
+    const url = await uploadAttachment(
+      asset.uri, profile.id, isVideo ? 'video' : 'image', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; },
+    );
+    uploadHandleRef.current = null;
+    setUploadProgress(null);
+    if (url) {
+      await supabase.from('request_messages').insert({
+        request_id: selectedId, sender_id: profile.id, body: isVideo ? '🎬 فيديو' : '📷 صورة',
+        message_type: isVideo ? 'video' : 'image', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+      });
+      setReplyTo(null);
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع المرفق، حاول مرة أخرى.');
+    }
+    setSending(false);
+  }
+
+  async function pickAndSendDocument() {
+    if (!profile || !selectedId) return;
+    const result = await DocumentPicker.getDocumentAsync({ type: CHAT_DOCUMENT_MIME_TYPES, copyToCacheDirectory: true });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    setSending(true);
+    setUploadProgress(0);
+    const url = await uploadAttachment(
+      asset.uri, profile.id, 'file', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; }, asset.name, asset.mimeType,
+    );
+    uploadHandleRef.current = null;
+    setUploadProgress(null);
+    if (url) {
+      await supabase.from('request_messages').insert({
+        request_id: selectedId, sender_id: profile.id, body: `📎 ${asset.name}`,
+        message_type: 'file', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+      });
+      setReplyTo(null);
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع الملف، حاول مرة أخرى.');
+    }
+    setSending(false);
+  }
+
+  async function sendVoice(uri: string, durationMs: number) {
+    if (!profile || !selectedId) return;
+    setRecording(false);
+    if (durationMs < 800) return;
+    setSending(true);
+    setUploadProgress(0);
+    const url = await uploadAttachment(
+      uri, profile.id, 'voice', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; },
+    );
+    uploadHandleRef.current = null;
+    setUploadProgress(null);
+    if (url) {
+      await supabase.from('request_messages').insert({
+        request_id: selectedId, sender_id: profile.id, body: '🎤 رسالة صوتية',
+        message_type: 'voice', attachment_url: url,
+      });
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع الرسالة الصوتية، حاول مرة أخرى.');
+    }
+    setSending(false);
+  }
+
+  async function pickReaction(messageId: string, emoji: string) {
+    if (!profile) return;
+    const msg = messages.find((m) => m.id === messageId);
+    const mine = msg?.reactions.find((r) => r.user_id === profile.id);
+    if (mine) await supabase.from('request_message_reactions').delete().eq('message_id', messageId).eq('user_id', profile.id);
+    if (!mine || mine.emoji !== emoji) {
+      await supabase.from('request_message_reactions').insert({ message_id: messageId, user_id: profile.id, emoji });
+      playSound('reaction');
+    }
+  }
+
+  function summarizeReactions(reactions: { emoji: string; user_id: string }[]) {
+    const counts: Record<string, number> = {};
+    reactions.forEach((r) => { counts[r.emoji] = (counts[r.emoji] ?? 0) + 1; });
+    return Object.entries(counts).map(([emoji, count]) => ({ emoji, count, mine: false }));
+  }
+
+  // Stable across renders driven by anything other than messages/profile/
+  // customer changing (payment form toggling, upload progress ticking).
+  const renderMessage = useCallback(({ item, index }: { item: Message; index: number }) => {
+    const isMine = item.sender_id === profile?.id;
+    const prev = messages[index - 1];
+    const bundled = !!(prev && prev.sender_id === item.sender_id &&
+      new Date(item.created_at).getTime() - new Date(prev.created_at).getTime() < 120_000);
+    const replySource = item.reply_to_id ? messages.find((m) => m.id === item.reply_to_id) : null;
+    const status: MessageStatus = item.read_at ? 'read' : 'sent';
+    return (
+      <ReactionPickerOverlay
+        reactions={buildChatReactions(isMine)}
+        align={isMine ? 'end' : 'start'}
+        onSelectReaction={(key) => {
+          // Reply rides in the bar as a seventh slot so long-press
+          // still offers it, exactly as the old popover did.
+          if (key === REPLY_KEY) setReplyTo(item);
+          else if (key === DELETE_KEY) {
+            confirmDelete({
+              kind: 'message',
+              table: 'request_messages',
+              id: item.id,
+              // Drop it locally too: the realtime DELETE event is the usual
+              // path, but this keeps the list right if that socket is down.
+              onDeleted: () => setMessages((cur) => cur.filter((m) => m.id !== item.id)),
+            });
+          }
+          else pickReaction(item.id, key);
+        }}
+      >
+        <MessageBubble
+          body={item.body ?? ''}
+          isMine={isMine}
+          timestamp={item.created_at}
+          messageType={item.message_type ?? undefined}
+          attachmentUrl={item.attachment_url}
+          attachmentType={
+            item.message_type === 'image' ? 'image' :
+            item.message_type === 'voice' ? 'voice' :
+            item.message_type === 'video' ? 'video' :
+            item.message_type === 'file' ? 'file' : null
+          }
+          senderAvatarKey={!isMine ? customer?.avatar_key : undefined}
+          onSenderPress={!isMine && customer?.id ? () => router.push({ pathname: '/user/[userId]', params: { userId: customer.id } }) : undefined}
+          status={isMine ? status : undefined}
+          reactions={summarizeReactions(item.reactions)}
+          replyTo={replySource ? { body: replySource.body ?? '' } : null}
+          bundled={bundled}
+        />
+      </ReactionPickerOverlay>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, profile, customer]);
 
   async function handleLogPayment() {
     if (!paymentAmount || !selectedId || !profile || !selectedRequest) return;
     setPaymentSaving(true);
-    const amount = parseFloat(paymentAmount);
+    const baseAmount = parseFloat(paymentAmount);
+    const isCredit = paymentMethod === 'credit';
+    const amount = isCredit ? creditFinalAmount(baseAmount) : baseAmount;
     const payloadBody = JSON.stringify({ method: paymentMethod, amount, notes: paymentNotes });
 
     await Promise.all([
@@ -361,6 +706,8 @@ export default function EmployeeDashboard() {
         customer_id: selectedRequest.customer_id,
         method: paymentMethod,
         amount,
+        base_amount: isCredit ? baseAmount : null,
+        commission_rate: isCredit ? CREDIT_COMMISSION_RATE * 100 : null,
         notes: paymentNotes || null,
         logged_by: profile.id,
       }),
@@ -378,6 +725,17 @@ export default function EmployeeDashboard() {
     setPaymentSuccess('تم تسجيل الدفعة بنجاح ✓');
     setTimeout(() => setPaymentSuccess(''), 3000);
     setPaymentSaving(false);
+    loadDetail(selectedId);
+  }
+
+  async function handleSendCreditNote() {
+    if (!selectedId || !profile) return;
+    await supabase.from('request_messages').insert({
+      request_id: selectedId,
+      sender_id: profile.id,
+      body: CREDIT_PAYMENT_NOTE,
+      message_type: 'text',
+    });
     loadDetail(selectedId);
   }
 
@@ -407,9 +765,37 @@ export default function EmployeeDashboard() {
   async function saveProfile() {
     if (!profile) return;
     setProfileSaving(true);
-    await supabase.from('profiles').update({ specialization }).eq('id', profile.id);
+    await supabase.from('profiles').update({ specialization, qualification: qualification.trim() || null }).eq('id', profile.id);
     setProfileSaving(false);
     refreshProfile();
+  }
+
+  async function toggleActive(value: boolean) {
+    if (!profile) return;
+    setIsActive(value);
+    await supabase.from('profiles').update({ is_active: value }).eq('id', profile.id);
+    refreshProfile();
+  }
+
+  async function handlePickAvatar() {
+    if (!profile) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الصور من إعدادات الجهاز.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, allowsEditing: true, aspect: [1, 1] });
+    if (result.canceled || !result.assets[0]) return;
+    setAvatarUploading(true);
+    const path = await uploadOwnPhoto(result.assets[0].uri, profile.id);
+    if (path) {
+      await supabase.from('profiles').update({ avatar_key: path }).eq('id', profile.id);
+      setAvatarKey(path);
+      refreshProfile();
+    } else {
+      Alert.alert('تعذّر الرفع', 'تعذّر رفع الصورة، حاول مرة أخرى');
+    }
+    setAvatarUploading(false);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -418,16 +804,54 @@ export default function EmployeeDashboard() {
 
   if (view === 'profile') {
     return (
-      <ScreenBg noTopPad>
+      <ScreenBg>
         <View style={styles.navBar}>
           <Pressable onPress={() => setView('list')} style={styles.backBtn} hitSlop={12}>
-            <Text style={styles.backIcon}>‹</Text>
+            <Text style={styles.backIcon}>›</Text>
           </Pressable>
           <Text style={styles.navTitle}>إعدادات الملف الوظيفي</Text>
           <View style={{ width: 40 }} />
         </View>
         <ScrollView contentContainerStyle={styles.profileScroll}>
           <View style={styles.card}>
+            <Text style={styles.cardTitle}>🖼️ الصورة الشخصية</Text>
+            <View style={avatarStyles.row}>
+              <Avatar avatarKey={avatarKey} name={fullName} seed={profile?.id} size={64} />
+              <Pressable
+                onPress={handlePickAvatar}
+                disabled={avatarUploading}
+                style={({ pressed }) => [avatarStyles.changeBtn, pressed && { opacity: 0.8 }]}
+              >
+                <Text style={avatarStyles.changeBtnText}>{avatarUploading ? '...' : 'تغيير الصورة'}</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <View style={avatarStyles.row}>
+              <Switch
+                value={isActive}
+                onValueChange={toggleActive}
+                thumbColor={isActive ? COLORS.gold : '#888'}
+                trackColor={{ true: 'rgba(230,171,44,0.4)', false: 'rgba(255,255,255,0.1)' }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitle}>{isActive ? '🟢 نشط' : '⚪ غير نشط'}</Text>
+                <Text style={styles.cardSub}>عند إيقاف النشاط لن تظهر ضمن قائمة المشرفين المتاحين للزبائن</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>🎓 الشهادة / التخصص العلمي</Text>
+            <TextInput
+              value={qualification}
+              onChangeText={setQualification}
+              placeholder="مثال: بكالوريوس حقوق"
+              placeholderTextColor={COLORS.white40}
+              style={styles.input}
+              textAlign="right"
+            />
             <Text style={styles.cardTitle}>🎯 التخصص</Text>
             <TextInput
               value={specialization}
@@ -442,7 +866,7 @@ export default function EmployeeDashboard() {
               disabled={profileSaving}
               style={({ pressed }) => [styles.goldBtn, pressed && { opacity: 0.8 }]}
             >
-              <Text style={styles.goldBtnText}>{profileSaving ? '...' : 'حفظ التخصص'}</Text>
+              <Text style={styles.goldBtnText}>{profileSaving ? '...' : 'حفظ'}</Text>
             </Pressable>
           </View>
 
@@ -458,25 +882,7 @@ export default function EmployeeDashboard() {
                 <View style={[styles.serviceCheckbox, activeServices.includes(cat.key) && styles.serviceCheckboxActive]}>
                   {activeServices.includes(cat.key) && <Text style={styles.checkmark}>✓</Text>}
                 </View>
-                <Text style={styles.serviceLabel}>{cat.name_ar}</Text>
-              </Pressable>
-            ))}
-          </View>
-          {/* HQ tools */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>🛠️ أدوات الموظف</Text>
-            {[
-              { label: '🔗 روابط الأخبار', route: '/(hq)/news-links' },
-              { label: '🚨 أخبار عاجلة', route: '/(hq)/urgent-news' },
-              { label: '📰 المنشورات', route: '/(hq)/social-posts' },
-            ].map((item) => (
-              <Pressable
-                key={item.route}
-                onPress={() => router.push(item.route as never)}
-                style={({ pressed }) => [styles.hqLink, pressed && { opacity: 0.7 }]}
-              >
-                <Text style={styles.hqLinkText}>{item.label}</Text>
-                <Text style={styles.hqArrow}>›</Text>
+                <Text style={styles.serviceLabel}>{cat.label_ar}</Text>
               </Pressable>
             ))}
           </View>
@@ -490,11 +896,12 @@ export default function EmployeeDashboard() {
   // ─────────────────────────────────────────────────────────────────────────
 
   if (view === 'chat' && selectedRequest) {
-    const isClosed = ['completed', 'cancelled'].includes(selectedRequest.status);
+    const isClosed = ['approved', 'rejected'].includes(selectedRequest.status);
     const custName = customer?.given_name ?? 'الزبون';
 
     return (
-      <ScreenBg noTopPad>
+      <ScreenBg>
+        <ChatBackgroundLayer theme={bgTheme} />
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -502,7 +909,7 @@ export default function EmployeeDashboard() {
           {/* Nav header */}
           <View style={styles.chatNavBar}>
             <Pressable onPress={() => setView('list')} style={styles.backBtn} hitSlop={12}>
-              <Text style={styles.backIcon}>‹</Text>
+              <Text style={styles.backIcon}>›</Text>
             </Pressable>
             <Avatar
               avatarKey={customer?.avatar_key}
@@ -512,8 +919,15 @@ export default function EmployeeDashboard() {
             />
             <View style={styles.chatNavCenter}>
               <Text style={styles.chatNavTitle} numberOfLines={1}>{selectedRequest.title}</Text>
-              <StatusPill status={selectedRequest.status} small />
+              {customerTyping ? (
+                <Text style={styles.typingIndicator}>الزبون يكتب...</Text>
+              ) : (
+                <StatusPill status={selectedRequest.status} small />
+              )}
             </View>
+            <Pressable onPress={() => setShowBgPicker(true)} style={styles.settingsBtn} hitSlop={8}>
+              <Text style={styles.settingsIcon}>🎨</Text>
+            </Pressable>
             <Pressable
               onPress={() => { setShowStatusForm((v) => !v); setShowHistory(false); }}
               style={styles.settingsBtn}
@@ -522,6 +936,12 @@ export default function EmployeeDashboard() {
               <Text style={[styles.settingsIcon, showStatusForm && { color: COLORS.gold }]}>⚙️</Text>
             </Pressable>
           </View>
+          <ChatBackgroundPicker
+            visible={showBgPicker}
+            current={bgTheme}
+            onSelect={(t) => { setBgTheme(t); setChatBgTheme(t); setShowBgPicker(false); }}
+            onClose={() => setShowBgPicker(false)}
+          />
 
           {/* Status update panel */}
           {showStatusForm && (
@@ -588,12 +1008,13 @@ export default function EmployeeDashboard() {
               <ActivityIndicator color={COLORS.gold} />
             </View>
           ) : (
-            <FlatList
+            <FlashList
               ref={flatListRef}
               data={messages}
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.msgList}
               showsVerticalScrollIndicator={false}
+              estimatedItemSize={80}
               onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
               ListEmptyComponent={
                 <View style={styles.emptyChat}>
@@ -601,21 +1022,7 @@ export default function EmployeeDashboard() {
                   <Text style={styles.emptyChatText}>لا توجد رسائل بعد — ابدأ المحادثة</Text>
                 </View>
               }
-              renderItem={({ item, index }) => {
-                const isMine = item.sender_id === profile?.id;
-                const prev = messages[index - 1];
-                const bundled = !!(prev && prev.sender_id === item.sender_id &&
-                  new Date(item.created_at).getTime() - new Date(prev.created_at).getTime() < 120_000);
-                return (
-                  <MessageBubble
-                    body={item.body ?? ''}
-                    isMine={isMine}
-                    timestamp={item.created_at}
-                    messageType={item.message_type ?? undefined}
-                    bundled={bundled}
-                  />
-                );
-              }}
+              renderItem={renderMessage}
             />
           )}
 
@@ -636,14 +1043,14 @@ export default function EmployeeDashboard() {
                 </Pressable>
               </View>
               <View style={styles.methodRow}>
-                {(['zaincash', 'qi_card'] as const).map((m) => (
+                {PAYMENT_METHOD_OPTIONS.map((m) => (
                   <Pressable
                     key={m}
                     onPress={() => setPaymentMethod(m)}
                     style={[styles.methodBtn, paymentMethod === m && styles.methodBtnActive]}
                   >
                     <Text style={[styles.methodBtnText, paymentMethod === m && { color: '#000' }]}>
-                      {m === 'zaincash' ? 'ZainCash' : 'Qi Card'}
+                      {PAYMENT_METHOD_LABELS[m]}
                     </Text>
                   </Pressable>
                 ))}
@@ -651,12 +1058,17 @@ export default function EmployeeDashboard() {
               <TextInput
                 value={paymentAmount}
                 onChangeText={setPaymentAmount}
-                placeholder="المبلغ بالدينار العراقي"
+                placeholder={paymentMethod === 'credit' ? 'قيمة كارت الرصيد الأصلية' : 'المبلغ بالدينار العراقي'}
                 placeholderTextColor={COLORS.white40}
                 style={styles.input}
                 keyboardType="numeric"
                 textAlign="right"
               />
+              {paymentMethod === 'credit' && !!paymentAmount && !Number.isNaN(parseFloat(paymentAmount)) && (
+                <Text style={styles.creditPreview}>
+                  المبلغ النهائي بعد عمولة 40%: {creditFinalAmount(parseFloat(paymentAmount)).toLocaleString('ar-IQ')} د.ع
+                </Text>
+              )}
               <TextInput
                 value={paymentNotes}
                 onChangeText={setPaymentNotes}
@@ -670,51 +1082,90 @@ export default function EmployeeDashboard() {
                 disabled={paymentSaving || !paymentAmount}
                 style={({ pressed }) => [styles.goldBtn, (!paymentAmount || paymentSaving) && { opacity: 0.5 }, pressed && { opacity: 0.8 }]}
               >
-                <Text style={styles.goldBtnText}>{paymentSaving ? '...' : 'تسجيل الدفعة'}</Text>
+                <Text style={styles.goldBtnText}>{paymentSaving ? '...' : 'تثبيت وإصدار وصل الدفع'}</Text>
               </Pressable>
+              <Pressable onPress={handleSendCreditNote} style={styles.creditNoteBtn}>
+                <Text style={styles.creditNoteBtnText}>ℹ️ إرسال ملاحظة الدفع بالرصيد للزبون</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* Reply preview */}
+          {replyTo && !isClosed && (
+            <View style={styles.replyBar}>
+              <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
+                <Text style={styles.replyBarClose}>✕</Text>
+              </Pressable>
+              <Text style={styles.replyBarText} numberOfLines={1}>الرد على: {replyTo.body}</Text>
             </View>
           )}
 
           {/* Input bar */}
           {!isClosed ? (
-            <View style={styles.inputBar}>
-              <Pressable
-                onPress={() => setShowPaymentForm((v) => !v)}
-                style={[styles.toolBtn, showPaymentForm && styles.toolBtnActive]}
-                hitSlop={6}
-              >
-                <Text style={styles.toolBtnIcon}>💰</Text>
-              </Pressable>
-              <TextInput
-                value={messageBody}
-                onChangeText={setMessageBody}
-                placeholder="اكتب رسالة..."
-                placeholderTextColor={COLORS.white40}
-                style={styles.textInput}
-                multiline
-                textAlign="right"
-                maxLength={2000}
-              />
-              <Pressable
-                onPress={handleSend}
-                disabled={sending || !messageBody.trim()}
-                style={({ pressed }) => [
-                  styles.sendBtn,
-                  (!messageBody.trim() || sending) && styles.sendBtnDisabled,
-                  pressed && { opacity: 0.8 },
-                ]}
-              >
-                {sending ? (
-                  <ActivityIndicator color="#000" size="small" />
+            recording ? (
+              <VoiceRecorderBar onSend={sendVoice} onCancel={() => setRecording(false)} />
+            ) : (
+              <>
+              {uploadProgress !== null && (
+                <View style={uploadBarStyles.row}>
+                  <View style={uploadBarStyles.track}>
+                    <View style={[uploadBarStyles.fill, { width: `${uploadProgress}%` }]} />
+                  </View>
+                  <Text style={uploadBarStyles.text}>{uploadProgress}%</Text>
+                </View>
+              )}
+              <View style={styles.inputBar}>
+                <Pressable
+                  onPress={() => setShowPaymentForm((v) => !v)}
+                  style={[styles.toolBtn, showPaymentForm && styles.toolBtnActive]}
+                  hitSlop={6}
+                >
+                  <Text style={styles.toolBtnIcon}>💰</Text>
+                </Pressable>
+                <TextInput
+                  value={messageBody}
+                  onChangeText={(t) => { setMessageBody(t); broadcastTyping(); }}
+                  placeholder="اكتب رسالة..."
+                  placeholderTextColor={COLORS.white40}
+                  style={styles.textInput}
+                  multiline
+                  textAlign="right"
+                  maxLength={2000}
+                />
+                <Pressable style={styles.toolBtn} onPress={pickAndSendDocument} disabled={sending} hitSlop={6}>
+                  <Text style={styles.toolBtnIcon}>📎</Text>
+                </Pressable>
+                <Pressable style={styles.toolBtn} onPress={pickAndSendImage} disabled={sending} hitSlop={6}>
+                  <Text style={styles.toolBtnIcon}>🖼️</Text>
+                </Pressable>
+                {messageBody.trim() ? (
+                  <Pressable
+                    onPress={handleSend}
+                    disabled={sending}
+                    style={({ pressed }) => [
+                      styles.sendBtn,
+                      sending && styles.sendBtnDisabled,
+                      pressed && { opacity: 0.8 },
+                    ]}
+                  >
+                    {sending ? (
+                      <ActivityIndicator color="#000" size="small" />
+                    ) : (
+                      <Ionicons name="arrow-up" size={20} color="#000" />
+                    )}
+                  </Pressable>
                 ) : (
-                  <Text style={styles.sendIcon}>↑</Text>
+                  <Pressable style={styles.micBtn} onPress={() => setRecording(true)} disabled={sending} hitSlop={6}>
+                    <Text style={styles.micIcon}>🎤</Text>
+                  </Pressable>
                 )}
-              </Pressable>
-            </View>
+              </View>
+              </>
+            )
           ) : (
             <View style={styles.closedBar}>
               <Text style={styles.closedText}>
-                {selectedRequest.status === 'completed' ? '✅ تم إنجاز الطلب' : '❌ تم إلغاء الطلب'}
+                {selectedRequest.status === 'approved' ? '✅ تم إنجاز الطلب' : '❌ تم رفض الطلب'}
               </Text>
             </View>
           )}
@@ -727,13 +1178,12 @@ export default function EmployeeDashboard() {
   // LIST VIEW
   // ─────────────────────────────────────────────────────────────────────────
 
-  const fullName = [profile?.given_name, profile?.family_name].filter(Boolean).join(' ') || 'الموظف';
   const myRequests = queue?.filter((r) => r.assigned_employee_id === profile?.id) ?? [];
   const unclaimedRequests = queue?.filter((r) => !r.assigned_employee_id) ?? [];
   const allVisible = [...unclaimedRequests, ...myRequests.filter((r) => !unclaimedRequests.find((u) => u.id === r.id))];
-  const pending = myRequests.filter((r) => r.status === 'pending').length;
-  const inProgress = myRequests.filter((r) => r.status === 'in_progress').length;
-  const completed = myRequests.filter((r) => r.status === 'completed').length;
+  const pending = myRequests.filter((r) => r.status === 'submitted').length;
+  const inProgress = myRequests.filter((r) => r.status === 'in_review').length;
+  const completed = myRequests.filter((r) => r.status === 'approved').length;
   const quickBadge = quickRequests?.length ?? 0;
 
   if (queue === null) {
@@ -745,7 +1195,7 @@ export default function EmployeeDashboard() {
   }
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -763,6 +1213,7 @@ export default function EmployeeDashboard() {
             <Text style={styles.headerIcon}>🚪</Text>
           </Pressable>
           <View style={styles.headerCenter}>
+            <Image source={require('@/assets/full-logo-transparent.png')} style={styles.headerLogo} contentFit="contain" />
             <View style={styles.headerBadgeRow}>
               <View style={styles.roleBadge}>
                 <Text style={styles.roleBadgeText}>موظف</Text>
@@ -830,11 +1281,11 @@ export default function EmployeeDashboard() {
                 return (
                   <Pressable
                     key={req.id}
-                    onPress={() => isMine ? openChat(req) : null}
+                    onPress={() => isMine ? openChat(req) : openPreview(req)}
                     style={({ pressed }) => [
                       styles.reqCard,
                       isUnclaimed && styles.reqCardUnclaimed,
-                      pressed && isMine && { opacity: 0.75 },
+                      pressed && { opacity: 0.75 },
                     ]}
                   >
                     <View style={[styles.accentBar, { backgroundColor: statusColor }]} />
@@ -845,18 +1296,20 @@ export default function EmployeeDashboard() {
                       </View>
                       <View style={styles.reqCardBottom}>
                         {isUnclaimed ? (
-                          <Pressable
-                            onPress={() => claimRequest(req.id)}
+                          <HapticPressable
+                            onPress={() => openPreview(req)}
                             style={styles.claimBtn}
                           >
-                            <Text style={styles.claimBtnText}>+ استلم الطلب</Text>
-                          </Pressable>
+                            <Text style={styles.claimBtnText}>عرض والقرار</Text>
+                          </HapticPressable>
                         ) : (
                           <View style={styles.myBadge}>
                             <Text style={styles.myBadgeText}>طلبي</Text>
                           </View>
                         )}
-                        <Text style={styles.reqCategory}>{req.category}</Text>
+                        <Text style={styles.reqCategory}>
+                          {req.service?.label_ar ?? categories.find((c) => c.key === req.category)?.label_ar ?? req.category}
+                        </Text>
                       </View>
                     </View>
                   </Pressable>
@@ -908,11 +1361,99 @@ export default function EmployeeDashboard() {
 
         <View style={{ height: 48 }} />
       </ScrollView>
+
+      {/* Accept / reject preview for an unclaimed request */}
+      <Modal
+        visible={!!previewRequest}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewRequest(null)}
+      >
+        <View style={previewStyles.backdrop}>
+          <View style={previewStyles.card}>
+            <Text style={previewStyles.title} numberOfLines={2}>{previewRequest?.title}</Text>
+            <Text style={previewStyles.meta}>
+              {previewRequest?.service?.label_ar
+                ?? categories.find((c) => c.key === previewRequest?.category)?.label_ar
+                ?? previewRequest?.category}
+            </Text>
+            {previewRequest?.customer && (
+              <Text style={previewStyles.customer}>
+                👤 {[previewRequest.customer.given_name, previewRequest.customer.family_name].filter(Boolean).join(' ') || 'زبون'}
+                {previewRequest.customer.phone ? ` — ${previewRequest.customer.phone}` : ''}
+              </Text>
+            )}
+            {previewRequest?.description ? (
+              <Text style={previewStyles.desc} numberOfLines={5}>{previewRequest.description}</Text>
+            ) : null}
+            <TextInput
+              value={declineReason}
+              onChangeText={setDeclineReason}
+              placeholder="سبب الرفض (اختياري)"
+              placeholderTextColor={COLORS.white40}
+              style={previewStyles.reasonInput}
+              textAlign="right"
+            />
+            <View style={previewStyles.actionsRow}>
+              <Pressable
+                disabled={decisionSaving}
+                onPress={handleAcceptPreview}
+                style={({ pressed }) => [previewStyles.acceptBtn, pressed && { opacity: 0.85 }]}
+              >
+                <Text style={previewStyles.acceptText}>{decisionSaving ? '...' : '✅ موافق'}</Text>
+              </Pressable>
+              <Pressable
+                disabled={decisionSaving}
+                onPress={handleDeclinePreview}
+                style={({ pressed }) => [previewStyles.rejectBtn, pressed && { opacity: 0.85 }]}
+              >
+                <Text style={previewStyles.rejectText}>{decisionSaving ? '...' : '❌ غير موافق'}</Text>
+              </Pressable>
+            </View>
+            <Pressable onPress={() => setPreviewRequest(null)} hitSlop={8} style={previewStyles.closeBtn}>
+              <Text style={previewStyles.closeText}>إغلاق</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ScreenBg>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
+
+const uploadBarStyles = StyleSheet.create({
+  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingBottom: 6 },
+  track: { flex: 1, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 3, backgroundColor: COLORS.gold },
+  text: { fontFamily: FONTS.bold, fontSize: 10, color: COLORS.gold, minWidth: 28, textAlign: 'left' },
+});
+
+const avatarStyles = StyleSheet.create({
+  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14 },
+  changeBtn: { backgroundColor: 'rgba(230,171,44,0.12)', borderWidth: 1, borderColor: 'rgba(230,171,44,0.3)', borderRadius: RADIUS.md, paddingHorizontal: 14, paddingVertical: 9 },
+  changeBtnText: { fontFamily: FONTS.bold, fontSize: 12, color: COLORS.gold },
+});
+
+const previewStyles = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.72)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  card: { width: '100%', maxWidth: 400, backgroundColor: '#161b22', borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.goldBorder, padding: 18, gap: 10 },
+  title: { fontFamily: FONTS.bold, fontSize: 17, color: COLORS.white, textAlign: 'right' },
+  meta: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold, textAlign: 'right' },
+  customer: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white70, textAlign: 'right' },
+  desc: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white70, textAlign: 'right', lineHeight: 19 },
+  reasonInput: {
+    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: RADIUS.sm, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 12, paddingVertical: 10, color: COLORS.white, fontFamily: FONTS.regular, fontSize: 13,
+  },
+  actionsRow: { flexDirection: 'row', gap: 10 },
+  acceptBtn: { flex: 1, backgroundColor: 'rgba(34,197,94,0.16)', borderWidth: 1, borderColor: 'rgba(34,197,94,0.5)', borderRadius: RADIUS.md, paddingVertical: 12, alignItems: 'center' },
+  acceptText: { fontFamily: FONTS.bold, fontSize: 14, color: '#22c55e' },
+  rejectBtn: { flex: 1, backgroundColor: 'rgba(239,68,68,0.14)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.5)', borderRadius: RADIUS.md, paddingVertical: 12, alignItems: 'center' },
+  rejectText: { fontFamily: FONTS.bold, fontSize: 14, color: '#ef4444' },
+  closeBtn: { alignItems: 'center', paddingVertical: 6 },
+  closeText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.white40 },
+});
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
@@ -923,6 +1464,7 @@ const styles = StyleSheet.create({
   listHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4, paddingBottom: 4 },
   headerIcon: { fontSize: 22, padding: 6 },
   headerCenter: { alignItems: 'center', gap: 6 },
+  headerLogo: { width: 30, height: 30 * (823 / 900) },
   headerBadgeRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   roleBadge: { backgroundColor: 'rgba(230,171,44,0.12)', borderWidth: 1, borderColor: 'rgba(230,171,44,0.3)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
   roleBadgeText: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold },
@@ -986,6 +1528,7 @@ const styles = StyleSheet.create({
   backIcon: { fontSize: 24, color: COLORS.gold, lineHeight: 28 },
   chatNavCenter: { flex: 1, gap: 4 },
   chatNavTitle: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.white, textAlign: 'right' },
+  typingIndicator: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold, textAlign: 'right' },
   settingsBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   settingsIcon: { fontSize: 20, color: COLORS.muted },
 
@@ -1025,6 +1568,9 @@ const styles = StyleSheet.create({
   methodBtn: { flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: RADIUS.md, paddingVertical: 9, alignItems: 'center' },
   methodBtnActive: { backgroundColor: COLORS.gold, borderColor: COLORS.gold },
   methodBtnText: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.white70 },
+  creditPreview: { fontFamily: FONTS.bold, fontSize: 12, color: '#22c55e', textAlign: 'right', marginTop: -6, marginBottom: 4 },
+  creditNoteBtn: { alignItems: 'center', paddingVertical: 8, marginTop: 2 },
+  creditNoteBtnText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.white50, textDecorationLine: 'underline' },
 
   // Input bar
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 10, paddingTop: 8, paddingBottom: Platform.OS === 'ios' ? 22 : 10, gap: 8, backgroundColor: '#161b22', borderTopWidth: 1, borderTopColor: 'rgba(230,171,44,0.15)' },
@@ -1035,6 +1581,11 @@ const styles = StyleSheet.create({
   sendBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: COLORS.gold, alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { backgroundColor: 'rgba(230,171,44,0.3)' },
   sendIcon: { fontSize: 20, color: '#000', fontFamily: FONTS.bold },
+  micBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(230,171,44,0.12)', borderWidth: 1, borderColor: 'rgba(230,171,44,0.3)', alignItems: 'center', justifyContent: 'center' },
+  micIcon: { fontSize: 17 },
+  replyBar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: 'rgba(230,171,44,0.15)', borderTopWidth: 1, borderTopColor: 'rgba(230,171,44,0.2)' },
+  replyBarClose: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
+  replyBarText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12, color: COLORS.gold, textAlign: 'right' },
   closedBar: { paddingVertical: 14, alignItems: 'center', backgroundColor: '#161b22', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingBottom: Platform.OS === 'ios' ? 28 : 14 },
   closedText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.muted },
 
@@ -1051,7 +1602,4 @@ const styles = StyleSheet.create({
   serviceCheckboxActive: { backgroundColor: COLORS.gold, borderColor: COLORS.gold },
   checkmark: { fontSize: 13, color: '#000', fontFamily: FONTS.bold },
   serviceLabel: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.white, flex: 1, textAlign: 'right' },
-  hqLink: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.white10 },
-  hqLinkText: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.white, flex: 1, textAlign: 'right' },
-  hqArrow: { fontSize: 20, color: COLORS.muted },
 });

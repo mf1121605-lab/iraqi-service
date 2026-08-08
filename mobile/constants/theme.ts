@@ -41,6 +41,19 @@ export const FONTS = {
   bold:    'Cairo_700Bold',
 };
 
+// Font choices exposed to the founder's per-element design-mode editor.
+// Each entry's `regular`/`bold` values are the exact font family names
+// loaded via useFonts() in app/_layout.tsx — every family here must stay
+// in sync with that list or React Native silently falls back to the
+// platform default font with no error.
+export const FONT_FAMILIES: { key: string; label: string; regular: string; bold: string }[] = [
+  { key: 'cairo',  label: 'Cairo',              regular: 'Cairo_400Regular',              bold: 'Cairo_700Bold' },
+  { key: 'tajawal', label: 'Tajawal',            regular: 'Tajawal_400Regular',            bold: 'Tajawal_700Bold' },
+  { key: 'almarai', label: 'Almarai',            regular: 'Almarai_400Regular',            bold: 'Almarai_700Bold' },
+  { key: 'plex',    label: 'IBM Plex Arabic',    regular: 'IBMPlexSansArabic_400Regular',  bold: 'IBMPlexSansArabic_700Bold' },
+  { key: 'kufi',    label: 'Noto Kufi Arabic',   regular: 'NotoKufiArabic_400Regular',     bold: 'NotoKufiArabic_700Bold' },
+];
+
 export const RADIUS = {
   sm:  10,   // 0.625rem
   md:  14,   // 0.875rem — input-cinematic, btn-cinematic

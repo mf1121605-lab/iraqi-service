@@ -46,6 +46,9 @@ export default function Checkout() {
           setOrder(data as unknown as Order);
         }
       });
+    // Deliberately depends on the stable id, not the whole profile object
+    // (same convention throughout this codebase).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id, orderId]);
 
   async function handleZainCash() {
@@ -89,7 +92,7 @@ export default function Checkout() {
     <ScreenBg>
       <View style={styles.container}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Text style={styles.backArrow}>‹</Text>
+          <Text style={styles.backArrow}>›</Text>
         </Pressable>
 
         <View style={styles.card}>
@@ -146,6 +149,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
+    alignSelf: 'flex-end',
   },
   backArrow: { fontSize: 28, color: COLORS.gold, lineHeight: 32 },
   card: {

@@ -42,7 +42,13 @@ export default function MessageBubble({
   });
 
   const corners = isSticker ? '' : bubbleCorners(isMine, isFirst, isLast);
-  const rowAlignment = avatar ? (isMine ? 'flex-row-reverse' : '') : isMine ? 'justify-end' : 'justify-start';
+  // Under the page's dir="rtl", a plain (non-reversed) row already renders
+  // its first DOM child (avatar) on the physical right — so "mine" needs no
+  // reverse, and "theirs" needs the reverse to push its avatar to the left.
+  // Same logic for justify-end/start: under rtl, flex-end resolves to the
+  // physical left, so the mine/theirs mapping is flipped from what it'd be
+  // under ltr.
+  const rowAlignment = avatar ? (isMine ? '' : 'flex-row-reverse') : isMine ? 'justify-start' : 'justify-end';
 
   return (
     <motion.div

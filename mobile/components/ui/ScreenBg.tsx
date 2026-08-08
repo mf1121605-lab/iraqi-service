@@ -9,8 +9,11 @@
  */
 import { ReactNode } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Canvas, Rect, RadialGradient, vec } from '@shopify/react-native-skia';
+import { useSiteBackground } from '@/hooks/useSiteBackground';
+import { ParticlesLayer } from './ParticlesLayer';
 
 interface Props {
   children: ReactNode;
@@ -20,13 +23,15 @@ interface Props {
 export function ScreenBg({ children, noTopPad }: Props) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
+  const { imageUrl, color, baseColor, particlesEnabled } = useSiteBackground();
 
   return (
     <View style={styles.root}>
       {/* ── Skia canvas: real radial gradients ─────────────────────── */}
-      <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
-        {/* Base #0d1117 */}
-        <Rect x={0} y={0} width={width} height={height} color="#0d1117" />
+      <Canvas key={`canvas-${width}-${height}`} style={StyleSheet.absoluteFill} pointerEvents="none">
+        {/* Deep base — founder-controlled (founder_settings.bg_color), was a
+            hardcoded #0d1117 so the colour picker had no effect on mobile. */}
+        <Rect x={0} y={0} width={width} height={height} color={baseColor ?? '#0d1117'} />
 
         {/* Top-center gold aurora — mirrors web radial at 50% -5% */}
         <Rect x={0} y={0} width={width} height={height}>
@@ -65,6 +70,22 @@ export function ScreenBg({ children, noTopPad }: Props) {
         </Rect>
       </Canvas>
 
+      {/* ── Founder-set background image/color — dim layer above the
+          default gradient, still visible underneath, matches the web ── */}
+      {/* Tint and image are independent layers. They used to be an either/or
+          chain, so setting a colour silently hid an uploaded background image
+          and there was no way to have both. */}
+      {color && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: color, opacity: 0.55 }]} pointerEvents="none" />
+      )}
+      {imageUrl && (
+        <Image source={{ uri: imageUrl }} style={[StyleSheet.absoluteFill, { opacity: 0.35 }]} contentFit="cover" cachePolicy="memory-disk" />
+      )}
+
+      {/* ── Ambient particle effect — independent layer on top of whatever
+          background is active, founder-toggleable ── */}
+      {particlesEnabled && <ParticlesLayer />}
+
       {/* ── Screen content ─────────────────────────────────────────── */}
       <View style={[styles.content, !noTopPad && { paddingTop: insets.top }]}>
         {children}
@@ -76,6 +97,8 @@ export function ScreenBg({ children, noTopPad }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    // Matches the Skia base rect so there is no flash of the old default
+    // before the canvas paints.
     backgroundColor: '#0d1117',
   },
   content: {

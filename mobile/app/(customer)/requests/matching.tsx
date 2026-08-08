@@ -1,18 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+import { EmployeeSelectorCarousel, type EmployeeCandidate } from '@/components/employee/EmployeeSelectorCarousel';
 
 const CAT_LABELS: Record<string, string> = {
   military: 'الخدمات العسكرية',
@@ -21,61 +13,104 @@ const CAT_LABELS: Record<string, string> = {
   general: 'خدمات أخرى',
 };
 
-type Candidate = {
-  id: string;
-  given_name: string;
-  family_name: string;
-  avatar_key: string | null;
-  specialization: string | null;
-  is_verified: boolean;
-};
-
-function AvatarCircle({ name, size = 56 }: { name: string; size?: number }) {
-  const initial = name?.charAt(0)?.toUpperCase() ?? '؟';
-  return (
-    <View style={[styles.avatarCircle, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Text style={[styles.avatarInitial, { fontSize: size * 0.4 }]}>{initial}</Text>
-    </View>
-  );
-}
-
+// The customer never picks an employee directly — they submit the
+// request, it sits unassigned in every available employee's queue
+// (employee/index.tsx's claimRequest), and whichever employee approves
+// it first takes it. This screen is a passive "search animation" while
+// that happens: candidate cards auto-cycle for visual interest, and a
+// realtime listener on the request row navigates to the chat the
+// moment any employee claims it — no tap-to-select here at all.
 export default function MatchingScreen() {
-  const { requestId, category } = useLocalSearchParams<{ requestId: string; category: string }>();
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const { requestId, category, serviceId } = useLocalSearchParams<{ requestId: string; category: string; serviceId?: string }>();
+  const [candidates, setCandidates] = useState<EmployeeCandidate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selecting, setSelecting] = useState<string | null>(null);
+  const [matched, setMatched] = useState(false);
+  const navigatedRef = useRef(false);
 
   const load = useCallback(async () => {
-    if (!category) return;
+    // Clear the spinner before bailing: returning with loading still true
+    // left this screen spinning forever when the category param was absent,
+    // with no way out but killing the app. The empty state is the honest
+    // thing to show instead.
+    if (!category) { setLoading(false); return; }
+
+    // Narrow to the staff the founder assigned to this exact service, when one
+    // was chosen. An empty assignment list is read as "no restriction" rather
+    // than "nobody" — otherwise every service predating service_employees
+    // would show zero available staff.
+    let allowed: Set<string> | null = null;
+    if (serviceId) {
+      const { data: rows } = await supabase
+        .from('service_employees')
+        .select('employee_id')
+        .eq('service_id', serviceId);
+      const ids = (rows ?? []).map((r) => (r as { employee_id: string }).employee_id);
+      if (ids.length > 0) allowed = new Set(ids);
+    }
+
     const { data } = await supabase.rpc('get_active_employee_candidates', {
       p_category: category,
     });
-    setCandidates((data as Candidate[]) ?? []);
+    const all = (data as EmployeeCandidate[]) ?? [];
+    const permitted = allowed;
+    setCandidates(permitted ? all.filter((c) => permitted.has(c.id)) : all);
     setLoading(false);
-  }, [category]);
+  }, [category, serviceId]);
 
   useEffect(() => { load(); }, [load]);
 
-  async function selectEmployee(candidateId: string) {
-    if (!requestId || selecting) return;
-    setSelecting(candidateId);
-    await supabase
-      .from('requests')
-      .update({ employee_id: candidateId, status: 'in_progress' })
-      .eq('id', requestId);
-    // Navigate back — realtime will update the request detail
-    router.back();
-  }
+  // Watch the request itself — the moment any employee claims it
+  // (assigned_employee_id goes from null to something, status flips to
+  // in_review), jump straight into the chat.
+  useEffect(() => {
+    if (!requestId) return;
+
+    async function checkAssigned() {
+      const { data } = await supabase
+        .from('requests')
+        .select('assigned_employee_id')
+        .eq('id', requestId)
+        .maybeSingle();
+      if (data?.assigned_employee_id && !navigatedRef.current) {
+        navigatedRef.current = true;
+        setMatched(true);
+        setTimeout(() => {
+          router.replace({ pathname: '/(customer)/requests/[id]', params: { id: requestId } });
+        }, 1100);
+      }
+    }
+
+    checkAssigned();
+
+    const channel = supabase
+      .channel(`request-match-${requestId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'requests',
+        filter: `id=eq.${requestId}`,
+      }, (payload) => {
+        const updated = payload.new as { assigned_employee_id: string | null };
+        if (updated.assigned_employee_id && !navigatedRef.current) {
+          navigatedRef.current = true;
+          setMatched(true);
+          setTimeout(() => {
+            router.replace({ pathname: '/(customer)/requests/[id]', params: { id: requestId } });
+          }, 1100);
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [requestId]);
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
       {/* Header */}
       <View style={styles.navHeader}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
-          <Text style={styles.backIcon}>‹</Text>
+          <Text style={styles.backIcon}>›</Text>
         </Pressable>
         <View style={styles.navCenter}>
-          <Text style={styles.navTitle}>اختيار موظف</Text>
+          <Text style={styles.navTitle}>بانتظار موافقة موظف</Text>
           {category ? (
             <Text style={styles.navSub}>{CAT_LABELS[category] ?? category}</Text>
           ) : null}
@@ -83,7 +118,14 @@ export default function MatchingScreen() {
         <View style={styles.backBtn} />
       </View>
 
-      {loading ? (
+      {matched ? (
+        <View style={styles.center}>
+          <Text style={styles.matchedEmoji}>✅</Text>
+          <Text style={styles.emptyTitle}>تم قبول طلبك!</Text>
+          <Text style={styles.emptySub}>جارِ فتح المحادثة...</Text>
+          <ActivityIndicator color={COLORS.gold} style={{ marginTop: 12 }} />
+        </View>
+      ) : loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={COLORS.gold} size="large" />
           <Text style={styles.loadingText}>جاري البحث عن موظفين متاحين...</Text>
@@ -92,72 +134,21 @@ export default function MatchingScreen() {
         <View style={styles.center}>
           <Text style={styles.emptyEmoji}>🔍</Text>
           <Text style={styles.emptyTitle}>لا يوجد موظفون متاحون حالياً</Text>
-          <Text style={styles.emptySub}>يرجى المحاولة لاحقاً أو التواصل معنا</Text>
+          <Text style={styles.emptySub}>سيصلك إشعار فور موافقة أحد الموظفين على طلبك</Text>
           <Pressable
             style={({ pressed }) => [styles.retryBtn, pressed && { opacity: 0.7 }]}
             onPress={() => { setLoading(true); load(); }}
           >
-            <Text style={styles.retryBtnText}>إعادة المحاولة</Text>
+            <Text style={styles.retryBtnText}>تحديث</Text>
           </Pressable>
         </View>
       ) : (
-        <FlatList
-          data={candidates}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={
-            <Text style={styles.listHeader}>
-              {candidates.length} موظف متاح — اختر من تريد العمل معه
-            </Text>
-          }
-          renderItem={({ item }) => {
-            const fullName = `${item.given_name} ${item.family_name}`;
-            const isSelecting = selecting === item.id;
-            return (
-              <View style={styles.card}>
-                {/* Left accent bar */}
-                <View style={styles.cardAccent} />
-
-                <AvatarCircle name={item.given_name} />
-
-                <View style={styles.cardContent}>
-                  <View style={styles.nameRow}>
-                    <Text style={styles.candidateName}>{fullName}</Text>
-                    {item.is_verified && (
-                      <View style={styles.verifiedBadge}>
-                        <Text style={styles.verifiedText}>✓ موثّق</Text>
-                      </View>
-                    )}
-                  </View>
-                  {item.specialization ? (
-                    <Text style={styles.specialization}>{item.specialization}</Text>
-                  ) : null}
-                  <View style={styles.activeRow}>
-                    <View style={styles.activeDot} />
-                    <Text style={styles.activeText}>متاح الآن</Text>
-                  </View>
-                </View>
-
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.selectBtn,
-                    isSelecting && styles.selectBtnLoading,
-                    pressed && !isSelecting && styles.selectBtnPressed,
-                  ]}
-                  onPress={() => selectEmployee(item.id)}
-                  disabled={!!selecting}
-                >
-                  {isSelecting ? (
-                    <ActivityIndicator color={COLORS.gold} size="small" />
-                  ) : (
-                    <Text style={styles.selectBtnText}>اختيار</Text>
-                  )}
-                </Pressable>
-              </View>
-            );
-          }}
-        />
+        <View style={styles.carouselScreen}>
+          <Text style={styles.listHeader}>
+            طلبك وصل لـ{candidates.length} موظف متاح — بانتظار موافقة أحدهم
+          </Text>
+          <EmployeeSelectorCarousel candidates={candidates} autoScroll />
+        </View>
       )}
     </ScreenBg>
   );
@@ -192,6 +183,7 @@ const styles = StyleSheet.create({
 
   loadingText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted, marginTop: 8 },
 
+  matchedEmoji: { fontSize: 52 },
   emptyEmoji: { fontSize: 52 },
   emptyTitle: { fontFamily: FONTS.bold, fontSize: 16, color: COLORS.white },
   emptySub: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted, textAlign: 'center' },
@@ -206,77 +198,12 @@ const styles = StyleSheet.create({
   },
   retryBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.gold },
 
-  list: { padding: 16, gap: 10, paddingBottom: 32 },
+  carouselScreen: { flex: 1, justifyContent: 'center', gap: 22, paddingBottom: 40 },
   listHeader: {
     fontFamily: FONTS.regular,
     fontSize: 13,
     color: COLORS.muted,
-    textAlign: 'right',
-    marginBottom: 6,
+    textAlign: 'center',
+    paddingHorizontal: 24,
   },
-
-  card: {
-    backgroundColor: '#161b22',
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.18)',
-    borderRadius: RADIUS.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    overflow: 'hidden',
-    gap: 12,
-    paddingRight: 14,
-    paddingVertical: 14,
-  },
-  cardAccent: {
-    width: 3,
-    alignSelf: 'stretch',
-    backgroundColor: COLORS.gold,
-    opacity: 0.7,
-  },
-
-  avatarCircle: {
-    backgroundColor: 'rgba(230,171,44,0.15)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(230,171,44,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  avatarInitial: { fontFamily: FONTS.bold, color: COLORS.gold },
-
-  cardContent: { flex: 1, gap: 3, alignItems: 'flex-end' },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' },
-  candidateName: { fontFamily: FONTS.bold, fontSize: 15, color: COLORS.white },
-  verifiedBadge: {
-    backgroundColor: 'rgba(59,130,246,0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.4)',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-  },
-  verifiedText: { fontFamily: FONTS.bold, fontSize: 10, color: '#60a5fa' },
-  specialization: {
-    fontFamily: FONTS.regular,
-    fontSize: 12,
-    color: COLORS.muted,
-    textAlign: 'right',
-  },
-  activeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.green },
-  activeText: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.green },
-
-  selectBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(230,171,44,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.45)',
-    borderRadius: RADIUS.sm,
-    minWidth: 64,
-    alignItems: 'center',
-  },
-  selectBtnLoading: { borderColor: 'rgba(230,171,44,0.2)' },
-  selectBtnPressed: { opacity: 0.7 },
-  selectBtnText: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
 });

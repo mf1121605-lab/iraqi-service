@@ -1,16 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { FlashList, ListRenderItem } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { Avatar } from '@/components/chat/Avatar';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { HapticPressable } from '@/components/ui/HapticPressable';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -69,6 +72,9 @@ export default function ChatIndex() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
+    // Deliberately depends on the stable id, not the whole profile object
+    // (same convention throughout this codebase).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id]);
 
   useEffect(() => {
@@ -108,6 +114,7 @@ export default function ChatIndex() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id]);
 
   const q = query.trim().toLowerCase();
@@ -121,6 +128,41 @@ export default function ChatIndex() {
     () => dmThreads.filter(t => !q || displayNameFor(t.otherUser).toLowerCase().includes(q)),
     [dmThreads, q]
   );
+
+  const renderRoom: ListRenderItem<ChatRoom> = useCallback(({ item }) => (
+    <HapticPressable
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      onPress={() => router.push(`/(chat)/${item.slug}`)}
+    >
+      <View style={styles.roomIcon}>
+        <Text style={styles.roomIconText}>💬</Text>
+      </View>
+      <View style={styles.cardBody}>
+        <Text style={styles.cardTitle}>{item.name_ar}</Text>
+        <Text style={styles.cardSub}>مجموعة خدمات العراق</Text>
+      </View>
+      <Text style={styles.arrow}>›</Text>
+    </HapticPressable>
+  ), []);
+
+  const renderDm: ListRenderItem<DmThread> = useCallback(({ item }) => (
+    <HapticPressable
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      onPress={() => router.push(`/(chat)/dm/${item.id}`)}
+    >
+      <Avatar
+        avatarKey={item.otherUser?.avatar_key}
+        name={item.otherUser?.given_name}
+        seed={item.otherUser?.id}
+        size={44}
+      />
+      <View style={styles.cardBody}>
+        <Text style={styles.cardTitle}>{displayNameFor(item.otherUser)}</Text>
+        <Text style={styles.cardSub}>محادثة خاصة</Text>
+      </View>
+      <Text style={styles.arrow}>›</Text>
+    </HapticPressable>
+  ), []);
 
   if (loading || !profile) {
     return (
@@ -171,59 +213,38 @@ export default function ChatIndex() {
       {/* Content */}
       {tab === 'rooms' ? (
         rooms === null ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={COLORS.gold} />
+          <View style={{ padding: 16, gap: 10 }}>
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Skeleton width={44} height={44} radius={22} />
+                <View style={{ flex: 1, gap: 6 }}>
+                  <Skeleton width="50%" height={12} />
+                  <Skeleton width="30%" height={10} />
+                </View>
+              </View>
+            ))}
           </View>
         ) : (
-          <FlatList
+          <FlashList
             data={filteredRooms}
             keyExtractor={item => item.id}
             contentContainerStyle={styles.list}
-            renderItem={({ item }) => (
-              <Pressable
-                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-                onPress={() => router.push(`/(chat)/${item.slug}`)}
-              >
-                <View style={styles.roomIcon}>
-                  <Text style={styles.roomIconText}>💬</Text>
-                </View>
-                <View style={styles.cardBody}>
-                  <Text style={styles.cardTitle}>{item.name_ar}</Text>
-                  <Text style={styles.cardSub}>مجموعة خدمات العراق</Text>
-                </View>
-                <Text style={styles.arrow}>›</Text>
-              </Pressable>
-            )}
+            estimatedItemSize={72}
+            renderItem={renderRoom}
             ListEmptyComponent={
-              <Text style={styles.empty}>لا توجد غرف متاحة</Text>
+              <EmptyState emoji="🏘️" title="لا توجد غرف متاحة" subtitle="ستظهر هنا أي غرف محادثة جماعية تنضم إليها" />
             }
           />
         )
       ) : (
-        <FlatList
+        <FlashList
           data={filteredDms}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <Pressable
-              style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-              onPress={() => router.push(`/(chat)/dm/${item.id}`)}
-            >
-              <Avatar
-                avatarKey={item.otherUser?.avatar_key}
-                name={item.otherUser?.given_name}
-                seed={item.otherUser?.id}
-                size={44}
-              />
-              <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>{displayNameFor(item.otherUser)}</Text>
-                <Text style={styles.cardSub}>محادثة خاصة</Text>
-              </View>
-              <Text style={styles.arrow}>›</Text>
-            </Pressable>
-          )}
+          estimatedItemSize={72}
+          renderItem={renderDm}
           ListEmptyComponent={
-            <Text style={styles.empty}>لا توجد محادثات خاصة</Text>
+            <EmptyState emoji="💬" title="لا توجد محادثات خاصة" subtitle="ابدأ محادثة من صفحة أي مستخدم لتظهر هنا" />
           }
         />
       )}
@@ -289,7 +310,9 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.bold,
     color: COLORS.gold,
   },
-  list: { paddingHorizontal: 16, paddingBottom: 24, gap: 10 },
+  // gap moved onto card's marginBottom — FlashList's contentContainerStyle
+  // doesn't apply `gap` between recycled cells the way FlatList's did.
+  list: { paddingHorizontal: 16, paddingBottom: 24 },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -299,6 +322,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     padding: 14,
     gap: 12,
+    marginBottom: 10,
   },
   cardPressed: { opacity: 0.75 },
   roomIcon: {

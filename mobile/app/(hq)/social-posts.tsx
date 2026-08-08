@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
-import { useAuth } from '@/hooks/useAuth';
+import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
@@ -22,7 +22,16 @@ interface SocialPost {
   author: { given_name: string | null; phone: string | null } | null;
 }
 
-type TabType = 'pending' | 'all';
+interface PostReport {
+  id: string;
+  reason: string;
+  status: string;
+  created_at: string;
+  post: { id: string; content: string | null } | null;
+  reporter: { given_name: string | null; phone: string | null } | null;
+}
+
+type TabType = 'pending' | 'all' | 'reports';
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleString('ar-IQ', {
@@ -38,6 +47,7 @@ export default function HqSocialPosts() {
   const { profile, loading } = useAuth();
   const [tab, setTab] = useState<TabType>('pending');
   const [posts, setPosts] = useState<SocialPost[] | null>(null);
+  const [reports, setReports] = useState<PostReport[] | null>(null);
   const [acting, setActing] = useState<string | null>(null);
 
   async function loadPosts(activeTab: TabType) {
@@ -51,14 +61,32 @@ export default function HqSocialPosts() {
     setPosts((data ?? []) as unknown as SocialPost[]);
   }
 
+  async function loadReports() {
+    const { data } = await supabase
+      .from('post_reports')
+      .select('id, reason, status, created_at, post:social_posts(id, content), reporter:profiles!reporter_id(given_name, phone)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    setReports((data ?? []) as unknown as PostReport[]);
+  }
+
   useEffect(() => {
     if (!profile) return;
-    loadPosts(tab);
+    if (tab === 'reports') loadReports(); else loadPosts(tab);
     const channel = supabase
       .channel('hq-social-posts-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'social_posts' }, () => loadPosts(tab))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'social_posts' }, () => {
+        if (tab === 'reports') loadReports(); else loadPosts(tab);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_reports' }, () => {
+        if (tab === 'reports') loadReports();
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
+    // Deliberately depends on the stable id, not the whole profile object
+    // (same convention throughout this codebase).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id, tab]);
 
   async function handleApprove(id: string) {
@@ -73,8 +101,29 @@ export default function HqSocialPosts() {
     setActing(null);
   }
 
+  async function handleDeleteReportedPost(report: PostReport) {
+    if (!report.post) return;
+    setActing(report.id);
+    // Deleting the post cascades to remove every report referencing it
+    // (post_reports.post_id references social_posts on delete cascade) —
+    // no separate cleanup of this or other reports on the same post needed.
+    await supabase.from('social_posts').delete().eq('id', report.post.id);
+    setActing(null);
+  }
+
+  async function handleDismissReport(id: string) {
+    setActing(id);
+    await supabase.from('post_reports').update({ status: 'dismissed' }).eq('id', id);
+    setActing(null);
+  }
+
   if (loading) return <ScreenBg><View style={s.center}><ActivityIndicator color={COLORS.gold} size="large" /></View></ScreenBg>;
-  if (!profile || (profile.role !== 'founder' && profile.role !== 'employee')) {
+  // Matches the actual RLS reality (post_reports/social_posts mutations are
+  // founder/co_admin-only, see 20260829120000_rbac_supervisor_split.sql) —
+  // the previous role in ('founder','employee') check let any plain
+  // employee open this screen only to have every action inside it fail
+  // silently against RLS.
+  if (!hasFounderAccess(profile)) {
     return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
   }
 
@@ -82,26 +131,81 @@ export default function HqSocialPosts() {
     <ScreenBg>
       <View style={s.header}>
         <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={8}>
-          <Text style={s.backArrow}>‹</Text>
+          <Text style={s.backArrow}>›</Text>
         </Pressable>
         <Text style={s.title}>📰 منشورات الأخبار</Text>
       </View>
 
       <View style={s.tabs}>
-        {(['pending', 'all'] as TabType[]).map((t) => (
+        {(['pending', 'all', 'reports'] as TabType[]).map((t) => (
           <Pressable
             key={t}
-            onPress={() => { setTab(t); setPosts(null); }}
+            onPress={() => { setTab(t); setPosts(null); setReports(null); }}
             style={[s.tabBtn, tab === t && s.tabBtnActive]}
           >
             <Text style={[s.tabText, tab === t && s.tabTextActive]}>
-              {t === 'pending' ? 'في الانتظار' : 'الكل'}
+              {t === 'pending' ? 'في الانتظار' : t === 'all' ? 'الكل' : 'قائمة البلاغات'}
             </Text>
           </Pressable>
         ))}
       </View>
 
-      {posts === null ? (
+      {tab === 'reports' ? (
+        reports === null ? (
+          <View style={s.center}><ActivityIndicator color={COLORS.gold} size="large" /></View>
+        ) : reports.length === 0 ? (
+          <View style={s.center}>
+            <Text style={s.empty}>لا توجد بلاغات حالياً</Text>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+            {reports.map((report) => {
+              const reporterName = report.reporter?.given_name ?? report.reporter?.phone ?? '—';
+              const isActing = acting === report.id;
+              return (
+                <View key={report.id} style={s.postCard}>
+                  <View style={s.postTop}>
+                    <Text style={s.authorName}>🚩 بلاغ من {reporterName}</Text>
+                    <Text style={s.postTime}>{formatTime(report.created_at)}</Text>
+                  </View>
+
+                  <Text style={s.reportReasonLabel}>سبب البلاغ:</Text>
+                  <Text style={s.postContent} numberOfLines={4}>{report.reason}</Text>
+
+                  <Text style={s.reportReasonLabel}>نص المنشور المُبلَّغ عنه:</Text>
+                  <Text style={s.postContent} numberOfLines={4}>
+                    {report.post?.content ?? '(منشور محذوف مسبقاً)'}
+                  </Text>
+
+                  <View style={s.actions}>
+                    <Pressable
+                      onPress={() => handleDismissReport(report.id)}
+                      disabled={isActing}
+                      style={[s.approveBtn, isActing && { opacity: 0.5 }]}
+                    >
+                      {isActing
+                        ? <ActivityIndicator color="#000" size="small" />
+                        : <Text style={s.approveBtnText}>تجاهل البلاغ</Text>}
+                    </Pressable>
+                    {report.post && (
+                      <Pressable
+                        onPress={() => handleDeleteReportedPost(report)}
+                        disabled={isActing}
+                        style={[s.deleteBtn, isActing && { opacity: 0.5 }]}
+                      >
+                        {isActing
+                          ? <ActivityIndicator color="#ef4444" size="small" />
+                          : <Text style={s.deleteBtnText}>✕ حذف المنشور</Text>}
+                      </Pressable>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        )
+      ) : posts === null ? (
         <View style={s.center}><ActivityIndicator color={COLORS.gold} size="large" /></View>
       ) : posts.length === 0 ? (
         <View style={s.center}>
@@ -175,7 +279,7 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   backArrow: { fontSize: 28, color: COLORS.gold, lineHeight: 32 },
-  title: { fontFamily: FONTS.bold, fontSize: 17, color: COLORS.white },
+  title: { fontFamily: FONTS.bold, fontSize: 17, color: COLORS.white, textAlign: 'right' },
   tabs: { flexDirection: 'row', marginHorizontal: 14, marginBottom: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: RADIUS.sm, padding: 3 },
   tabBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: RADIUS.sm - 2 },
   tabBtnActive: { backgroundColor: COLORS.gold },
@@ -190,6 +294,7 @@ const s = StyleSheet.create({
   statusText: { fontFamily: FONTS.bold, fontSize: 11 },
   postTime: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.muted },
   postContent: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.white70, textAlign: 'right', lineHeight: 22 },
+  reportReasonLabel: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold, textAlign: 'right' },
   imageIndicator: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: RADIUS.sm, paddingHorizontal: 10, paddingVertical: 6, alignSelf: 'flex-end' },
   imageIndicatorText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted },
   actions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end', marginTop: 2 },

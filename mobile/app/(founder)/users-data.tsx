@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
-import { useAuth } from '@/hooks/useAuth';
+import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
@@ -98,13 +98,13 @@ export default function FounderUsersData() {
   }
 
   if (loading) return <ScreenBg><View style={s.center}><ActivityIndicator color={COLORS.gold} size="large" /></View></ScreenBg>;
-  if (!profile || profile.role !== 'founder') return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
+  if (!hasFounderAccess(profile)) return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
 
   return (
     <ScreenBg>
       <View style={s.header}>
         <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={8}>
-          <Text style={s.backArrow}>‹</Text>
+          <Text style={s.backArrow}>›</Text>
         </Pressable>
         <Text style={s.title}>🔐 بيانات الأعضاء</Text>
       </View>
@@ -260,7 +260,7 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   backArrow: { fontSize: 28, color: COLORS.gold, lineHeight: 32 },
-  title: { fontFamily: FONTS.bold, fontSize: 18, color: COLORS.white },
+  title: { fontFamily: FONTS.bold, fontSize: 18, color: COLORS.white, textAlign: 'right' },
   gateContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
   gateIcon: { fontSize: 48 },
   gateTitle: { fontFamily: FONTS.bold, fontSize: 20, color: COLORS.white },

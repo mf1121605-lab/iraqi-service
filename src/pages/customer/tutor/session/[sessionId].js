@@ -176,7 +176,7 @@ export default function TutorChatSession() {
           {messages.map((message) => {
             const isMine = message.role === 'user';
             return (
-              <div key={message.id} className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
+              <div key={message.id} className={`flex items-end gap-2 ${isMine ? '' : 'flex-row-reverse'}`}>
                 <div
                   className={`max-w-[80%] animate-slide-up whitespace-pre-wrap rounded-xl2 px-4 py-2 text-sm shadow-glass-sm transition-all duration-300 ${
                     isMine ? 'bg-brand-600' : 'bg-white/10'

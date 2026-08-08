@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
-import { useAuth } from '@/hooks/useAuth';
+import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
@@ -28,6 +28,9 @@ export default function FounderChatRooms() {
     setRooms((data ?? []) as ChatRoom[]);
   }
 
+  // Deliberately depends on the stable id, not the whole profile object
+  // (same convention throughout this codebase).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (profile) loadRooms(); }, [profile?.id]);
 
   async function handleAdd() {
@@ -44,13 +47,13 @@ export default function FounderChatRooms() {
   }
 
   if (loading) return <ScreenBg><View style={s.center}><ActivityIndicator color={COLORS.gold} size="large" /></View></ScreenBg>;
-  if (!profile || profile.role !== 'founder') return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
+  if (!hasFounderAccess(profile)) return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
 
   return (
     <ScreenBg>
       <View style={s.header}>
         <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={8}>
-          <Text style={s.backArrow}>‹</Text>
+          <Text style={s.backArrow}>›</Text>
         </Pressable>
         <Text style={s.title}>💬 غرف الدردشة</Text>
       </View>
@@ -96,7 +99,7 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   backArrow: { fontSize: 28, color: COLORS.gold, lineHeight: 32 },
-  title: { fontFamily: FONTS.bold, fontSize: 18, color: COLORS.white },
+  title: { fontFamily: FONTS.bold, fontSize: 18, color: COLORS.white, textAlign: 'right' },
   scroll: { padding: 16, gap: 12 },
   formCard: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.cardBorder, borderRadius: RADIUS.md, padding: 16, gap: 10 },
   formTitle: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.white, textAlign: 'right' },

@@ -75,6 +75,10 @@ export default function EmployeePublicProfile() {
     }
 
     load();
+    // Deliberately depends on the stable id, not the whole profile object
+    // (same convention throughout this codebase) — re-running this on every
+    // unrelated profile field change would be wasteful and cause UI flicker.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id, id]);
 
   if (loading || !profile || fetching) {
@@ -96,7 +100,7 @@ export default function EmployeePublicProfile() {
     <ScreenBg>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Text style={styles.backArrow}>‹</Text>
+          <Text style={styles.backArrow}>›</Text>
         </Pressable>
         <Text style={styles.headerTitle}>الملف الشخصي</Text>
       </View>

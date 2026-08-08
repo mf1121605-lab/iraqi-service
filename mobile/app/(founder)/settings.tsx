@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Modal, Pressable, ScrollView,
+  ActivityIndicator, Alert, Pressable, ScrollView,
   StyleSheet, Switch, Text, TextInput, View,
 } from 'react-native';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
 import { ScreenBg } from '@/components/ui/ScreenBg';
-import { useAuth } from '@/hooks/useAuth';
+import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { uploadToStorage } from '@/lib/uploadToStorage';
+import { FONT_FAMILIES } from '@/hooks/useAppTheme';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://iraqi-service.vercel.app';
@@ -29,7 +34,37 @@ interface FounderSettings {
   announcement_enabled: boolean | null;
   announcement_text_ar: string | null;
   announcement_text_ckb: string | null;
+  frame_color: string | null;
+  frame_enabled: boolean | null;
+  frame_width: number | null;
+  frame_radius: number | null;
+  background_image_path: string | null;
+  background_color: string | null;
+  particles_enabled: boolean | null;
+  // Added by the app-theme migration; read live by hooks/useAppTheme.tsx.
+  app_font_family: string | null;
+  app_text_color: string | null;
+  app_font_scale: number | null;
+  // Telegram support deep-link handle — read by account-settings.tsx and
+  // requests/[id].tsx via utils/telegram.ts. No bot/webhook involved.
+  support_telegram_username: string | null;
 }
+
+const TEXT_COLOR_PRESETS = [
+  { hex: '#ffffff', label: 'أبيض' },
+  { hex: '#e6ab2c', label: 'ذهبي' },
+  { hex: '#e2e8f0', label: 'فضي' },
+  { hex: '#fcd34d', label: 'ذهبي فاتح' },
+  { hex: '#a7f3d0', label: 'أخضر فاتح' },
+  { hex: '#bfdbfe', label: 'أزرق فاتح' },
+];
+
+const FONT_SCALES = [
+  { value: 0.9, label: 'صغير' },
+  { value: 1.0, label: 'عادي' },
+  { value: 1.1, label: 'كبير' },
+  { value: 1.25, label: 'أكبر' },
+];
 
 const ACCENT_PRESETS = [
   { hex: '#f59e0b', label: 'ذهبي' },
@@ -51,7 +86,19 @@ const BG_PRESETS = [
   { hex: '#1a0f00', label: 'بني داكن' },
 ];
 
-const TEXT_FIELDS: { key: keyof Omit<FounderSettings, 'id' | 'accent_color' | 'bg_color' | 'announcement_enabled'>; label: string; multiline?: boolean }[] = [
+const FRAME_WIDTHS = [1, 2, 3, 4, 6];
+const FRAME_RADII  = [0, 1, 4, 8, 14];
+
+const FRAME_COLOR_PRESETS = [
+  { hex: '#e6ab2c', label: 'ذهبي' },
+  { hex: '#3b82f6', label: 'أزرق' },
+  { hex: '#8b5cf6', label: 'بنفسجي' },
+  { hex: '#22c55e', label: 'أخضر' },
+  { hex: '#ef4444', label: 'أحمر' },
+  { hex: '#e2e8f0', label: 'فضي' },
+];
+
+const TEXT_FIELDS: { key: keyof Omit<FounderSettings, 'id' | 'accent_color' | 'bg_color' | 'announcement_enabled' | 'frame_color' | 'frame_enabled' | 'particles_enabled' | 'frame_width' | 'frame_radius' | 'background_image_path' | 'background_color'>; label: string; multiline?: boolean }[] = [
   { key: 'hero_title_ar', label: 'العنوان الرئيسي (عربي)' },
   { key: 'hero_title_ckb', label: 'العنوان الرئيسي (كردي)' },
   { key: 'hero_subtitle_ar', label: 'العنوان الفرعي (عربي)', multiline: true },
@@ -62,7 +109,8 @@ const TEXT_FIELDS: { key: keyof Omit<FounderSettings, 'id' | 'accent_color' | 'b
   { key: 'footer_legal_ckb', label: 'النص القانوني (كردي)', multiline: true },
   { key: 'footer_instagram_url', label: 'رابط انستغرام' },
   { key: 'footer_twitter_url', label: 'رابط تويتر/X' },
-  { key: 'site_ambient_audio_url', label: 'رابط الصوت المحيطي (URL)' },
+  // site_ambient_audio_url is intentionally NOT here — it has its own section
+  // with a device file picker, so it is no longer a URL-only text field.
   { key: 'announcement_text_ar', label: 'نص الإعلان (عربي)', multiline: true },
   { key: 'announcement_text_ckb', label: 'نص الإعلان (كردي)', multiline: true },
 ];
@@ -85,6 +133,17 @@ function emptyForm(): Omit<FounderSettings, 'id'> {
     announcement_enabled: false,
     announcement_text_ar: '',
     announcement_text_ckb: '',
+    frame_color: '#e6ab2c',
+    frame_enabled: true,
+    frame_width: 2,
+    frame_radius: 1,
+    background_image_path: '',
+    background_color: '',
+    particles_enabled: true,
+    app_font_family: 'Cairo',
+    app_text_color: '',
+    app_font_scale: 1,
+    support_telegram_username: '',
   };
 }
 
@@ -93,6 +152,8 @@ export default function SettingsScreen() {
   const [settingsId, setSettingsId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<FounderSettings, 'id'>>(emptyForm());
   const [dataLoading, setDataLoading] = useState(true);
+  const [audioUploading, setAudioUploading] = useState(false);
+  const [bgUploading, setBgUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -133,6 +194,17 @@ export default function SettingsScreen() {
           announcement_enabled: s.announcement_enabled ?? false,
           announcement_text_ar: s.announcement_text_ar ?? '',
           announcement_text_ckb: s.announcement_text_ckb ?? '',
+          frame_color: s.frame_color ?? '#e6ab2c',
+          frame_enabled: s.frame_enabled ?? true,
+          frame_width: s.frame_width ?? 2,
+          frame_radius: s.frame_radius ?? 1,
+          background_image_path: s.background_image_path ?? '',
+          background_color: s.background_color ?? '',
+          particles_enabled: s.particles_enabled ?? true,
+          app_font_family: s.app_font_family ?? 'Cairo',
+          app_text_color: s.app_text_color ?? '',
+          app_font_scale: s.app_font_scale ?? 1,
+          support_telegram_username: s.support_telegram_username ?? '',
         });
       }
       // Load lockdown state
@@ -141,6 +213,75 @@ export default function SettingsScreen() {
       setDataLoading(false);
     })();
   }, [profile]);
+
+  // Ambient music used to be a URL-only text field, which meant the founder
+  // had to host the file somewhere else first. This picks an audio file
+  // straight off the device and uploads it to the same site-assets bucket the
+  // banners use, then stores the resulting public URL in the same column — so
+  // nothing downstream (useAmbientMusic) needs to change.
+  async function pickAmbientAudio() {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: 'audio/*',
+      copyToCacheDirectory: true, // guarantees a locally readable URI
+      multiple: false,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    const ext = asset.name?.split('.').pop()?.toLowerCase() ?? 'mp3';
+    const contentType = asset.mimeType ?? (ext === 'm4a' ? 'audio/mp4' : `audio/${ext}`);
+
+    setAudioUploading(true);
+    const { url, error } = await uploadToStorage(
+      asset.uri,
+      'site-assets',
+      `ambient-audio/${Date.now()}.${ext}`,
+      contentType,
+    );
+    setAudioUploading(false);
+
+    if (!url) {
+      Alert.alert('تعذّر رفع الملف الصوتي', error ?? 'سبب غير معروف');
+      return;
+    }
+    setForm((f) => ({ ...f, site_ambient_audio_url: url }));
+    Alert.alert('تم الرفع', 'اضغط "حفظ الإعدادات" لتثبيت الموسيقى الجديدة.');
+  }
+
+  // Background image goes to the same bucket/flow as every other upload, and
+  // stores the resulting public URL in background_image_path — the column
+  // ScreenBg already reads.
+  async function pickBackgroundImage() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('الصلاحية مرفوضة', 'يحتاج التطبيق إذن الوصول للصور لاختيار خلفية.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.9,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const uri = result.assets[0].uri;
+    const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+
+    setBgUploading(true);
+    const { url, error } = await uploadToStorage(
+      uri,
+      'site-assets',
+      `backgrounds/${Date.now()}.${ext}`,
+      `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+    );
+    setBgUploading(false);
+
+    if (!url) {
+      Alert.alert('تعذّر رفع صورة الخلفية', error ?? 'سبب غير معروف');
+      return;
+    }
+    setForm((f) => ({ ...f, background_image_path: url }));
+    Alert.alert('تم الرفع', 'اضغط "حفظ الإعدادات" لتثبيت الخلفية الجديدة.');
+  }
 
   async function handleSave() {
     if (!settingsId) return;
@@ -207,13 +348,13 @@ export default function SettingsScreen() {
   }
 
   if (loading) return <ScreenBg><View style={s.center}><ActivityIndicator color={COLORS.gold} /></View></ScreenBg>;
-  if (!profile || profile.role !== 'founder') return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
+  if (!hasFounderAccess(profile)) return <ScreenBg><View style={s.center}><Text style={s.denied}>غير مخوّل</Text></View></ScreenBg>;
 
   return (
     <ScreenBg>
       <View style={s.header}>
         <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={8}>
-          <Text style={s.backArrow}>‹</Text>
+          <Text style={s.backArrow}>›</Text>
         </Pressable>
         <Text style={s.headerTitle}>إعدادات المنصة</Text>
         <View style={{ width: 40 }} />
@@ -269,6 +410,127 @@ export default function SettingsScreen() {
                 style={[s.input, { direction: 'ltr' as any }]}
                 autoCapitalize="none"
               />
+
+              <Text style={[s.fieldLabel, { marginTop: 12 }]}>لون الإطار المتحرك (كل شاشات التطبيق)</Text>
+              <View style={s.presetRow}>
+                {FRAME_COLOR_PRESETS.map((p) => (
+                  <Pressable
+                    key={p.hex}
+                    onPress={() => setForm((f) => ({ ...f, frame_color: p.hex }))}
+                    style={[s.colorSwatch, { backgroundColor: p.hex, borderColor: 'rgba(255,255,255,0.3)' }, form.frame_color === p.hex && s.swatchSelected]}
+                  >
+                    {form.frame_color === p.hex && <Text style={s.swatchTick}>✓</Text>}
+                  </Pressable>
+                ))}
+              </View>
+              <TextInput
+                value={form.frame_color ?? ''}
+                onChangeText={(v) => setForm((f) => ({ ...f, frame_color: v }))}
+                placeholder="#e6ab2c"
+                placeholderTextColor={COLORS.white40}
+                style={[s.input, { direction: 'ltr' as any }]}
+                autoCapitalize="none"
+              />
+              <View style={[s.row, { marginTop: 10 }]}>
+                <Switch
+                  value={form.frame_enabled ?? true}
+                  onValueChange={(v) => setForm((f) => ({ ...f, frame_enabled: v }))}
+                  thumbColor={form.frame_enabled ? COLORS.gold : '#888'}
+                  trackColor={{ true: 'rgba(230,171,44,0.4)', false: 'rgba(255,255,255,0.1)' }}
+                />
+                <Text style={s.switchLabel}>{form.frame_enabled ? 'الإطار مفعّل' : 'الإطار متوقف'}</Text>
+              </View>
+
+              <Text style={[s.fieldLabel, { marginTop: 12 }]}>سمك الإطار: {form.frame_width ?? 2}px</Text>
+              <View style={s.scaleRow}>
+                {FRAME_WIDTHS.map((w) => {
+                  const on = (form.frame_width ?? 2) === w;
+                  return (
+                    <Pressable
+                      key={w}
+                      onPress={() => setForm((f) => ({ ...f, frame_width: w }))}
+                      style={[s.scaleChip, on && s.fontChipOn]}
+                    >
+                      <Text style={[s.fontChipText, on && { color: COLORS.gold }]}>{w}px</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={[s.fieldLabel, { marginTop: 10 }]}>انحناء زوايا الإطار: {form.frame_radius ?? 1}px</Text>
+              <View style={s.scaleRow}>
+                {FRAME_RADII.map((r) => {
+                  const on = (form.frame_radius ?? 1) === r;
+                  return (
+                    <Pressable
+                      key={r}
+                      onPress={() => setForm((f) => ({ ...f, frame_radius: r }))}
+                      style={[s.scaleChip, on && s.fontChipOn]}
+                    >
+                      <Text style={[s.fontChipText, on && { color: COLORS.gold }]}>{r}px</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* ── App background: image + tint ── */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>🖼️ خلفية التطبيق</Text>
+              <Text style={s.hint}>
+                ترتيب الطبقات: اللون الأساسي أعلاه، ثم صبغة الخلفية، ثم الصورة. كلها اختيارية ويمكن دمجها.
+              </Text>
+
+              <Pressable
+                onPress={pickBackgroundImage}
+                disabled={bgUploading}
+                style={({ pressed }) => [s.audioPickBtn, pressed && { opacity: 0.8 }]}
+              >
+                {bgUploading
+                  ? <ActivityIndicator color={COLORS.gold} size="small" />
+                  : <Text style={s.audioPickBtnText}>
+                      {form.background_image_path ? '🔁 استبدال صورة الخلفية' : '⬆️ رفع صورة خلفية'}
+                    </Text>}
+              </Pressable>
+
+              {form.background_image_path ? (
+                <View style={s.audioCurrentRow}>
+                  <Pressable
+                    onPress={() => setForm((f) => ({ ...f, background_image_path: '' }))}
+                    style={s.audioClearBtn}
+                  >
+                    <Text style={s.audioClearText}>حذف</Text>
+                  </Pressable>
+                  <Image
+                    source={{ uri: form.background_image_path }}
+                    style={s.bgPreview}
+                    contentFit="cover"
+                  />
+                </View>
+              ) : (
+                <Text style={s.hint}>لا توجد صورة خلفية — التدرّج الافتراضي فقط.</Text>
+              )}
+
+              <Text style={[s.fieldLabel, { marginTop: 12 }]}>صبغة الخلفية (فوق التدرّج)</Text>
+              <View style={s.presetRow}>
+                {BG_PRESETS.map((p) => (
+                  <Pressable
+                    key={p.hex}
+                    onPress={() => setForm((f) => ({
+                      ...f,
+                      background_color: f.background_color === p.hex ? '' : p.hex,
+                    }))}
+                    style={[s.colorSwatch, { backgroundColor: p.hex, borderColor: 'rgba(255,255,255,0.3)' }, form.background_color === p.hex && s.swatchSelected]}
+                  >
+                    {form.background_color === p.hex && <Text style={s.swatchTick}>✓</Text>}
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={s.hint}>
+                {form.background_color
+                  ? `مفعّلة: ${form.background_color} — اضغط اللون نفسه لإلغائها.`
+                  : 'غير مفعّلة — اضغط لوناً لإضافة صبغة فوق التدرّج.'}
+              </Text>
             </View>
 
             {/* ── Text content ── */}
@@ -291,6 +553,139 @@ export default function SettingsScreen() {
               ))}
             </View>
 
+            {/* ── App typography (dynamic, read by every screen) ── */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>🔤 خط التطبيق ولون النص</Text>
+              <Text style={s.hint}>
+                يُطبَّق فوراً على كل شاشات التطبيق لدى جميع المستخدمين بعد الحفظ.
+              </Text>
+
+              <Text style={s.fieldLabel}>نوع الخط</Text>
+              <View style={s.fontGrid}>
+                {FONT_FAMILIES.map((f) => {
+                  const selected = (form.app_font_family ?? 'Cairo') === f.key;
+                  return (
+                    <Pressable
+                      key={f.key}
+                      onPress={() => setForm((v) => ({ ...v, app_font_family: f.key }))}
+                      style={[s.fontChip, selected && s.fontChipOn]}
+                    >
+                      <Text style={[s.fontChipText, { fontFamily: `${f.key}_700Bold` }, selected && { color: COLORS.gold }]}>
+                        {f.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={[s.fieldLabel, { marginTop: 10 }]}>لون النص العام</Text>
+              <View style={s.swatchRow}>
+                {TEXT_COLOR_PRESETS.map((c) => {
+                  const selected = (form.app_text_color ?? '') === c.hex;
+                  return (
+                    <Pressable
+                      key={c.hex}
+                      onPress={() => setForm((v) => ({ ...v, app_text_color: selected ? '' : c.hex }))}
+                      style={[s.swatch, { backgroundColor: c.hex }, selected && s.swatchOn]}
+                    />
+                  );
+                })}
+              </View>
+              <Text style={s.hint}>
+                {form.app_text_color
+                  ? `مفعّل: ${form.app_text_color} — اضغط اللون نفسه لإلغائه والعودة لألوان كل شاشة.`
+                  : 'غير مفعّل — كل شاشة تحتفظ بألوانها الأصلية (الوضع الموصى به).'}
+              </Text>
+
+              <Text style={[s.fieldLabel, { marginTop: 10 }]}>
+                قوام/حجم الخط: {Math.round((form.app_font_scale ?? 1) * 100)}%
+              </Text>
+              <View style={s.scaleRow}>
+                {FONT_SCALES.map((sc) => {
+                  const selected = Math.abs((form.app_font_scale ?? 1) - sc.value) < 0.001;
+                  return (
+                    <Pressable
+                      key={sc.value}
+                      onPress={() => setForm((v) => ({ ...v, app_font_scale: sc.value }))}
+                      style={[s.scaleChip, selected && s.fontChipOn]}
+                    >
+                      <Text style={[s.fontChipText, selected && { color: COLORS.gold }]}>{sc.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* ── Ambient music ── */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>🎵 الموسيقى المحيطة</Text>
+              <Text style={s.hint}>
+                ارفع ملفاً صوتياً (MP3 / M4A) من جهازك مباشرة. يُحفظ في التخزين ويعمل بكل شاشات التطبيق.
+              </Text>
+
+              <Pressable
+                onPress={pickAmbientAudio}
+                disabled={audioUploading}
+                style={({ pressed }) => [s.audioPickBtn, pressed && { opacity: 0.8 }]}
+              >
+                {audioUploading
+                  ? <ActivityIndicator color={COLORS.gold} size="small" />
+                  : <Text style={s.audioPickBtnText}>
+                      {form.site_ambient_audio_url ? '🔁 استبدال الملف الصوتي' : '⬆️ اختيار ورفع ملف صوتي'}
+                    </Text>}
+              </Pressable>
+
+              {form.site_ambient_audio_url ? (
+                <View style={s.audioCurrentRow}>
+                  <Pressable
+                    onPress={() => setForm((f) => ({ ...f, site_ambient_audio_url: '' }))}
+                    style={s.audioClearBtn}
+                  >
+                    <Text style={s.audioClearText}>حذف</Text>
+                  </Pressable>
+                  <Text style={s.audioCurrentText} numberOfLines={1} ellipsizeMode="middle">
+                    {form.site_ambient_audio_url}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={s.hint}>لا يوجد ملف صوتي حالياً — زر الموسيقى مخفي عن المستخدمين.</Text>
+              )}
+
+              {/* Kept so an already-hosted URL can still be pasted directly. */}
+              <View style={s.fieldGroup}>
+                <Text style={s.fieldLabel}>أو الصق رابطاً مباشراً (اختياري)</Text>
+                <TextInput
+                  value={form.site_ambient_audio_url ?? ''}
+                  onChangeText={(v) => setForm((f) => ({ ...f, site_ambient_audio_url: v }))}
+                  placeholder="https://..."
+                  placeholderTextColor={COLORS.white40}
+                  style={[s.input, { direction: 'ltr' as never }]}
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
+
+            {/* ── Telegram support link ── */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>📨 الدعم عبر تلغرام</Text>
+              <Text style={s.hint}>
+                رابط أحادي الاتجاه فقط — لا يمر عبر قاعدة بياناتنا ولا يؤثر على الدردشة الداخلية. أدخل اسم المستخدم أو البوت بدون علامة @.
+              </Text>
+              <TextInput
+                value={form.support_telegram_username ?? ''}
+                onChangeText={(v) => setForm((f) => ({ ...f, support_telegram_username: v }))}
+                placeholder="مثال: IraqiServiceSupport"
+                placeholderTextColor={COLORS.white40}
+                style={[s.input, { direction: 'ltr' as never }]}
+                autoCapitalize="none"
+              />
+              <Text style={s.hint}>
+                {form.support_telegram_username
+                  ? `الرابط الحالي: https://t.me/${form.support_telegram_username.trim().replace(/^@/, '')}`
+                  : 'غير مفعّل — أزرار الدعم عبر تلغرام ستكون مخفية عن المستخدمين.'}
+              </Text>
+            </View>
+
             {/* ── Announcement toggle ── */}
             <View style={s.section}>
               <Text style={s.sectionTitle}>📢 الإعلان الجاري</Text>
@@ -302,6 +697,20 @@ export default function SettingsScreen() {
                   trackColor={{ true: 'rgba(230,171,44,0.4)', false: 'rgba(255,255,255,0.1)' }}
                 />
                 <Text style={s.switchLabel}>{form.announcement_enabled ? 'الإعلان مفعّل' : 'الإعلان متوقف'}</Text>
+              </View>
+            </View>
+
+            {/* ── Ambient particles toggle ── */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>✨ مؤثرات الجسيمات المتحركة</Text>
+              <View style={s.row}>
+                <Switch
+                  value={form.particles_enabled ?? true}
+                  onValueChange={(v) => setForm((f) => ({ ...f, particles_enabled: v }))}
+                  thumbColor={form.particles_enabled ? COLORS.gold : '#888'}
+                  trackColor={{ true: 'rgba(230,171,44,0.4)', false: 'rgba(255,255,255,0.1)' }}
+                />
+                <Text style={s.switchLabel}>{form.particles_enabled ? 'المؤثرات مفعّلة' : 'المؤثرات متوقفة'}</Text>
               </View>
             </View>
 
@@ -345,7 +754,8 @@ export default function SettingsScreen() {
               </Pressable>
             </View>
 
-            {/* ── Nuclear danger zone ── */}
+            {/* ── Nuclear danger zone — founder only, co_admins cannot trigger it (matches web + /api/founder/nuclear server-side check) ── */}
+            {profile?.role === 'founder' && (
             <View style={[s.section, s.dangerSection]}>
               <Text style={[s.sectionTitle, { color: '#ef4444' }]}>☢️ منطقة الخطر</Text>
               <Text style={s.hint}>إغلاق الموقع وحذف بيانات الزبائن. لا يمكن التراجع.</Text>
@@ -390,6 +800,7 @@ export default function SettingsScreen() {
                 </View>
               )}
             </View>
+            )}
           </>
         )}
         <View style={{ height: 40 }} />
@@ -420,6 +831,46 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   switchLabel: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white },
   hint: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted, textAlign: 'right' },
+  // Typography controls
+  fontGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  fontChip: {
+    paddingHorizontal: 12, paddingVertical: 9, borderRadius: RADIUS.sm,
+    borderWidth: 1, borderColor: COLORS.cardBorder, backgroundColor: '#0d1117',
+  },
+  fontChipOn: { borderColor: COLORS.gold, backgroundColor: 'rgba(230,171,44,0.12)' },
+  fontChipText: { fontSize: 12, color: COLORS.white70 },
+  swatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  swatch: { width: 34, height: 34, borderRadius: 17, borderWidth: 2, borderColor: 'transparent' },
+  swatchOn: { borderColor: COLORS.gold },
+  scaleRow: { flexDirection: 'row', gap: 8 },
+  scaleChip: {
+    flex: 1, paddingVertical: 9, borderRadius: RADIUS.sm, alignItems: 'center',
+    borderWidth: 1, borderColor: COLORS.cardBorder, backgroundColor: '#0d1117',
+  },
+
+  audioPickBtn: {
+    backgroundColor: 'rgba(230,171,44,0.12)',
+    borderWidth: 1,
+    borderColor: COLORS.goldBorder,
+    borderRadius: RADIUS.md,
+    paddingVertical: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 46,
+  },
+  audioPickBtnText: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
+  audioCurrentRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  audioCurrentText: { flex: 1, fontFamily: FONTS.regular, fontSize: 11, color: COLORS.white70, textAlign: 'left' },
+  audioClearBtn: {
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.3)',
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  audioClearText: { fontFamily: FONTS.bold, fontSize: 11, color: '#ef4444' },
+  bgPreview: { flex: 1, height: 70, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.cardBorder },
   successBanner: { backgroundColor: 'rgba(34,197,94,0.15)', borderWidth: 1, borderColor: 'rgba(34,197,94,0.3)', borderRadius: RADIUS.sm, padding: 10 },
   successText: { fontFamily: FONTS.bold, fontSize: 13, color: '#22c55e', textAlign: 'center' },
   goldBtn: { backgroundColor: COLORS.gold, borderRadius: RADIUS.md, paddingVertical: 13, alignItems: 'center' },

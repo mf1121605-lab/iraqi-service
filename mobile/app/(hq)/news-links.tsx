@@ -19,7 +19,7 @@ const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://iraqi-service.vercel
 
 interface Category {
   key: string;
-  name_ar: string;
+  label_ar: string;
 }
 
 interface NewsLink {
@@ -80,9 +80,12 @@ export default function HqNewsLinks() {
   async function loadCategories() {
     const { data } = await supabase
       .from('categories')
-      .select('key, name_ar')
+      // label_ar / sort_order are the real column names; name_ar and
+      // display_order do not exist on this table, so this query used to be
+      // rejected wholesale and the category dropdown was always empty.
+      .select('key, label_ar')
       .eq('is_active', true)
-      .order('display_order');
+      .order('sort_order');
     setCategories((data ?? []) as Category[]);
   }
 
@@ -95,6 +98,10 @@ export default function HqNewsLinks() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'news_links' }, loadLinks)
       .subscribe();
     return () => { supabase.removeChannel(channel); };
+    // Deliberately depends on the stable id, not the whole profile object —
+    // reconnecting this realtime channel on every unrelated profile field
+    // change would be wasteful (same convention throughout this codebase).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id]);
 
   async function handleParse() {
@@ -189,7 +196,7 @@ export default function HqNewsLinks() {
     <ScreenBg>
       <View style={s.header}>
         <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={8}>
-          <Text style={s.backArrow}>‹</Text>
+          <Text style={s.backArrow}>›</Text>
         </Pressable>
         <Text style={s.title}>📰 الروابط الإخبارية</Text>
       </View>
@@ -292,7 +299,7 @@ export default function HqNewsLinks() {
                     style={[s.chip, form.category === cat.key && s.chipActive]}
                   >
                     <Text style={[s.chipText, form.category === cat.key && s.chipTextActive]}>
-                      {cat.name_ar}
+                      {cat.label_ar}
                     </Text>
                   </Pressable>
                 ))}
@@ -369,7 +376,7 @@ export default function HqNewsLinks() {
               {link.source ? <Text style={s.linkMeta}>{link.source}</Text> : null}
               {link.category ? (
                 <Text style={s.linkCat}>
-                  📁 {categories.find(c => c.key === link.category)?.name_ar ?? link.category}
+                  📁 {categories.find(c => c.key === link.category)?.label_ar ?? link.category}
                 </Text>
               ) : null}
               {link.deadline ? <Text style={s.linkMeta}>📅 {link.deadline}</Text> : null}
@@ -406,7 +413,7 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   backArrow: { fontSize: 28, color: COLORS.gold, lineHeight: 32 },
-  title: { fontFamily: FONTS.bold, fontSize: 18, color: COLORS.white },
+  title: { fontFamily: FONTS.bold, fontSize: 18, color: COLORS.white, textAlign: 'right' },
   scroll: { padding: 16, gap: 12 },
   formCard: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.cardBorder, borderRadius: RADIUS.md, padding: 16, gap: 10 },
   formTitle: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.white, textAlign: 'right' },

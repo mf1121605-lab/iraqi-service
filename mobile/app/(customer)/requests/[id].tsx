@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   ActivityIndicator,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,19 +10,38 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { FlashList } from '@shopify/flash-list';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import { MessageBubble } from '@/components/chat/MessageBubble';
+import { uploadMediaSmart, type UploadHandle } from '@/lib/resumableUpload';
+import { MessageBubble, MessageStatus } from '@/components/chat/MessageBubble';
+import { ReactionPickerOverlay } from '@/components/ui/ReactionPickerOverlay';
+import { buildChatReactions, DELETE_KEY, REPLY_KEY } from '@/constants/chatReactions';
+import { confirmDelete } from '@/lib/confirmDelete';
+import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
+import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
+import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
+import { FireGlowWrap } from '@/components/ui/FireGlowWrap';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+import { playSound } from '@/utils/soundFX';
+import { ChatBgTheme, getChatBgTheme, setChatBgTheme } from '@/utils/chatBackgroundPrefs';
+import { StarRating } from '@/components/ui/StarRating';
+import { enqueueOutbox, getOutbox, onReconnect, removeFromOutbox } from '@/utils/offlineOutbox';
+import { CHAT_DOCUMENT_MIME_TYPES } from '@/constants/documentMimeTypes';
+import { openTelegramSupport } from '@/utils/telegram';
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
-  pending:     { label: 'قيد الانتظار', color: '#f59e0b' },
-  in_progress: { label: 'جارٍ المعالجة', color: '#3b82f6' },
-  completed:   { label: 'مكتملة',        color: '#22c55e' },
-  cancelled:   { label: 'ملغية',         color: '#ef4444' },
+  submitted:     { label: 'قيد الانتظار',   color: '#f59e0b' },
+  in_review:     { label: 'جارٍ المعالجة',   color: '#3b82f6' },
+  needs_changes: { label: 'بحاجة لتعديل',    color: '#f97316' },
+  approved:      { label: 'مكتملة',          color: '#22c55e' },
+  rejected:      { label: 'مرفوضة',          color: '#ef4444' },
 };
 
 const CAT_EMOJI: Record<string, string> = {
@@ -34,7 +53,11 @@ type Message = {
   sender_id: string;
   body: string;
   message_type: string;
+  attachment_url: string | null;
+  reply_to_id: string | null;
+  read_at: string | null;
   created_at: string;
+  reactions: { emoji: string; user_id: string }[];
 };
 
 type RequestDetail = {
@@ -44,42 +67,143 @@ type RequestDetail = {
   category: string;
   status: string;
   created_at: string;
-  employee_id: string | null;
-  employee: { given_name: string; family_name: string } | null;
+  assigned_employee_id: string | null;
+  employee: { given_name: string; family_name: string; avatar_key: string | null } | null;
 };
+
+async function uploadAttachment(
+  uri: string,
+  userId: string,
+  kind: 'image' | 'voice' | 'video' | 'file',
+  onProgress?: (pct: number) => void,
+  onHandle?: (handle: UploadHandle) => void,
+  fileName?: string,
+  mimeType?: string,
+): Promise<string | null> {
+  try {
+    const ext = kind === 'voice'
+      ? 'm4a'
+      : kind === 'file'
+        ? (fileName?.split('.').pop()?.toLowerCase() ?? 'bin')
+        : (uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg'));
+    const path = `chat/${userId}/${Date.now()}.${ext}`;
+    const contentType = kind === 'voice'
+      ? 'audio/m4a'
+      : kind === 'video'
+        ? `video/${ext === 'mov' ? 'quicktime' : ext}`
+        : kind === 'file'
+          ? (mimeType ?? 'application/octet-stream')
+          : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+    // Dispatches by file size: small images go through a plain single-
+    // request upload; long voice notes and videos go through the chunked,
+    // resumable TUS path — see lib/resumableUpload.ts.
+    let publicUrl: string | null = null;
+    let uploadErr: Error | null = null;
+    await uploadMediaSmart(uri, 'site-assets', path, contentType, {
+      onProgress,
+      onHandle,
+      onSuccess: (url) => { publicUrl = url; },
+      onError: (err) => { uploadErr = err; },
+    });
+    if (uploadErr) { console.error('upload failed:', uploadErr); return null; }
+    return publicUrl;
+  } catch (err) {
+    console.error('upload failed:', err);
+    return null;
+  }
+}
 
 export default function RequestDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlashList<Message>>(null);
   const inputRef = useRef<TextInput>(null);
 
   const [req, setReq] = useState<RequestDetail | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const uploadHandleRef = useRef<UploadHandle | null>(null);
+
+  // Stops an in-flight upload if the user navigates away mid-upload —
+  // otherwise it keeps running against a screen that's already gone.
+  useEffect(() => () => { uploadHandleRef.current?.abort(); }, []);
   const [loading, setLoading] = useState(true);
   const [showDesc, setShowDesc] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [employeeTyping, setEmployeeTyping] = useState(false);
+  const [employeeOnline, setEmployeeOnline] = useState(false);
+  const [bgTheme, setBgTheme] = useState<ChatBgTheme>('none');
+  const [existingRating, setExistingRating] = useState<{ stars: number; comment: string | null } | null | undefined>(undefined);
+  const [ratingStars, setRatingStars] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [ratingSaving, setRatingSaving] = useState(false);
+  const [showBgPicker, setShowBgPicker] = useState(false);
+  const [telegramHandle, setTelegramHandle] = useState<string | null>(null);
+
+  useEffect(() => { getChatBgTheme().then(setBgTheme); }, []);
+
+  // One-way Telegram support deep link (see mobile/utils/telegram.ts) — this
+  // never writes anything back to Supabase, purely a client-side link.
+  useEffect(() => {
+    supabase
+      .from('founder_settings')
+      .select('support_telegram_username')
+      .eq('id', 1)
+      .single()
+      .then(({ data }) => setTelegramHandle((data as { support_telegram_username: string | null } | null)?.support_telegram_username ?? null));
+  }, []);
+
+  const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const lastTypingBroadcast = useRef(0);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadData = useCallback(async () => {
-    if (!id) return;
+    if (!id) { setLoading(false); return; }
     const [rRes, mRes] = await Promise.all([
       supabase
         .from('requests')
-        .select('id, title, description, category, status, created_at, employee_id, employee:profiles!employee_id(given_name, family_name)')
+        .select('id, title, description, category, status, created_at, assigned_employee_id, employee:profiles!assigned_employee_id(given_name, family_name, avatar_key)')
         .eq('id', id)
         .single(),
       supabase
         .from('request_messages')
-        .select('id, sender_id, body, message_type, created_at')
+        .select('id, sender_id, body, message_type, attachment_url, reply_to_id, read_at, created_at, reactions:request_message_reactions(emoji, user_id)')
         .eq('request_id', id)
         .order('created_at', { ascending: true })
         .limit(200),
     ]);
     if (rRes.data) setReq(rRes.data as unknown as RequestDetail);
-    if (mRes.data) setMessages(mRes.data);
+    if (mRes.data) setMessages(mRes.data as unknown as Message[]);
     setLoading(false);
   }, [id]);
+
+  useEffect(() => {
+    if (!id || req?.status !== 'approved') return;
+    supabase
+      .from('request_ratings')
+      .select('stars, comment')
+      .eq('request_id', id)
+      .maybeSingle()
+      .then(({ data }) => setExistingRating(data ?? null));
+  }, [id, req?.status]);
+
+  async function handleSubmitRating() {
+    if (!id || !req?.assigned_employee_id || !session?.user.id || ratingStars < 1) return;
+    setRatingSaving(true);
+    const { error } = await supabase.from('request_ratings').insert({
+      request_id: id,
+      customer_id: session.user.id,
+      employee_id: req.assigned_employee_id,
+      stars: ratingStars,
+      comment: ratingComment.trim() || null,
+    });
+    setRatingSaving(false);
+    if (!error) setExistingRating({ stars: ratingStars, comment: ratingComment.trim() || null });
+  }
 
   useEffect(() => {
     loadData();
@@ -89,13 +213,56 @@ export default function RequestDetail() {
         event: '*', schema: 'public', table: 'request_messages',
         filter: `request_id=eq.${id}`,
       }, () => loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'request_message_reactions' }, () => loadData())
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'requests',
         filter: `id=eq.${id}`,
       }, () => loadData())
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [id, loadData]);
+
+    const typingChannel = supabase
+      .channel(`request-typing-${id}`)
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        const { senderId } = payload.payload as { senderId: string };
+        if (senderId === session?.user.id) return;
+        setEmployeeTyping(true);
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => setEmployeeTyping(false), 3000);
+      })
+      .subscribe();
+    typingChannelRef.current = typingChannel;
+
+    return () => {
+      supabase.removeChannel(channel);
+      supabase.removeChannel(typingChannel);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, [id, loadData, session?.user.id]);
+
+  const broadcastTyping = useCallback(() => {
+    if (!typingChannelRef.current || !session?.user.id) return;
+    const now = Date.now();
+    if (now - lastTypingBroadcast.current < 2000) return;
+    lastTypingBroadcast.current = now;
+    typingChannelRef.current.send({ type: 'broadcast', event: 'typing', payload: { senderId: session.user.id } });
+  }, [session?.user.id]);
+
+  // last_active_at isn't directly client-readable (deliberately excluded
+  // from the profiles SELECT grant) — the online/offline badge goes
+  // through a security-definer RPC that only returns the derived boolean.
+  useEffect(() => {
+    const employeeId = req?.assigned_employee_id;
+    if (!employeeId) { setEmployeeOnline(false); return; }
+    let active = true;
+    function checkOnline() {
+      supabase.rpc('get_employee_online_status', { p_employee_id: employeeId }).then(({ data }) => {
+        if (active) setEmployeeOnline(!!data);
+      });
+    }
+    checkOnline();
+    const interval = setInterval(checkOnline, 60_000);
+    return () => { active = false; clearInterval(interval); };
+  }, [req?.assigned_employee_id]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -103,19 +270,204 @@ export default function RequestDetail() {
     }
   }, [messages.length]);
 
+  // Mark the other party's messages as read once they're visible on screen.
+  useEffect(() => {
+    if (!session?.user.id) return;
+    const unread = messages.filter((m) => m.sender_id !== session.user.id && !m.read_at);
+    if (unread.length === 0) return;
+    supabase.from('request_messages').update({ read_at: new Date().toISOString() }).in('id', unread.map((m) => m.id)).then(() => {});
+  }, [messages, session?.user.id]);
+
   async function sendMessage() {
     if (!text.trim() || !session?.user.id || !id) return;
     const body = text.trim();
+    const replyId = replyTo?.id ?? null;
     setText('');
+    setReplyTo(null);
     setSending(true);
-    await supabase.from('request_messages').insert({
+    const { error } = await supabase.from('request_messages').insert({
       request_id: id,
       sender_id: session.user.id,
       body,
       message_type: 'text',
+      reply_to_id: replyId,
     });
+    if (error) {
+      // Offline (or a transient network error) — keep the message locally
+      // instead of losing it; flushOutbox resends it the moment the
+      // device reconnects.
+      await enqueueOutbox(id, body);
+    } else {
+      playSound('messageSent');
+    }
     setSending(false);
   }
+
+  const flushOutbox = useCallback(async () => {
+    if (!id || !session?.user.id) return;
+    const queued = await getOutbox(id);
+    for (const item of queued) {
+      const { error } = await supabase.from('request_messages').insert({
+        request_id: id,
+        sender_id: session.user.id,
+        body: item.body,
+        message_type: 'text',
+      });
+      if (!error) await removeFromOutbox(id, item.localId);
+    }
+    if (queued.length) loadData();
+  }, [id, session?.user.id, loadData]);
+
+  useEffect(() => {
+    flushOutbox();
+    return onReconnect(flushOutbox);
+  }, [flushOutbox]);
+
+  async function pickAndSendImage() {
+    if (!session?.user.id || !id) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الصور والفيديوهات من إعدادات الجهاز لإرسال المرفقات.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.8 });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    const isVideo = asset.type === 'video';
+    setSending(true);
+    setUploadProgress(0);
+    const url = await uploadAttachment(
+      asset.uri, session.user.id, isVideo ? 'video' : 'image', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; },
+    );
+    uploadHandleRef.current = null;
+    setUploadProgress(null);
+    if (url) {
+      await supabase.from('request_messages').insert({
+        request_id: id, sender_id: session.user.id, body: isVideo ? '🎬 فيديو' : '📷 صورة',
+        message_type: isVideo ? 'video' : 'image', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+      });
+      setReplyTo(null);
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع المرفق، حاول مرة أخرى.');
+    }
+    setSending(false);
+  }
+
+  async function pickAndSendDocument() {
+    if (!session?.user.id || !id) return;
+    const result = await DocumentPicker.getDocumentAsync({ type: CHAT_DOCUMENT_MIME_TYPES, copyToCacheDirectory: true });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    setSending(true);
+    setUploadProgress(0);
+    const url = await uploadAttachment(
+      asset.uri, session.user.id, 'file', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; }, asset.name, asset.mimeType,
+    );
+    uploadHandleRef.current = null;
+    setUploadProgress(null);
+    if (url) {
+      await supabase.from('request_messages').insert({
+        request_id: id, sender_id: session.user.id, body: `📎 ${asset.name}`,
+        message_type: 'file', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+      });
+      setReplyTo(null);
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع الملف، حاول مرة أخرى.');
+    }
+    setSending(false);
+  }
+
+  async function sendVoice(uri: string, durationMs: number) {
+    if (!session?.user.id || !id) return;
+    setRecording(false);
+    if (durationMs < 800) return; // too short to be intentional
+    setSending(true);
+    setUploadProgress(0);
+    const url = await uploadAttachment(
+      uri, session.user.id, 'voice', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; },
+    );
+    uploadHandleRef.current = null;
+    setUploadProgress(null);
+    if (url) {
+      await supabase.from('request_messages').insert({
+        request_id: id, sender_id: session.user.id, body: '🎤 رسالة صوتية',
+        message_type: 'voice', attachment_url: url,
+      });
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع الرسالة الصوتية، حاول مرة أخرى.');
+    }
+    setSending(false);
+  }
+
+  async function pickReaction(messageId: string, emoji: string) {
+    if (!session?.user.id) return;
+    const msg = messages.find((m) => m.id === messageId);
+    const mine = msg?.reactions.find((r) => r.user_id === session.user.id);
+    if (mine) await supabase.from('request_message_reactions').delete().eq('message_id', messageId).eq('user_id', session.user.id);
+    if (!mine || mine.emoji !== emoji) {
+      await supabase.from('request_message_reactions').insert({ message_id: messageId, user_id: session.user.id, emoji });
+      playSound('reaction');
+    }
+  }
+
+  function summarizeReactions(reactions: { emoji: string; user_id: string }[]) {
+    const counts: Record<string, number> = {};
+    reactions.forEach((r) => { counts[r.emoji] = (counts[r.emoji] ?? 0) + 1; });
+    return Object.entries(counts).map(([emoji, count]) => ({ emoji, count, mine: false }));
+  }
+
+  // Stable across renders driven by anything other than messages/session/req
+  // changing.
+  const renderMessage = useCallback(({ item }: { item: Message }) => {
+    const isMine = item.sender_id === session?.user.id;
+    const replySource = item.reply_to_id ? messages.find((m) => m.id === item.reply_to_id) : null;
+    const status: MessageStatus = item.read_at ? 'read' : 'sent';
+    return (
+      <ReactionPickerOverlay
+        reactions={buildChatReactions(isMine)}
+        align={isMine ? 'end' : 'start'}
+        onSelectReaction={(key) => {
+          // Reply rides in the bar as a seventh slot so long-press
+          // still offers it, exactly as the old popover did.
+          if (key === REPLY_KEY) setReplyTo(item);
+          else if (key === DELETE_KEY) {
+            confirmDelete({
+              kind: 'message',
+              table: 'request_messages',
+              id: item.id,
+              // Drop it locally too: the realtime DELETE event is the usual
+              // path, but this keeps the list right if that socket is down.
+              onDeleted: () => setMessages((cur) => cur.filter((m) => m.id !== item.id)),
+            });
+          }
+          else pickReaction(item.id, key);
+        }}
+      >
+        <MessageBubble
+          isMine={isMine}
+          body={item.body}
+          messageType={item.message_type}
+          attachmentUrl={item.attachment_url}
+          attachmentType={
+            item.message_type === 'image' ? 'image' :
+            item.message_type === 'voice' ? 'voice' :
+            item.message_type === 'video' ? 'video' :
+            item.message_type === 'file' ? 'file' : null
+          }
+          senderAvatarKey={!isMine ? req?.employee?.avatar_key : undefined}
+          onSenderPress={!isMine && req?.assigned_employee_id ? () => router.push({ pathname: '/user/[userId]', params: { userId: req.assigned_employee_id! } }) : undefined}
+          timestamp={item.created_at}
+          status={isMine ? status : undefined}
+          reactions={summarizeReactions(item.reactions)}
+          replyTo={replySource ? { body: replySource.body } : null}
+        />
+      </ReactionPickerOverlay>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, session, req]);
 
   if (loading) {
     return (
@@ -138,10 +490,11 @@ export default function RequestDetail() {
     ? `${req.employee.given_name} ${req.employee.family_name}`
     : null;
   const catEmoji = CAT_EMOJI[req.category] ?? '📁';
-  const isClosed = req.status === 'completed' || req.status === 'cancelled';
+  const isClosed = req.status === 'approved' || req.status === 'rejected';
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
+      <ChatBackgroundLayer theme={bgTheme} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}
@@ -150,20 +503,46 @@ export default function RequestDetail() {
         {/* Navigation header */}
         <View style={styles.navHeader}>
           <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
-            <Text style={styles.backIcon}>‹</Text>
+            <Text style={styles.backIcon}>›</Text>
           </Pressable>
           <View style={styles.navCenter}>
             <Text style={styles.navTitle} numberOfLines={1}>{catEmoji} {req.title}</Text>
-            <View style={[styles.statusPill, { backgroundColor: st.color + '20', borderColor: st.color + '50' }]}>
-              <View style={[styles.statusDot, { backgroundColor: st.color }]} />
-              <Text style={[styles.statusText, { color: st.color }]}>{st.label}</Text>
-            </View>
+            {employeeTyping ? (
+              <Text style={styles.typingIndicator}>الموظف يكتب...</Text>
+            ) : (
+              <View style={[styles.statusPill, { backgroundColor: st.color + '20', borderColor: st.color + '50' }]}>
+                <View style={[styles.statusDot, { backgroundColor: st.color }]} />
+                <Text style={[styles.statusText, { color: st.color }]}>{st.label}</Text>
+              </View>
+            )}
           </View>
+          {/* Chat background theme */}
+          <Pressable onPress={() => setShowBgPicker(true)} style={styles.infoBtn} hitSlop={12}>
+            <Text style={styles.infoBtnText}>🎨</Text>
+          </Pressable>
+          {/* Telegram support — one-way deep link, prefilled with a short
+              reference to this request. Hidden entirely if the founder
+              hasn't configured a handle. */}
+          {telegramHandle && (
+            <Pressable
+              onPress={() => openTelegramSupport(telegramHandle, `مرحباً، أستفسر عن الطلب #${req.id.slice(0, 8)}`)}
+              style={styles.infoBtn}
+              hitSlop={12}
+            >
+              <Text style={styles.infoBtnText}>✈️</Text>
+            </Pressable>
+          )}
           {/* Description toggle */}
           <Pressable onPress={() => setShowDesc((v) => !v)} style={styles.infoBtn} hitSlop={12}>
             <Text style={styles.infoBtnText}>ℹ</Text>
           </Pressable>
         </View>
+        <ChatBackgroundPicker
+          visible={showBgPicker}
+          current={bgTheme}
+          onSelect={(t) => { setBgTheme(t); setChatBgTheme(t); setShowBgPicker(false); }}
+          onClose={() => setShowBgPicker(false)}
+        />
 
         {/* Collapsible description */}
         {showDesc && (
@@ -176,17 +555,24 @@ export default function RequestDetail() {
                 <View style={styles.employeeChip}>
                   <Text style={styles.employeeChipEmoji}>👤</Text>
                   <Text style={styles.employeeChipName}>{employeeName}</Text>
+                  <View style={[styles.onlineDot, { backgroundColor: employeeOnline ? COLORS.green : COLORS.muted }]} />
+                  <Text style={[styles.onlineLabel, { color: employeeOnline ? COLORS.green : COLORS.muted }]}>
+                    {employeeOnline ? 'نشط' : 'غير نشط'}
+                  </Text>
                 </View>
-              ) : req.status === 'pending' ? (
-                <Pressable
-                  style={({ pressed }) => [styles.findEmployeeBtn, pressed && { opacity: 0.7 }]}
-                  onPress={() => router.push({
-                    pathname: '/(customer)/requests/matching',
-                    params: { requestId: req.id, category: req.category },
-                  })}
-                >
-                  <Text style={styles.findEmployeeBtnText}>🔍 البحث عن موظف</Text>
-                </Pressable>
+              ) : req.status === 'submitted' ? (
+                <FireGlowWrap borderRadius={RADIUS.sm}>
+                  <Pressable
+                    style={({ pressed }) => [styles.findEmployeeBtn, pressed && { opacity: 0.7 }]}
+                    onPress={() => router.push({
+                      pathname: '/(customer)/requests/matching',
+                      params: { requestId: req.id, category: req.category },
+                    })}
+                  >
+                    <BlurView intensity={22} tint="dark" style={StyleSheet.absoluteFill} />
+                    <Text style={styles.findEmployeeBtnText}>🔍 البحث عن موظف حالي</Text>
+                  </Pressable>
+                </FireGlowWrap>
               ) : (
                 <Text style={styles.noEmployee}>لم يُعيَّن موظف بعد</Text>
               )}
@@ -195,27 +581,14 @@ export default function RequestDetail() {
         )}
 
         {/* Messages */}
-        <FlatList
+        <FlashList
           ref={flatListRef}
           data={messages}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.msgList}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item, index }) => {
-            const isMine = item.sender_id === session?.user.id;
-            const prev = messages[index - 1];
-            const bundled = !!(prev && prev.sender_id === item.sender_id &&
-              new Date(item.created_at).getTime() - new Date(prev.created_at).getTime() < 60000);
-            return (
-              <MessageBubble
-                isMine={isMine}
-                body={item.body}
-                messageType={item.message_type}
-                timestamp={item.created_at}
-                bundled={bundled}
-              />
-            );
-          }}
+          estimatedItemSize={80}
+          renderItem={renderMessage}
           ListEmptyComponent={
             <View style={styles.emptyChat}>
               <Text style={styles.emptyChatEmoji}>💬</Text>
@@ -226,47 +599,113 @@ export default function RequestDetail() {
           onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
         />
 
+        {/* Reply preview */}
+        {replyTo && !isClosed && (
+          <View style={styles.replyBar}>
+            <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
+              <Text style={styles.replyBarClose}>✕</Text>
+            </Pressable>
+            <Text style={styles.replyBarText} numberOfLines={1}>الرد على: {replyTo.body}</Text>
+          </View>
+        )}
+
         {/* Input bar */}
         {!isClosed ? (
-          <View style={styles.inputBar}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.sendBtn,
-                (!text.trim() || sending) && styles.sendBtnDisabled,
-                pressed && styles.sendBtnPressed,
-              ]}
-              onPress={sendMessage}
-              disabled={sending || !text.trim()}
-            >
-              {sending ? (
-                <ActivityIndicator color="#000" size="small" />
+          recording ? (
+            <VoiceRecorderBar onSend={sendVoice} onCancel={() => setRecording(false)} />
+          ) : (
+            <>
+            {uploadProgress !== null && (
+              <View style={uploadBarStyles.row}>
+                <View style={uploadBarStyles.track}>
+                  <View style={[uploadBarStyles.fill, { width: `${uploadProgress}%` }]} />
+                </View>
+                <Text style={uploadBarStyles.text}>{uploadProgress}%</Text>
+              </View>
+            )}
+            <View style={styles.inputBar}>
+              {text.trim() ? (
+                <Pressable
+                  style={({ pressed }) => [styles.sendBtn, sending && styles.sendBtnDisabled, pressed && styles.sendBtnPressed]}
+                  onPress={sendMessage}
+                  disabled={sending}
+                >
+                  {sending ? <ActivityIndicator color="#000" size="small" /> : <Ionicons name="arrow-up" size={22} color="#000" />}
+                </Pressable>
               ) : (
-                <Text style={styles.sendIcon}>↑</Text>
+                <Pressable style={styles.micBtn} onPress={() => setRecording(true)} disabled={sending}>
+                  <Text style={styles.micIcon}>🎤</Text>
+                </Pressable>
               )}
-            </Pressable>
-            <TextInput
-              ref={inputRef}
-              value={text}
-              onChangeText={setText}
-              placeholder="اكتب رسالة..."
-              placeholderTextColor={COLORS.white40}
-              style={styles.textInput}
-              textAlign="right"
-              multiline
-              maxLength={2000}
-            />
-          </View>
+              <TextInput
+                ref={inputRef}
+                value={text}
+                onChangeText={(t) => { setText(t); broadcastTyping(); }}
+                placeholder="اكتب رسالة..."
+                placeholderTextColor={COLORS.white40}
+                style={styles.textInput}
+                textAlign="right"
+                multiline
+                maxLength={2000}
+              />
+              <Pressable style={styles.imageBtn} onPress={pickAndSendDocument} disabled={sending}>
+                <Text style={styles.imageBtnIcon}>📎</Text>
+              </Pressable>
+              <Pressable style={styles.imageBtn} onPress={pickAndSendImage} disabled={sending}>
+                <Text style={styles.imageBtnIcon}>🖼️</Text>
+              </Pressable>
+            </View>
+            </>
+          )
         ) : (
           <View style={styles.closedBar}>
             <Text style={styles.closedBarText}>
-              {req.status === 'completed' ? '✅ تم إنجاز الطلب' : '❌ تم إلغاء الطلب'}
+              {req.status === 'approved' ? '✅ تم إنجاز الطلب' : '❌ تم رفض الطلب'}
             </Text>
+            {req.status === 'approved' && existingRating !== undefined && (
+              <View style={styles.ratingCard}>
+                {existingRating ? (
+                  <>
+                    <Text style={styles.ratingTitle}>تقييمك للموظف</Text>
+                    <StarRating value={existingRating.stars} readonly size={24} />
+                    {existingRating.comment ? <Text style={styles.ratingComment}>{existingRating.comment}</Text> : null}
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.ratingTitle}>قيّم الموظف والخدمة</Text>
+                    <StarRating value={ratingStars} onChange={setRatingStars} size={30} />
+                    <TextInput
+                      value={ratingComment}
+                      onChangeText={setRatingComment}
+                      placeholder="اكتب ملاحظة (اختياري)"
+                      placeholderTextColor={COLORS.white40}
+                      style={styles.ratingInput}
+                      textAlign="right"
+                    />
+                    <Pressable
+                      onPress={handleSubmitRating}
+                      disabled={ratingStars < 1 || ratingSaving}
+                      style={[styles.ratingSubmitBtn, (ratingStars < 1 || ratingSaving) && { opacity: 0.5 }]}
+                    >
+                      <Text style={styles.ratingSubmitText}>{ratingSaving ? '...' : 'إرسال التقييم'}</Text>
+                    </Pressable>
+                  </>
+                )}
+              </View>
+            )}
           </View>
         )}
       </KeyboardAvoidingView>
     </ScreenBg>
   );
 }
+
+const uploadBarStyles = StyleSheet.create({
+  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingBottom: 6 },
+  track: { flex: 1, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 3, backgroundColor: COLORS.gold },
+  text: { fontFamily: FONTS.bold, fontSize: 10, color: COLORS.gold, minWidth: 28, textAlign: 'left' },
+});
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
@@ -307,6 +746,7 @@ const styles = StyleSheet.create({
   },
   statusDot: { width: 5, height: 5, borderRadius: 3 },
   statusText: { fontFamily: FONTS.bold, fontSize: 10 },
+  typingIndicator: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold, alignSelf: 'flex-end' },
   infoBtn: {
     width: 36,
     height: 36,
@@ -345,14 +785,16 @@ const styles = StyleSheet.create({
   },
   employeeChipEmoji: { fontSize: 13 },
   employeeChipName: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
+  onlineDot: { width: 6, height: 6, borderRadius: 3, marginStart: 2 },
+  onlineLabel: { fontFamily: FONTS.bold, fontSize: 10 },
   noEmployee: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.muted },
   findEmployeeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(230,171,44,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.4)',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(220,38,38,0.12)',
     borderRadius: RADIUS.sm,
+    overflow: 'hidden',
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
@@ -363,6 +805,19 @@ const styles = StyleSheet.create({
   emptyChatEmoji: { fontSize: 40 },
   emptyChatText: { fontFamily: FONTS.bold, fontSize: 15, color: COLORS.white },
   emptyChatSub: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
+
+  replyBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: COLORS.goldDim,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.goldBorder,
+  },
+  replyBarClose: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
+  replyBarText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12, color: COLORS.gold, textAlign: 'right' },
 
   inputBar: {
     flexDirection: 'row',
@@ -390,6 +845,10 @@ const styles = StyleSheet.create({
     maxHeight: 120,
     minHeight: 44,
   },
+  imageBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
+  imageBtnIcon: { fontSize: 17 },
+  micBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(230,171,44,0.12)', borderWidth: 1, borderColor: COLORS.goldBorder, alignItems: 'center', justifyContent: 'center' },
+  micIcon: { fontSize: 18 },
   sendBtn: {
     width: 44,
     height: 44,
@@ -411,4 +870,22 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 28 : 14,
   },
   closedBarText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.muted },
+
+  ratingCard: { marginTop: 12, paddingHorizontal: 20, alignItems: 'center', gap: 10, width: '100%' },
+  ratingTitle: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.white },
+  ratingComment: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white70, textAlign: 'center' },
+  ratingInput: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontFamily: FONTS.regular,
+    fontSize: 13,
+    color: COLORS.white,
+  },
+  ratingSubmitBtn: { backgroundColor: COLORS.gold, borderRadius: RADIUS.md, paddingHorizontal: 24, paddingVertical: 10 },
+  ratingSubmitText: { fontFamily: FONTS.bold, fontSize: 13, color: '#000' },
 });

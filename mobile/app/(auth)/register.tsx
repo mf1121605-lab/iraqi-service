@@ -6,6 +6,7 @@ import { ScreenBg } from '@/components/ui/ScreenBg';
 import { GoldButton } from '@/components/ui/GoldButton';
 import { GoldInput } from '@/components/ui/GoldInput';
 import { GoldCard } from '@/components/ui/GoldCard';
+import { CinematicEmblem } from '@/components/ui/CinematicEmblem';
 import { COLORS, FONTS } from '@/constants/theme';
 
 export default function RegisterScreen() {
@@ -101,6 +102,7 @@ export default function RegisterScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
+            <CinematicEmblem size={120} />
             <Text style={styles.appName}>خدماتي</Text>
             <Text style={styles.subtitle}>إنشاء حساب جديد</Text>
           </View>

@@ -14,6 +14,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method not allowed' });
   }
 
+  try {
   const token = getBearerToken(req);
   if (!token) {
     return res.status(401).json({ error: 'missing bearer token' });
@@ -58,4 +59,8 @@ export default async function handler(req, res) {
   }
 
   return res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error('change-password: unhandled error', err);
+    return res.status(500).json({ error: err?.message ?? 'unexpected server error' });
+  }
 }

@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,13 +11,31 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { MessageBubble } from '@/components/chat/MessageBubble';
-import { Avatar } from '@/components/chat/Avatar';
-import { useAuth } from '@/hooks/useAuth';
+import { ReactionPickerOverlay } from '@/components/ui/ReactionPickerOverlay';
+import { buildChatReactions, DELETE_KEY, REPLY_KEY } from '@/constants/chatReactions';
+import { confirmDelete } from '@/lib/confirmDelete';
+import { OrderAlertCard } from '@/components/chat/OrderAlertCard';
+import { HqLinksBox } from '@/components/chat/HqLinksBox';
+import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
+import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
+import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
+import { TwemojiSticker } from '@/components/chat/TwemojiSticker';
+import { AnimatedGoldBorder } from '@/components/ui/AnimatedGoldBorder';
+import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { uploadMediaSmart, type UploadHandle } from '@/lib/resumableUpload';
+import { setActiveChat } from '@/lib/activeChatTracker';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+import { playSound } from '@/utils/soundFX';
+import { ChatBgTheme, getChatBgTheme, setChatBgTheme, themeForRoomSlug } from '@/utils/chatBackgroundPrefs';
+import { CHAT_DOCUMENT_MIME_TYPES } from '@/constants/documentMimeTypes';
 
 const TYPING_TIMEOUT_MS = 3000;
 const TYPING_BROADCAST_INTERVAL_MS = 2000;
@@ -39,6 +57,7 @@ interface ChatMessage {
   sender_role: string | null;
   body: string | null;
   attachment_url: string | null;
+  reply_to_id: string | null;
   is_hidden: boolean;
   is_pinned: boolean;
   message_type: string | null;
@@ -60,6 +79,49 @@ function displayNameFor(profile: { given_name?: string | null; family_name?: str
   return [profile.given_name, profile.family_name].filter(Boolean).join(' ') || 'عضو';
 }
 
+async function uploadAttachment(
+  uri: string,
+  userId: string,
+  kind: 'image' | 'voice' | 'video' | 'file',
+  onProgress?: (pct: number) => void,
+  onHandle?: (handle: UploadHandle) => void,
+  fileName?: string,
+  mimeType?: string,
+): Promise<string | null> {
+  try {
+    const ext = kind === 'voice'
+      ? 'm4a'
+      : kind === 'file'
+        ? (fileName?.split('.').pop()?.toLowerCase() ?? 'bin')
+        : (uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg'));
+    const path = `chat/${userId}/${Date.now()}.${ext}`;
+    const contentType = kind === 'voice'
+      ? 'audio/m4a'
+      : kind === 'video'
+        ? `video/${ext === 'mov' ? 'quicktime' : ext}`
+        : kind === 'file'
+          ? (mimeType ?? 'application/octet-stream')
+          : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+    // Dispatches by file size: small images go through a plain single-
+    // request upload; long voice notes and videos go through the chunked,
+    // resumable TUS path — see lib/resumableUpload.ts.
+    let publicUrl: string | null = null;
+    let uploadErr: Error | null = null;
+    await uploadMediaSmart(uri, 'site-assets', path, contentType, {
+      onProgress,
+      onHandle,
+      onSuccess: (url) => { publicUrl = url; },
+      onError: (err) => { uploadErr = err; },
+    });
+    if (uploadErr) { console.error('upload failed:', uploadErr); return null; }
+    return publicUrl;
+  } catch (err) {
+    console.error('upload failed:', err);
+    return null;
+  }
+}
+
 const STICKER_PACKS = {
   academic: ['📚', '✏️', '🎓', '📝', '🏫', '📖', '🔬', '📐'],
   official: ['📋', '🗂️', '🏛️', '⚖️', '🔖', '📌', '🗃️', '🖊️'],
@@ -70,25 +132,64 @@ export default function ChatRoomScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { profile, loading } = useAuth();
 
+  // Lets the global in-app notification banner know not to pop up for a
+  // reply that just landed in the room already open on screen.
+  useEffect(() => {
+    if (slug) setActiveChat({ type: 'room', slug });
+    return () => setActiveChat(null);
+  }, [slug]);
+
   const [room, setRoom] = useState<ChatRoom | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [reactions, setReactions] = useState<Reaction[]>([]);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const uploadHandleRef = useRef<UploadHandle | null>(null);
+
+  // Stops an in-flight upload if the user navigates away mid-upload —
+  // otherwise it keeps running against a screen that's already gone.
+  useEffect(() => () => { uploadHandleRef.current?.abort(); }, []);
   const [notFound, setNotFound] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [typingUsers, setTypingUsers] = useState<TypingMap>({});
   const [onlineCount, setOnlineCount] = useState(0);
+  const [bgTheme, setBgTheme] = useState<ChatBgTheme>('none');
+  const [showBgPicker, setShowBgPicker] = useState(false);
+
+  // Each room gets a distinct default animated background derived from its
+  // slug, so community rooms feel visually different from one another even
+  // before a member picks a theme manually via the palette icon.
+  useEffect(() => {
+    getChatBgTheme().then((stored) => setBgTheme(stored === 'none' && slug ? themeForRoomSlug(slug) : stored));
+  }, [slug]);
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [activeStickerPack, setActiveStickerPack] = useState<keyof typeof STICKER_PACKS>('expressive');
   const [bannedFromRoom, setBannedFromRoom] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
 
-  const listRef = useRef<FlatList>(null);
+  const listRef = useRef<FlashList<ChatMessage>>(null);
   const lastTypingBroadcast = useRef(0);
   const typingTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const messagesRef = useRef<ChatMessage[]>([]);
+  messagesRef.current = messages;
 
-  const isStaff = profile?.role === 'founder' || profile?.role === 'employee';
+  // renderItem previously ran `reactions.filter(r => r.message_id === item.id)`
+  // per row — an O(messages × reactions) scan on every single render of the
+  // list, not just once. Grouping by message_id here means each row does one
+  // O(1) map lookup instead, and the grouping itself only recomputes when
+  // `reactions` actually changes.
+  const reactionsByMessage = useMemo(() => {
+    const map = new Map<string, Reaction[]>();
+    for (const r of reactions) {
+      const bucket = map.get(r.message_id);
+      if (bucket) bucket.push(r);
+      else map.set(r.message_id, [r]);
+    }
+    return map;
+  }, [reactions]);
 
   // Load room and subscribe to realtime
   useEffect(() => {
@@ -110,7 +211,10 @@ export default function ChatRoomScreen() {
       // Check ban
       const { data: banRow } = await supabase
         .from('chat_room_bans')
-        .select('id')
+        // No `id` column: the PK is (room_id, banned_user_id). Selecting a
+        // column that doesn't exist made PostgREST reject this query outright,
+        // so banRow was always null and a ban never took effect.
+        .select('room_id')
         .eq('room_id', roomData.id)
         .eq('banned_user_id', profile!.id)
         .maybeSingle();
@@ -120,7 +224,7 @@ export default function ChatRoomScreen() {
       // Load messages
       const { data: msgs } = await supabase
         .from('chat_messages')
-        .select('id, sender_id, sender_display_name, sender_avatar_key, sender_role, body, attachment_url, is_hidden, is_pinned, message_type, created_at')
+        .select('id, sender_id, sender_display_name, sender_avatar_key, sender_role, body, attachment_url, reply_to_id, is_hidden, is_pinned, message_type, created_at')
         .eq('room_id', roomData.id)
         .eq('is_hidden', false)
         .order('created_at')
@@ -173,12 +277,16 @@ export default function ChatRoomScreen() {
           const { data: rxns } = await supabase
             .from('chat_message_reactions')
             .select('message_id, user_id, emoji')
-            .in('message_id', messages.map(m => m.id));
+            .in('message_id', messagesRef.current.map(m => m.id));
           if (active) setReactions(rxns ?? []);
         })
         .on('broadcast', { event: 'typing' }, (payload) => {
           const { userId, name } = payload.payload as { userId: string; name: string };
           if (userId === profile!.id) return;
+
+          // Only chime the first time this user starts typing, not on
+          // every refresh broadcast while they keep typing.
+          if (!typingTimers.current[userId]) playSound('typing');
 
           setTypingUsers(prev => ({ ...prev, [userId]: { name, ts: Date.now() } }));
 
@@ -208,9 +316,16 @@ export default function ChatRoomScreen() {
 
     return () => {
       active = false;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       Object.values(typingTimers.current).forEach(clearTimeout);
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
+    // Deliberately depends on the stable id, not the whole profile object —
+    // reconnecting this realtime channel on every unrelated profile field
+    // change would be wasteful (same convention throughout this codebase).
+    // typingTimers.current is read only for its side effect at cleanup time,
+    // not to derive render output, so a stale ref value here is fine.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id, slug]);
 
   // Scroll to bottom on new messages
@@ -237,6 +352,8 @@ export default function ChatRoomScreen() {
     if (!text || !room || !profile || bannedFromRoom) return;
     setSending(true);
     setBody('');
+    const replyId = replyTo?.id ?? null;
+    setReplyTo(null);
     await supabase.from('chat_messages').insert({
       room_id: room.id,
       sender_id: profile.id,
@@ -245,7 +362,9 @@ export default function ChatRoomScreen() {
       sender_role: profile.role,
       body: text,
       message_type: 'text',
+      reply_to_id: replyId,
     });
+    playSound('messageSent');
     setSending(false);
   }
 
@@ -263,27 +382,171 @@ export default function ChatRoomScreen() {
     });
   }
 
-  async function handleHideMessage(messageId: string) {
-    await supabase.from('chat_messages').update({ is_hidden: true }).eq('id', messageId);
+  async function pickAndSendImage() {
+    if (!room || !profile) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الصور والفيديوهات من إعدادات الجهاز لإرسال المرفقات.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.8 });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    const isVideo = asset.type === 'video';
+    setSending(true);
+    setUploadProgress(0);
+    const url = await uploadAttachment(
+      asset.uri, profile.id, isVideo ? 'video' : 'image', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; },
+    );
+    uploadHandleRef.current = null;
+    setUploadProgress(null);
+    if (url) {
+      await supabase.from('chat_messages').insert({
+        room_id: room.id, sender_id: profile.id,
+        sender_display_name: displayNameFor(profile), sender_avatar_key: profile.avatar_key, sender_role: profile.role,
+        body: isVideo ? '🎬 فيديو' : '📷 صورة', message_type: isVideo ? 'video' : 'image', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+      });
+      setReplyTo(null);
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع المرفق، حاول مرة أخرى.');
+    }
+    setSending(false);
+  }
+
+  async function pickAndSendDocument() {
+    if (!room || !profile) return;
+    const result = await DocumentPicker.getDocumentAsync({ type: CHAT_DOCUMENT_MIME_TYPES, copyToCacheDirectory: true });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    setSending(true);
+    setUploadProgress(0);
+    const url = await uploadAttachment(
+      asset.uri, profile.id, 'file', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; }, asset.name, asset.mimeType,
+    );
+    uploadHandleRef.current = null;
+    setUploadProgress(null);
+    if (url) {
+      await supabase.from('chat_messages').insert({
+        room_id: room.id, sender_id: profile.id,
+        sender_display_name: displayNameFor(profile), sender_avatar_key: profile.avatar_key, sender_role: profile.role,
+        body: `📎 ${asset.name}`, message_type: 'file', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+      });
+      setReplyTo(null);
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع الملف، حاول مرة أخرى.');
+    }
+    setSending(false);
+  }
+
+  async function sendVoice(uri: string, durationMs: number) {
+    if (!room || !profile) return;
+    setRecording(false);
+    if (durationMs < 800) return;
+    setSending(true);
+    setUploadProgress(0);
+    const url = await uploadAttachment(
+      uri, profile.id, 'voice', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; },
+    );
+    uploadHandleRef.current = null;
+    setUploadProgress(null);
+    if (url) {
+      await supabase.from('chat_messages').insert({
+        room_id: room.id, sender_id: profile.id,
+        sender_display_name: displayNameFor(profile), sender_avatar_key: profile.avatar_key, sender_role: profile.role,
+        body: '🎤 رسالة صوتية', message_type: 'voice', attachment_url: url,
+      });
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع الرسالة الصوتية، حاول مرة أخرى.');
+    }
+    setSending(false);
   }
 
   async function toggleReaction(messageId: string, emoji: string) {
     if (!profile) return;
     const existing = reactions.find(r => r.message_id === messageId && r.user_id === profile.id);
-    if (existing?.emoji === emoji) {
+    if (existing) {
       await supabase.from('chat_message_reactions').delete()
         .eq('message_id', messageId).eq('user_id', profile.id);
-    } else {
-      await supabase.from('chat_message_reactions').upsert(
-        { message_id: messageId, user_id: profile.id, emoji },
-        { onConflict: 'message_id,user_id' }
-      );
+      if (existing.emoji === emoji) return;
     }
+    await supabase.from('chat_message_reactions').insert({ message_id: messageId, user_id: profile.id, emoji });
+    playSound('reaction');
   }
 
   const typingNames = Object.values(typingUsers).map(u => u.name);
-  const canModerate = (msg: ChatMessage) =>
-    isStaff || room?.moderator_id === profile?.id || msg.sender_id === profile?.id;
+
+  // Stable across renders driven by anything other than messages/profile/
+  // reactions changing (sticker panel toggling, bg picker, typing dots,
+  // upload progress ticking) — those no longer force FlashList to tear
+  // down and recreate every visible cell's render function.
+  const renderMessage = useCallback(({ item, index }: { item: ChatMessage; index: number }) => {
+    const isMine = item.sender_id === profile!.id;
+    const prev = messages[index - 1];
+    const bundled = prev && prev.sender_id === item.sender_id &&
+      new Date(item.created_at).getTime() - new Date(prev.created_at).getTime() < 120_000;
+    const msgReactions = reactionsByMessage.get(item.id) ?? [];
+    const reactionCounts: Record<string, number> = {};
+    msgReactions.forEach(r => { reactionCounts[r.emoji] = (reactionCounts[r.emoji] ?? 0) + 1; });
+    const replySource = item.reply_to_id ? messages.find(m => m.id === item.reply_to_id) : null;
+
+    if (item.message_type === 'order_alert') {
+      return <View style={styles.msgRowGap}><OrderAlertCard key={item.id} body={item.body ?? ''} /></View>;
+    }
+
+    return (
+      <ReactionPickerOverlay
+        style={styles.msgRowGap}
+        reactions={buildChatReactions(isMine || hasFounderAccess(profile))}
+        align={isMine ? 'end' : 'start'}
+        onSelectReaction={(key) => {
+          // Reply rides in the bar as a seventh slot so long-press
+          // still offers it, exactly as the old popover did.
+          if (key === REPLY_KEY) setReplyTo(item);
+          else if (key === DELETE_KEY) {
+            confirmDelete({
+              kind: 'message',
+              table: 'chat_messages',
+              id: item.id,
+              // Drop it locally too: the realtime DELETE event is the usual
+              // path, but this keeps the list right if that socket is down.
+              onDeleted: () => setMessages((cur) => cur.filter((m) => m.id !== item.id)),
+            });
+          }
+          else toggleReaction(item.id, key);
+        }}
+      >
+        <MessageBubble
+          body={item.body ?? ''}
+          isMine={isMine}
+          senderName={!isMine && !bundled ? (item.sender_display_name ?? '') : undefined}
+          senderAvatarKey={!isMine ? item.sender_avatar_key : undefined}
+          onSenderPress={!isMine ? () => router.push({ pathname: '/user/[userId]', params: { userId: item.sender_id } }) : undefined}
+          timestamp={item.created_at}
+          messageType={item.message_type ?? undefined}
+          attachmentUrl={item.attachment_url}
+          attachmentType={
+            item.message_type === 'image' ? 'image' :
+            item.message_type === 'voice' ? 'voice' :
+            item.message_type === 'video' ? 'video' :
+            item.message_type === 'file' ? 'file' : null
+          }
+          reactions={Object.entries(reactionCounts).map(([emoji, count]) => ({ emoji, count, mine: false }))}
+          replyTo={replySource ? { body: replySource.body ?? '', senderName: replySource.sender_display_name ?? undefined } : null}
+          bundled={!!bundled}
+        />
+        {/* Reply / moderation row */}
+        <View style={[styles.msgActions, isMine ? styles.msgActionsRight : styles.msgActionsLeft]}>
+          <Pressable onPress={() => setReplyTo(item)} style={styles.replyActionBtn}>
+            <Text style={styles.replyActionText}>↩ رد</Text>
+          </Pressable>
+        </View>
+      </ReactionPickerOverlay>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, profile, reactionsByMessage]);
 
   if (loading || initializing) {
     return (
@@ -316,11 +579,13 @@ export default function ChatRoomScreen() {
   }
 
   return (
-    <ScreenBg noTopPad>
+    <ScreenBg>
+      <AnimatedGoldBorder borderRadius={0} borderWidth={2} innerBg="transparent" style={styles.roomFrame} innerStyle={styles.roomFrameInner}>
+      <ChatBackgroundLayer theme={bgTheme} />
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Text style={styles.backArrow}>‹</Text>
+          <Text style={styles.backArrow}>›</Text>
         </Pressable>
         <View style={styles.roomIconWrap}>
           <Text style={styles.roomIconText}>💬</Text>
@@ -333,7 +598,17 @@ export default function ChatRoomScreen() {
             {onlineCount > 0 ? `${onlineCount} متصل` : 'غرفة مجتمعية'}
           </Text>
         </View>
+        <Pressable onPress={() => setShowBgPicker(true)} style={styles.bgBtn} hitSlop={8}>
+          <Text style={styles.bgBtnIcon}>🎨</Text>
+        </Pressable>
       </View>
+      <ChatBackgroundPicker
+        visible={showBgPicker}
+        current={bgTheme}
+        onSelect={(t) => { setBgTheme(t); setChatBgTheme(t); setShowBgPicker(false); }}
+        onClose={() => setShowBgPicker(false)}
+      />
+      {room?.slug === 'hq' && <HqLinksBox />}
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -341,66 +616,13 @@ export default function ChatRoomScreen() {
         keyboardVerticalOffset={0}
       >
         {/* Messages */}
-        <FlatList
+        <FlashList
           ref={listRef}
           data={messages}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.msgList}
-          renderItem={({ item, index }) => {
-            const isMine = item.sender_id === profile!.id;
-            const prev = messages[index - 1];
-            const bundled = prev && prev.sender_id === item.sender_id &&
-              new Date(item.created_at).getTime() - new Date(prev.created_at).getTime() < 120_000;
-            const msgReactions = reactions.filter(r => r.message_id === item.id);
-            const reactionCounts: Record<string, number> = {};
-            msgReactions.forEach(r => { reactionCounts[r.emoji] = (reactionCounts[r.emoji] ?? 0) + 1; });
-            const myReaction = msgReactions.find(r => r.user_id === profile!.id)?.emoji;
-
-            return (
-              <View>
-                <MessageBubble
-                  body={item.body ?? ''}
-                  isMine={isMine}
-                  senderName={!isMine && !bundled ? (item.sender_display_name ?? '') : undefined}
-                  timestamp={item.created_at}
-                  messageType={item.message_type ?? undefined}
-                  bundled={!!bundled}
-                />
-                {/* Reactions row */}
-                {Object.keys(reactionCounts).length > 0 && (
-                  <View style={[styles.reactionsRow, isMine ? styles.reactionsRight : styles.reactionsLeft]}>
-                    {Object.entries(reactionCounts).map(([emoji, count]) => (
-                      <Pressable
-                        key={emoji}
-                        onPress={() => toggleReaction(item.id, emoji)}
-                        style={[styles.reactionBadge, myReaction === emoji && styles.reactionBadgeActive]}
-                      >
-                        <Text style={styles.reactionEmoji}>{emoji}</Text>
-                        {count > 1 && <Text style={styles.reactionCount}>{count}</Text>}
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
-                {/* Quick reaction + moderation */}
-                <View style={[styles.msgActions, isMine ? styles.msgActionsRight : styles.msgActionsLeft]}>
-                  {['❤️', '👍', '😂'].map(emoji => (
-                    <Pressable
-                      key={emoji}
-                      onPress={() => toggleReaction(item.id, emoji)}
-                      style={styles.quickReact}
-                    >
-                      <Text style={styles.quickReactEmoji}>{emoji}</Text>
-                    </Pressable>
-                  ))}
-                  {canModerate(item) && (
-                    <Pressable onPress={() => handleHideMessage(item.id)} style={styles.hideBtn}>
-                      <Text style={styles.hideBtnText}>✕</Text>
-                    </Pressable>
-                  )}
-                </View>
-              </View>
-            );
-          }}
+          estimatedItemSize={80}
+          renderItem={renderMessage}
           ListEmptyComponent={
             <View style={styles.center}>
               <Text style={styles.emptyText}>لا توجد رسائل بعد — كن أول من يكتب!</Text>
@@ -441,10 +663,22 @@ export default function ChatRoomScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stickerGrid}>
               {STICKER_PACKS[activeStickerPack].map(sticker => (
                 <Pressable key={sticker} onPress={() => handleSendSticker(sticker)} style={styles.stickerItem}>
-                  <Text style={styles.stickerEmoji}>{sticker}</Text>
+                  <TwemojiSticker emoji={sticker} size={36} />
                 </Pressable>
               ))}
             </ScrollView>
+          </View>
+        )}
+
+        {/* Reply preview */}
+        {replyTo && (
+          <View style={styles.replyBar}>
+            <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
+              <Text style={styles.replyBarClose}>✕</Text>
+            </Pressable>
+            <Text style={styles.replyBarText} numberOfLines={1}>
+              الرد على {replyTo.sender_display_name}: {replyTo.body}
+            </Text>
           </View>
         )}
 
@@ -453,14 +687,25 @@ export default function ChatRoomScreen() {
           <View style={styles.bannedBar}>
             <Text style={styles.bannedBarText}>أنت محظور ولا يمكنك الكتابة</Text>
           </View>
+        ) : recording ? (
+          <VoiceRecorderBar onSend={sendVoice} onCancel={() => setRecording(false)} />
         ) : (
+          <>
+          {uploadProgress !== null && (
+            <View style={uploadBarStyles.row}>
+              <View style={uploadBarStyles.track}>
+                <View style={[uploadBarStyles.fill, { width: `${uploadProgress}%` }]} />
+              </View>
+              <Text style={uploadBarStyles.text}>{uploadProgress}%</Text>
+            </View>
+          )}
           <View style={styles.inputRow}>
             <Pressable
               onPress={() => setShowStickerPicker(v => !v)}
               style={styles.stickerToggle}
               hitSlop={6}
             >
-              <Text style={styles.stickerToggleText}>😊</Text>
+              <TwemojiSticker emoji="😊" size={24} />
             </Pressable>
             <TextInput
               value={body}
@@ -472,22 +717,45 @@ export default function ChatRoomScreen() {
               textAlign="right"
               onSubmitEditing={handleSend}
             />
-            <Pressable
-              onPress={handleSend}
-              disabled={sending || !body.trim()}
-              style={({ pressed }) => [styles.sendBtn, (sending || !body.trim()) && styles.sendBtnDisabled, pressed && styles.sendBtnPressed]}
-            >
-              <Text style={styles.sendIcon}>↑</Text>
+            <Pressable style={styles.mediaBtn} onPress={pickAndSendDocument} disabled={sending}>
+              <Text style={styles.mediaBtnIcon}>📎</Text>
             </Pressable>
+            <Pressable style={styles.mediaBtn} onPress={pickAndSendImage} disabled={sending}>
+              <Text style={styles.mediaBtnIcon}>🖼️</Text>
+            </Pressable>
+            {body.trim() ? (
+              <Pressable
+                onPress={handleSend}
+                disabled={sending}
+                style={({ pressed }) => [styles.sendBtn, sending && styles.sendBtnDisabled, pressed && styles.sendBtnPressed]}
+              >
+                {sending ? <ActivityIndicator color="#000" size="small" /> : <Ionicons name="arrow-up" size={20} color="#000" />}
+              </Pressable>
+            ) : (
+              <Pressable style={styles.micBtn} onPress={() => setRecording(true)} disabled={sending}>
+                <Text style={styles.micIcon}>🎤</Text>
+              </Pressable>
+            )}
           </View>
+          </>
         )}
       </KeyboardAvoidingView>
+      </AnimatedGoldBorder>
     </ScreenBg>
   );
 }
 
+const uploadBarStyles = StyleSheet.create({
+  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingBottom: 6 },
+  track: { flex: 1, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 3, backgroundColor: COLORS.gold },
+  text: { fontFamily: FONTS.bold, fontSize: 10, color: COLORS.gold, minWidth: 28, textAlign: 'left' },
+});
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  roomFrame: { flex: 1 },
+  roomFrameInner: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   header: {
     flexDirection: 'row',
@@ -527,7 +795,13 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     textAlign: 'right',
   },
-  msgList: { paddingVertical: 8, paddingHorizontal: 4, gap: 2 },
+  bgBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
+  bgBtnIcon: { fontSize: 15 },
+  // gap moved onto each row's own marginBottom — FlashList's
+  // contentContainerStyle doesn't apply `gap` between recycled cells the
+  // way FlatList's did.
+  msgList: { paddingVertical: 8, paddingHorizontal: 4 },
+  msgRowGap: { marginBottom: 2 },
   emptyText: {
     fontFamily: FONTS.regular,
     fontSize: 13,
@@ -540,64 +814,17 @@ const styles = StyleSheet.create({
     color: COLORS.red,
     textAlign: 'center',
   },
-  reactionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    paddingHorizontal: 14,
-    marginTop: 2,
-    marginBottom: 2,
-  },
-  reactionsRight: { justifyContent: 'flex-end' },
-  reactionsLeft: { justifyContent: 'flex-start' },
-  reactionBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.bgAlt,
-    borderWidth: 1,
-    borderColor: COLORS.white10,
-    borderRadius: 12,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    gap: 2,
-  },
-  reactionBadgeActive: {
-    borderColor: COLORS.goldBorder,
-    backgroundColor: 'rgba(230,171,44,0.1)',
-  },
-  reactionEmoji: { fontSize: 13 },
-  reactionCount: {
-    fontFamily: FONTS.bold,
-    fontSize: 11,
-    color: COLORS.white70,
-  },
   msgActions: {
     flexDirection: 'row',
-    gap: 4,
+    gap: 8,
     paddingHorizontal: 14,
-    marginBottom: 4,
-    opacity: 0,
+    marginTop: 2,
+    marginBottom: 6,
   },
   msgActionsRight: { justifyContent: 'flex-end' },
   msgActionsLeft: { justifyContent: 'flex-start' },
-  quickReact: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.bgAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickReactEmoji: { fontSize: 14 },
-  hideBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(239,68,68,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hideBtnText: { fontSize: 11, color: COLORS.red },
+  replyActionBtn: { paddingHorizontal: 4 },
+  replyActionText: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.muted },
   typingRow: {
     paddingHorizontal: 16,
     paddingVertical: 4,
@@ -651,6 +878,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stickerEmoji: { fontSize: 32 },
+  replyBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: COLORS.goldDim,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.goldBorder,
+  },
+  replyBarClose: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold },
+  replyBarText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12, color: COLORS.gold, textAlign: 'right' },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -682,6 +921,10 @@ const styles = StyleSheet.create({
     maxHeight: 120,
     textAlign: 'right',
   },
+  mediaBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
+  mediaBtnIcon: { fontSize: 17 },
+  micBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(230,171,44,0.12)', borderWidth: 1, borderColor: COLORS.goldBorder, alignItems: 'center', justifyContent: 'center' },
+  micIcon: { fontSize: 18 },
   sendBtn: {
     width: 44,
     height: 44,
