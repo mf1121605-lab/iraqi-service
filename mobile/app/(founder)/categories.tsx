@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
@@ -267,7 +268,7 @@ export default function CategoriesScreen() {
                   </View>
                   <View style={s.catInfo}>
                     {cat.icon_path ? (
-                      <Image source={{ uri: cat.icon_path }} style={s.catThumb} />
+                      <Image source={{ uri: cat.icon_path }} style={s.catThumb} contentFit="cover" />
                     ) : (
                       <View style={[s.catThumb, s.catThumbEmpty]}><Text style={s.catThumbEmoji}>📁</Text></View>
                     )}
@@ -342,7 +343,7 @@ function MediaPicker({
         <View style={s.mediaSlot}>
           {imageUrl ? (
             <>
-              <Image source={{ uri: imageUrl }} style={s.mediaPreview} />
+              <Image source={{ uri: imageUrl }} style={s.mediaPreview} contentFit="cover" />
               <Pressable onPress={onClearImage} style={s.mediaClearBtn} hitSlop={6}><Text style={s.mediaClearText}>✕</Text></Pressable>
             </>
           ) : (

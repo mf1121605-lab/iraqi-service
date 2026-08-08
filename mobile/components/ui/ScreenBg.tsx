@@ -8,7 +8,8 @@
  * Requires an APK build (native module). OTA updates are fine after that.
  */
 import { ReactNode } from 'react';
-import { Image, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Canvas, Rect, RadialGradient, vec } from '@shopify/react-native-skia';
 import { useSiteBackground } from '@/hooks/useSiteBackground';
@@ -78,7 +79,7 @@ export function ScreenBg({ children, noTopPad }: Props) {
         <View style={[StyleSheet.absoluteFill, { backgroundColor: color, opacity: 0.55 }]} pointerEvents="none" />
       )}
       {imageUrl && (
-        <Image source={{ uri: imageUrl }} style={[StyleSheet.absoluteFill, { opacity: 0.35 }]} resizeMode="cover" />
+        <Image source={{ uri: imageUrl }} style={[StyleSheet.absoluteFill, { opacity: 0.35 }]} contentFit="cover" cachePolicy="memory-disk" />
       )}
 
       {/* ── Ambient particle effect — independent layer on top of whatever

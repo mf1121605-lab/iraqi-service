@@ -1,9 +1,11 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ResizeMode, Video } from 'expo-av';
 import { FONTS } from '@/constants/theme';
 import { AnimatedGoldBorder } from './AnimatedGoldBorder';
+import { HapticPressable } from './HapticPressable';
 
 /** Muted luxury gold, per the brief. */
 const GOLD = '#D4AF37';
@@ -42,7 +44,7 @@ export function GlassCategoryCard({ category, onPress }: Props) {
     // used on GlassCard elsewhere — these are the app's "main service tiles",
     // which the founder asked to carry a glowing animated border, not a flat one.
     <AnimatedGoldBorder borderRadius={16} borderWidth={1.5} innerBg="transparent" fillHeight={false} style={styles.cardWrap}>
-      <Pressable
+      <HapticPressable
         onPress={onPress}
         style={({ pressed }) => [styles.card, pressed && styles.pressed]}
       >
@@ -64,7 +66,7 @@ export function GlassCategoryCard({ category, onPress }: Props) {
                 isMuted
               />
             ) : (
-              <Image source={{ uri: mediaUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              <Image source={{ uri: mediaUrl }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={150} />
             )}
             <LinearGradient
               colors={['transparent', 'rgba(10,10,10,0.35)', 'rgba(10,10,10,0.92)']}
@@ -81,7 +83,7 @@ export function GlassCategoryCard({ category, onPress }: Props) {
             <Text style={styles.emoji}>{emoji ?? '📁'}</Text>
           </View>
         )}
-      </Pressable>
+      </HapticPressable>
     </AnimatedGoldBorder>
   );
 }

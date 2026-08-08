@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { ScreenBg } from '@/components/ui/ScreenBg';

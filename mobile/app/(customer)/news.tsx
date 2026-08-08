@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -15,6 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -591,7 +591,7 @@ export default function NewsScreen() {
           <View style={styles.commentBubble}>
             <Text style={styles.commentAuthor}>{cName}</Text>
             {c.content ? <Text style={styles.commentContent}>{c.content}</Text> : null}
-            {c.image_url ? <Image source={{ uri: c.image_url }} style={styles.commentImage} resizeMode="cover" /> : null}
+            {c.image_url ? <Image source={{ uri: c.image_url }} style={styles.commentImage} contentFit="cover" cachePolicy="memory-disk" transition={150} /> : null}
             <View style={styles.commentMetaRow}>
               <Pressable onPress={() => setReplyingTo((prev) => ({ ...prev, [postId]: { id: c.id, name: cName } }))}>
                 <Text style={styles.commentReplyBtn}>رد</Text>
@@ -685,7 +685,7 @@ export default function NewsScreen() {
                 <View style={styles.composerImageGrid}>
                   {pickedImages.map((uri, i) => (
                     <View key={uri + i} style={styles.composerImageSlot}>
-                      <Image source={{ uri }} style={styles.composerImageThumb} resizeMode="cover" />
+                      <Image source={{ uri }} style={styles.composerImageThumb} contentFit="cover" />
                       <Pressable style={styles.removeImage} onPress={() => setPickedImages((prev) => prev.filter((_, idx) => idx !== i))}>
                         <Text style={styles.removeImageText}>✕</Text>
                       </Pressable>
@@ -846,7 +846,7 @@ export default function NewsScreen() {
                         single && styles.postImageWrapFull,
                         pair && styles.postImageWrapHalf,
                       ]}>
-                        <Image source={{ uri: url }} style={styles.postImage} resizeMode="cover" />
+                        <Image source={{ uri: url }} style={styles.postImage} contentFit="cover" cachePolicy="memory-disk" transition={150} />
                         {isLast && (
                           <View style={styles.imageMoreOverlay}>
                             <Text style={styles.imageMoreText}>+{imageUrls.length - 4}</Text>
@@ -939,7 +939,7 @@ export default function NewsScreen() {
 
                   {commentImage ? (
                     <View style={styles.commentImagePreviewWrap}>
-                      <Image source={{ uri: commentImage }} style={styles.commentImagePreview} resizeMode="cover" />
+                      <Image source={{ uri: commentImage }} style={styles.commentImagePreview} contentFit="cover" />
                       <Pressable style={styles.removeImage} onPress={() => setCommentImages((prev) => ({ ...prev, [item.id]: '' }))}>
                         <Text style={styles.removeImageText}>✕</Text>
                       </Pressable>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
@@ -329,7 +330,7 @@ function FormFields({
           <View style={s.mediaFieldRow}>
             {form[key] ? (
               kind === 'image' ? (
-                <Image source={{ uri: form[key] }} style={s.mediaFieldThumb} />
+                <Image source={{ uri: form[key] }} style={s.mediaFieldThumb} contentFit="cover" />
               ) : (
                 <View style={[s.mediaFieldThumb, s.mediaFieldVideoThumb]}><Text style={{ fontSize: 16 }}>🎥</Text></View>
               )

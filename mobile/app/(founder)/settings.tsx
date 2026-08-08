@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Image, Pressable, ScrollView,
+  ActivityIndicator, Alert, Pressable, ScrollView,
   StyleSheet, Switch, Text, TextInput, View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
@@ -498,7 +499,7 @@ export default function SettingsScreen() {
                   <Image
                     source={{ uri: form.background_image_path }}
                     style={s.bgPreview}
-                    resizeMode="cover"
+                    contentFit="cover"
                   />
                 </View>
               ) : (

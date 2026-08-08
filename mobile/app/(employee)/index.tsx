@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,8 +14,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { ScreenBg } from '@/components/ui/ScreenBg';
+import { HapticPressable } from '@/components/ui/HapticPressable';
 import { Avatar } from '@/components/chat/Avatar';
 import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
 import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
@@ -1051,7 +1052,7 @@ export default function EmployeeDashboard() {
             <Text style={styles.headerIcon}>🚪</Text>
           </Pressable>
           <View style={styles.headerCenter}>
-            <Image source={require('@/assets/full-logo-transparent.png')} style={styles.headerLogo} resizeMode="contain" />
+            <Image source={require('@/assets/full-logo-transparent.png')} style={styles.headerLogo} contentFit="contain" />
             <View style={styles.headerBadgeRow}>
               <View style={styles.roleBadge}>
                 <Text style={styles.roleBadgeText}>موظف</Text>
@@ -1134,12 +1135,12 @@ export default function EmployeeDashboard() {
                       </View>
                       <View style={styles.reqCardBottom}>
                         {isUnclaimed ? (
-                          <Pressable
+                          <HapticPressable
                             onPress={() => claimRequest(req.id)}
                             style={styles.claimBtn}
                           >
                             <Text style={styles.claimBtnText}>+ استلم الطلب</Text>
-                          </Pressable>
+                          </HapticPressable>
                         ) : (
                           <View style={styles.myBadge}>
                             <Text style={styles.myBadgeText}>طلبي</Text>

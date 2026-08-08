@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
@@ -142,7 +143,7 @@ export default function FounderDashboard() {
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <View style={s.header}>
           <View style={s.headerTitleRow}>
-            <Image source={require('@/assets/full-logo-transparent.png')} style={s.headerLogo} resizeMode="contain" />
+            <Image source={require('@/assets/full-logo-transparent.png')} style={s.headerLogo} contentFit="contain" />
             <Text style={s.headerTitle}>{isSupervisor ? 'لوحة المشرف' : 'لوحة المؤسس'}</Text>
           </View>
           <Pressable onPress={signOut} style={s.logoutBtn}>

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
   Animated,
-  Image,
   Linking,
   Pressable,
   RefreshControl,
@@ -11,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -185,7 +185,7 @@ export default function CustomerDashboard() {
                 <Image
                   source={require('@/assets/full-logo-transparent.png')}
                   style={styles.logoImage}
-                  resizeMode="contain"
+                  contentFit="contain"
                 />
               </View>
               <View>

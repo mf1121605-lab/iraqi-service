@@ -25,6 +25,7 @@ import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { uploadMediaSmart, type UploadHandle } from '@/lib/resumableUpload';
+import { setActiveChat } from '@/lib/activeChatTracker';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
 import { ChatBgTheme, getChatBgTheme, setChatBgTheme } from '@/utils/chatBackgroundPrefs';
@@ -102,6 +103,13 @@ const TYPING_BROADCAST_INTERVAL_MS = 2000;
 
 export default function DmThread() {
   const { threadId } = useLocalSearchParams<{ threadId: string }>();
+
+  // Lets the global in-app notification banner know not to pop up for a
+  // message that just landed in the DM thread already open on screen.
+  useEffect(() => {
+    if (threadId) setActiveChat({ type: 'dm', threadId });
+    return () => setActiveChat(null);
+  }, [threadId]);
   const { profile, loading } = useAuth();
 
   const [otherUser, setOtherUser] = useState<OtherUser | null>(null);

@@ -1,4 +1,5 @@
-import { Image, Text, View, StyleSheet } from 'react-native';
+import { Text, View, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { supabase } from '@/lib/supabase';
 import { FONTS } from '@/constants/theme';
 
@@ -44,7 +45,10 @@ export function Avatar({ avatarKey, name, seed, size = 40 }: Props) {
     return (
       <Image
         source={{ uri: resolveAvatarUri(avatarKey) }}
-        style={[styles.image, containerStyle]}
+        style={containerStyle}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        transition={150}
       />
     );
   }
@@ -60,9 +64,6 @@ export function Avatar({ avatarKey, name, seed, size = 40 }: Props) {
 }
 
 const styles = StyleSheet.create({
-  image: {
-    resizeMode: 'cover',
-  },
   initials: {
     alignItems: 'center',
     justifyContent: 'center',

@@ -1,4 +1,5 @@
-import { Image, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 
 // Twemoji PNGs (MIT-licensed, from the jdecked/twemoji fork via the
 // emoji-datasource-twitter npm package) — bundled locally as static app
@@ -43,7 +44,7 @@ interface Props {
 export function TwemojiSticker({ emoji, size = 52 }: Props) {
   const source = STICKER_IMAGES[emoji];
   if (!source) return null;
-  return <Image source={source} style={[styles.img, { width: size, height: size }]} resizeMode="contain" />;
+  return <Image source={source} style={[styles.img, { width: size, height: size }]} contentFit="contain" />;
 }
 
 export function hasTwemojiSticker(emoji: string): boolean {

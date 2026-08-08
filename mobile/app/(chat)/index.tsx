@@ -13,6 +13,7 @@ import { ScreenBg } from '@/components/ui/ScreenBg';
 import { Avatar } from '@/components/chat/Avatar';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { HapticPressable } from '@/components/ui/HapticPressable';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -198,7 +199,7 @@ export default function ChatIndex() {
             windowSize={8}
             initialNumToRender={10}
             renderItem={({ item }) => (
-              <Pressable
+              <HapticPressable
                 style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
                 onPress={() => router.push(`/(chat)/${item.slug}`)}
               >
@@ -210,7 +211,7 @@ export default function ChatIndex() {
                   <Text style={styles.cardSub}>مجموعة خدمات العراق</Text>
                 </View>
                 <Text style={styles.arrow}>›</Text>
-              </Pressable>
+              </HapticPressable>
             )}
             ListEmptyComponent={
               <EmptyState emoji="🏘️" title="لا توجد غرف متاحة" subtitle="ستظهر هنا أي غرف محادثة جماعية تنضم إليها" />
@@ -227,7 +228,7 @@ export default function ChatIndex() {
           windowSize={8}
           initialNumToRender={10}
           renderItem={({ item }) => (
-            <Pressable
+            <HapticPressable
               style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
               onPress={() => router.push(`/(chat)/dm/${item.id}`)}
             >
@@ -242,7 +243,7 @@ export default function ChatIndex() {
                 <Text style={styles.cardSub}>محادثة خاصة</Text>
               </View>
               <Text style={styles.arrow}>›</Text>
-            </Pressable>
+            </HapticPressable>
           )}
           ListEmptyComponent={
             <EmptyState emoji="💬" title="لا توجد محادثات خاصة" subtitle="ابدأ محادثة من صفحة أي مستخدم لتظهر هنا" />

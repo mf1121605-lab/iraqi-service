@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -29,6 +29,7 @@ import { AnimatedGoldBorder } from '@/components/ui/AnimatedGoldBorder';
 import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { uploadMediaSmart, type UploadHandle } from '@/lib/resumableUpload';
+import { setActiveChat } from '@/lib/activeChatTracker';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
 import { ChatBgTheme, getChatBgTheme, setChatBgTheme, themeForRoomSlug } from '@/utils/chatBackgroundPrefs';
@@ -122,6 +123,13 @@ export default function ChatRoomScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { profile, loading } = useAuth();
 
+  // Lets the global in-app notification banner know not to pop up for a
+  // reply that just landed in the room already open on screen.
+  useEffect(() => {
+    if (slug) setActiveChat({ type: 'room', slug });
+    return () => setActiveChat(null);
+  }, [slug]);
+
   const [room, setRoom] = useState<ChatRoom | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [reactions, setReactions] = useState<Reaction[]>([]);
@@ -158,6 +166,21 @@ export default function ChatRoomScreen() {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
   messagesRef.current = messages;
+
+  // renderItem previously ran `reactions.filter(r => r.message_id === item.id)`
+  // per row — an O(messages × reactions) scan on every single render of the
+  // list, not just once. Grouping by message_id here means each row does one
+  // O(1) map lookup instead, and the grouping itself only recomputes when
+  // `reactions` actually changes.
+  const reactionsByMessage = useMemo(() => {
+    const map = new Map<string, Reaction[]>();
+    for (const r of reactions) {
+      const bucket = map.get(r.message_id);
+      if (bucket) bucket.push(r);
+      else map.set(r.message_id, [r]);
+    }
+    return map;
+  }, [reactions]);
 
   const isStaff = profile?.role === 'founder' || profile?.role === 'employee';
 
@@ -509,7 +532,7 @@ export default function ChatRoomScreen() {
             const prev = messages[index - 1];
             const bundled = prev && prev.sender_id === item.sender_id &&
               new Date(item.created_at).getTime() - new Date(prev.created_at).getTime() < 120_000;
-            const msgReactions = reactions.filter(r => r.message_id === item.id);
+            const msgReactions = reactionsByMessage.get(item.id) ?? [];
             const reactionCounts: Record<string, number> = {};
             msgReactions.forEach(r => { reactionCounts[r.emoji] = (reactionCounts[r.emoji] ?? 0) + 1; });
             const replySource = item.reply_to_id ? messages.find(m => m.id === item.reply_to_id) : null;

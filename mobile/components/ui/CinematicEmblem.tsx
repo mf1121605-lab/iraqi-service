@@ -1,4 +1,5 @@
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Canvas, Circle, Blur } from '@shopify/react-native-skia';
 
 // Real aspect ratio of assets/full-logo-transparent.png (900×823) — the
@@ -24,7 +25,7 @@ export function CinematicEmblem({ size = 140 }: { size?: number }) {
       <Image
         source={require('@/assets/full-logo-transparent.png')}
         style={{ width: size, height }}
-        resizeMode="contain"
+        contentFit="contain"
       />
     </View>
   );

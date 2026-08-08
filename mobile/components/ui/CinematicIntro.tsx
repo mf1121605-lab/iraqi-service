@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Image, LayoutChangeEvent, StyleSheet } from 'react-native';
+import { Dimensions, LayoutChangeEvent, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import * as SplashScreen from 'expo-splash-screen';
 import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -193,7 +194,7 @@ export function CinematicIntro({ onDone }: Props) {
         <Image
           source={require('@/assets/full-logo-transparent.png')}
           style={{ width: logo.width, height: logo.height }}
-          resizeMode="contain"
+          contentFit="contain"
         />
         <Animated.View style={[styles.shimmer, shimmerStyle]} pointerEvents="none">
           <LinearGradient

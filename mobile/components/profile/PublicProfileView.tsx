@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { ScreenBg } from '@/components/ui/ScreenBg';
@@ -316,7 +316,7 @@ export function PublicProfileView({ userId }: { userId: string }) {
               <View key={p.id} style={styles.postCard}>
                 {p.content ? <Text style={styles.postContent}>{p.content}</Text> : null}
                 {p.image_urls && p.image_urls.length > 0 ? (
-                  <Image source={{ uri: p.image_urls[0] }} style={styles.postImage} resizeMode="cover" />
+                  <Image source={{ uri: p.image_urls[0] }} style={styles.postImage} contentFit="cover" cachePolicy="memory-disk" transition={150} />
                 ) : null}
                 <View style={styles.postMetaRow}>
                   <Text style={styles.postMeta}>💬 {p.commentCount}</Text>

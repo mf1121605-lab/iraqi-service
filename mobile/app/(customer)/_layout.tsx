@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Ionicons } from '@expo/vector-icons';
 import { useReserveFrameBottomInset } from '@/hooks/useFrameInset';
@@ -46,6 +47,14 @@ export default function CustomerLayout() {
   return (
     <View style={styles.root}>
     <Tabs
+      // A tiny haptic tick on every tab switch — the single most-tapped
+      // interaction in the app, so this alone covers a large share of all
+      // taps a session ever makes. tabPress fires regardless of which
+      // custom icon/label is rendered for the tab, so it doesn't need to
+      // touch tabBarIcon or wrap anything visual.
+      screenListeners={{
+        tabPress: () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); },
+      }}
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,

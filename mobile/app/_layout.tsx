@@ -31,6 +31,7 @@ import { AppThemeProvider } from '@/hooks/useAppTheme';
 import { DesignModeToggle } from '@/components/ui/DesignModeToggle';
 import { ElementEditorSheet } from '@/components/ui/ElementEditorSheet';
 import { CinematicIntro } from '@/components/ui/CinematicIntro';
+import { InAppNotificationBanner } from '@/components/ui/InAppNotificationBanner';
 
 // Required to dismiss the OAuth browser session when the app is foregrounded
 WebBrowser.maybeCompleteAuthSession();
@@ -164,6 +165,7 @@ function RootLayout() {
                   <CinematicFrame />
                   <AmbientMusicIcon />
                   <OfflineBanner />
+                  <InAppNotificationBanner />
                   <DesignModeToggle />
                   <ElementEditorSheet />
                   {/* Mounted inside AuthProvider so it can hold the intro until

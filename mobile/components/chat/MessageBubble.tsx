@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { memo, useState } from 'react';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ResizeMode, Video } from 'expo-av';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -45,7 +46,7 @@ function StatusTicks({ status }: { status: MessageStatus }) {
   return <Text style={styles.tick}>✔✔</Text>; // delivered
 }
 
-export function MessageBubble({
+function MessageBubbleImpl({
   body, isMine, senderName, senderAvatarKey, onSenderPress, timestamp, messageType,
   attachmentUrl, attachmentType, reactions = [], replyTo, status, onLongPress,
 }: Props) {
@@ -109,7 +110,7 @@ export function MessageBubble({
 
           {attachmentType === 'image' && attachmentUrl && (
             <Pressable onPress={() => setFullscreen(true)}>
-              <Image source={{ uri: attachmentUrl }} style={styles.attachmentImage} resizeMode="cover" />
+              <Image source={{ uri: attachmentUrl }} style={styles.attachmentImage} contentFit="cover" cachePolicy="memory-disk" transition={150} />
             </Pressable>
           )}
 
@@ -164,7 +165,7 @@ export function MessageBubble({
       {attachmentType === 'image' && attachmentUrl && (
         <Modal visible={fullscreen} transparent animationType="fade" onRequestClose={() => setFullscreen(false)}>
           <Pressable style={styles.fullscreenOverlay} onPress={() => setFullscreen(false)}>
-            <Image source={{ uri: attachmentUrl }} style={styles.fullscreenImage} resizeMode="contain" />
+            <Image source={{ uri: attachmentUrl }} style={styles.fullscreenImage} contentFit="contain" cachePolicy="memory-disk" />
           </Pressable>
         </Modal>
       )}
@@ -188,6 +189,46 @@ export function MessageBubble({
     </View>
   );
 }
+
+function reactionsEqual(a: ReactionSummary[] = [], b: ReactionSummary[] = []): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((r, i) => r.emoji === b[i].emoji && r.count === b[i].count && r.mine === b[i].mine);
+}
+
+function replyToEqual(a: Props['replyTo'], b: Props['replyTo']): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.body === b.body && a.senderName === b.senderName;
+}
+
+// Every call site rebuilds `renderItem` on each render of its screen (the
+// message list, reactions, and typing state all live there), which hands
+// this component fresh reactions/replyTo array-and-object literals and new
+// onSenderPress/onLongPress closures every time — a plain React.memo would
+// never bail out, since none of those pass a reference-equality check even
+// when nothing the user can see actually changed. Comparing the fields that
+// actually affect the render (and deliberately ignoring the two callback
+// props, which only ever close over this same message's stable id) makes
+// the memo real: an unrelated re-render of the screen (e.g. a keystroke in
+// the composer) no longer re-renders every currently-mounted bubble.
+function messageBubblePropsEqual(prev: Props, next: Props): boolean {
+  return (
+    prev.body === next.body &&
+    prev.isMine === next.isMine &&
+    prev.senderName === next.senderName &&
+    prev.senderAvatarKey === next.senderAvatarKey &&
+    prev.timestamp === next.timestamp &&
+    prev.messageType === next.messageType &&
+    prev.attachmentUrl === next.attachmentUrl &&
+    prev.attachmentType === next.attachmentType &&
+    prev.status === next.status &&
+    prev.bundled === next.bundled &&
+    reactionsEqual(prev.reactions, next.reactions) &&
+    replyToEqual(prev.replyTo, next.replyTo)
+  );
+}
+
+export const MessageBubble = memo(MessageBubbleImpl, messageBubblePropsEqual);
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', marginVertical: 3, paddingHorizontal: 12 },
