@@ -33,12 +33,11 @@ interface Person {
   family_name: string | null;
   avatar_key: string | null;
   bio: string | null;
-  specialization: string | null;
 }
 
 const PAGE = 40;
 
-const PROFILE_COLS = 'id, given_name, family_name, avatar_key, bio, specialization';
+const PROFILE_COLS = 'id, given_name, family_name, avatar_key, bio';
 
 export function FollowersModal({ visible, userId, initialTab = 'followers', onClose }: Props) {
   const { session } = useAuth();
@@ -68,20 +67,34 @@ export function FollowersModal({ visible, userId, initialTab = 'followers', onCl
   const personCol = tab === 'followers' ? 'follower_id' : 'following_id';
 
   const fetchPage = useCallback(async (offset: number) => {
-    // The FK hint is the column name rather than the constraint name: follows
-    // references profiles twice, so the embed must be disambiguated, and the
-    // column is stable whereas a generated constraint name is a guess.
+    // Deliberately not embedding profiles!${personCol}(...) here — that
+    // join only ever resolved for a person who happens to be yourself or
+    // staff (profiles RLS never granted a plain user visibility into an
+    // arbitrary other row), so a follower list would silently drop rows
+    // for everyone else. Fetch the id column plain, then batch-fetch
+    // public_profiles (safe columns only, any viewer) and merge — same
+    // fix as news.tsx's post/comment authors.
     const { data, error: err } = await supabase
       .from('follows')
-      .select(`created_at, person:profiles!${personCol}(${PROFILE_COLS})`)
+      .select(`created_at, ${personCol}`)
       .eq(matchCol, userId)
       .order('created_at', { ascending: false })
       .range(offset, offset + PAGE - 1);
 
     if (err) return { rows: [] as Person[], err: err.message };
-    const rows = (data ?? [])
-      .map((r) => (r as unknown as { person: Person | null }).person)
-      .filter((p): p is Person => !!p);
+    const ids = (data ?? []).map((r) => (r as unknown as Record<string, string>)[personCol]);
+    if (ids.length === 0) return { rows: [] as Person[], err: null as string | null };
+
+    const { data: people, error: pErr } = await supabase
+      .from('public_profiles')
+      .select(PROFILE_COLS)
+      .in('id', ids);
+    if (pErr) return { rows: [] as Person[], err: pErr.message };
+
+    // .in() doesn't preserve order — re-apply the follows table's own
+    // created_at-desc ordering from `ids`.
+    const byId = new Map((people ?? []).map((p) => [(p as Person).id, p as Person]));
+    const rows = ids.map((id) => byId.get(id)).filter((p): p is Person => !!p);
     return { rows, err: null as string | null };
   }, [matchCol, personCol, userId]);
 
@@ -216,7 +229,7 @@ export function FollowersModal({ visible, userId, initialTab = 'followers', onCl
 
   const renderPerson: ListRenderItem<Person> = useCallback(({ item }) => {
     const name = [item.given_name, item.family_name].filter(Boolean).join(' ') || 'عضو';
-    const sub = item.specialization || item.bio || '';
+    const sub = item.bio || '';
     return (
       <Animated.View entering={FadeIn.duration(160)}>
         <Pressable

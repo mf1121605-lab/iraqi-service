@@ -89,8 +89,14 @@ export function PublicProfileView({ userId }: { userId: string }) {
   const load = useCallback(async () => {
     if (!userId) return;
 
+    // public_profiles (not profiles directly) — profiles RLS only ever
+    // allowed self/staff/your-assigned-employee to see a row, so viewing
+    // anyone else's page got stuck spinning forever before this. The view
+    // exposes only safe columns regardless of viewer (see
+    // 20260903120000_public_profiles_view.sql) — phone/email etc. are
+    // never selected here and never reachable through it.
     const [{ data: prof }, { count: followers }, { count: following }] = await Promise.all([
-      supabase.from('profiles').select('id, given_name, family_name, avatar_key, bio, role').eq('id', userId).single(),
+      supabase.from('public_profiles').select('id, given_name, family_name, avatar_key, bio, role').eq('id', userId).single(),
       supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', userId),
       supabase.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', userId),
     ]);

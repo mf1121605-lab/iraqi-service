@@ -107,6 +107,38 @@ function sortFeed(list: Post[]): Post[] {
   });
 }
 
+type RawComment = Omit<Comment, 'author'> & { author_id: string };
+type RawPost = Omit<Post, 'author' | 'comments'> & { author_id: string; comments: RawComment[] };
+
+// Posts/comments are fetched WITHOUT an embedded `profiles!author_id(...)`
+// join on purpose — that join only ever resolves for a post authored by
+// yourself or by staff, since profiles RLS never granted a plain customer
+// visibility into another customer's row (the embed silently comes back
+// null otherwise, which is the literal "مجهول" bug). Author info is
+// fetched separately here, in one batched call to the public_profiles
+// view (see 20260903120000_public_profiles_view.sql), which exposes only
+// the safe, public columns — never phone/email/specialization — for any
+// row regardless of the viewer, and merged back in client-side.
+async function attachAuthors(rawPosts: RawPost[]): Promise<Post[]> {
+  const ids = new Set<string>();
+  rawPosts.forEach((p) => {
+    ids.add(p.author_id);
+    p.comments.forEach((c) => ids.add(c.author_id));
+  });
+  const { data: authors } = ids.size > 0
+    ? await supabase
+        .from('public_profiles')
+        .select('id, given_name, family_name, avatar_key, role, admin_level, is_verified')
+        .in('id', Array.from(ids))
+    : { data: [] as AuthorInfo[] };
+  const byId = new Map((authors ?? []).map((a) => [a.id, a as AuthorInfo]));
+  return rawPosts.map((p) => ({
+    ...p,
+    author: byId.get(p.author_id) ?? null,
+    comments: p.comments.map((c) => ({ ...c, author: byId.get(c.author_id) ?? null })),
+  }));
+}
+
 const REACTIONS: { type: string; emoji: string; label: string; colors: [string, string] }[] = [
   { type: 'like',  emoji: '👍', label: 'إعجاب', colors: ['#5b9dff', '#2f5fd0'] },
   { type: 'love',  emoji: '❤️', label: 'حب',    colors: ['#ff7a9a', '#d6294f'] },
@@ -332,15 +364,14 @@ export default function NewsScreen() {
     const { data } = await supabase
       .from('social_posts')
       .select(`
-        id, content, image_urls, video_url, created_at, pinned,
-        author:profiles!author_id(id, given_name, family_name, avatar_key, role, admin_level, is_verified),
+        id, content, image_urls, video_url, created_at, pinned, author_id,
         reactions:social_reactions(reaction_type, user_id),
-        comments:social_comments(id, content, image_url, parent_comment_id, created_at, author:profiles!author_id(id, given_name, family_name, avatar_key, role, admin_level, is_verified), reactions:social_comment_reactions(user_id, reaction_type))
+        comments:social_comments(id, content, image_url, parent_comment_id, created_at, author_id, reactions:social_comment_reactions(user_id, reaction_type))
       `)
       .eq('approved', true)
       .order('created_at', { ascending: false })
       .limit(30);
-    if (data) setPosts(sortFeed(data as unknown as Post[]));
+    if (data) setPosts(sortFeed(await attachAuthors(data as unknown as RawPost[])));
     setLoading(false);
     setRefreshing(false);
   }, []);
@@ -368,16 +399,17 @@ export default function NewsScreen() {
     supabase
       .from('social_posts')
       .select(`
-        id, content, image_urls, video_url, created_at, pinned,
-        author:profiles!author_id(id, given_name, family_name, avatar_key, role, admin_level, is_verified),
+        id, content, image_urls, video_url, created_at, pinned, author_id,
         reactions:social_reactions(reaction_type, user_id),
-        comments:social_comments(id, content, image_url, parent_comment_id, created_at, author:profiles!author_id(id, given_name, family_name, avatar_key, role, admin_level, is_verified), reactions:social_comment_reactions(user_id, reaction_type))
+        comments:social_comments(id, content, image_url, parent_comment_id, created_at, author_id, reactions:social_comment_reactions(user_id, reaction_type))
       `)
       .eq('id', deepLinkedPostId)
       .eq('approved', true)
       .maybeSingle()
-      .then(({ data }) => {
-        if (data) setPosts((prev) => [data as unknown as Post, ...prev]);
+      .then(async ({ data }) => {
+        if (!data) return;
+        const [withAuthor] = await attachAuthors([data as unknown as RawPost]);
+        setPosts((prev) => [withAuthor, ...prev]);
       });
   }, [deepLinkedPostId, loading, posts]);
 
