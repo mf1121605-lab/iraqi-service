@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,16 +12,28 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { uploadMediaSmart } from '@/lib/resumableUpload';
 import { GoldInput } from '@/components/ui/GoldInput';
 import { FireGlowWrap } from '@/components/ui/FireGlowWrap';
 import { AnimatedGoldBorder } from '@/components/ui/AnimatedGoldBorder';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
+
+// Same extension->MIME mapping approach used for post images in news.tsx —
+// the site-assets bucket rejects invalid types like "image/heic" mistakes.
+function imageMimeFor(ext: string): string {
+  if (ext === 'jpg') return 'image/jpeg';
+  if (ext === 'heic' || ext === 'heif') return `image/${ext}`;
+  if (ext === 'png' || ext === 'webp') return `image/${ext}`;
+  return 'image/jpeg';
+}
 
 const CAT_THEMES: Record<string, { emoji: string; accent: string; colors: [string, string] }> = {
   military:  { emoji: '🪖', accent: '#7da9cc', colors: ['#1c2a38', '#0f1c28'] },
@@ -33,7 +46,7 @@ const DEFAULT_THEME = { emoji: '🔹', accent: '#e6ab2c', colors: ['#1a1a2e', '#
 type Category = { key: string; label_ar: string };
 type Service  = { id: string; label_ar: string; description: string | null };
 
-type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'date';
+type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'date' | 'image';
 type DynamicField = {
   id: string;
   field_key: string;
@@ -64,6 +77,7 @@ export default function NewRequest() {
   // service is currently selected, and the customer's answers to them.
   const [dynamicFields, setDynamicFields] = useState<DynamicField[]>([]);
   const [answers, setAnswers] = useState<Record<string, DynamicAnswer>>({});
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
 
   const loadCategories = useCallback(async () => {
     const { data } = await supabase
@@ -108,6 +122,30 @@ export default function NewRequest() {
 
   function setAnswer(key: string, value: DynamicAnswer) {
     setAnswers((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function pickDynamicFieldImage(fieldKey: string) {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    const uri = result.assets[0].uri;
+    const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const path = `request-fields/${Date.now()}-${Math.round(Math.random() * 1e6)}.${ext}`;
+
+    setUploadingField(fieldKey);
+    let publicUrl: string | null = null;
+    await uploadMediaSmart(uri, 'site-assets', path, imageMimeFor(ext), {
+      onSuccess: (url) => { publicUrl = url; },
+    });
+    setUploadingField(null);
+
+    if (!publicUrl) { Alert.alert('خطأ', 'فشل رفع الصورة، حاول مرة أخرى'); return; }
+    setAnswer(fieldKey, publicUrl);
   }
 
   async function handleSubmit() {
@@ -317,6 +355,34 @@ export default function NewRequest() {
                         style={styles.textarea}
                         textAlign="right"
                       />
+                    ) : f.field_type === 'image' ? (
+                      answers[f.field_key] ? (
+                        <View style={styles.dynImagePreviewWrap}>
+                          <Image
+                            source={{ uri: answers[f.field_key] as string }}
+                            style={styles.dynImagePreview}
+                            contentFit="cover"
+                          />
+                          <Pressable style={styles.dynImageClearBtn} onPress={() => setAnswer(f.field_key, '')}>
+                            <Text style={styles.dynImageClearText}>✕</Text>
+                          </Pressable>
+                        </View>
+                      ) : (
+                        <Pressable
+                          style={styles.dynImagePickBtn}
+                          onPress={() => pickDynamicFieldImage(f.field_key)}
+                          disabled={uploadingField === f.field_key}
+                        >
+                          {uploadingField === f.field_key ? (
+                            <ActivityIndicator color={COLORS.gold} size="small" />
+                          ) : (
+                            <>
+                              <Text style={styles.dynImagePickIcon}>📷</Text>
+                              <Text style={styles.dynImagePickText}>اختر صورة</Text>
+                            </>
+                          )}
+                        </Pressable>
+                      )
                     ) : (
                       <TextInput
                         value={(answers[f.field_key] as string) ?? ''}
@@ -527,6 +593,42 @@ const styles = StyleSheet.create({
   selectChipActive: { backgroundColor: 'rgba(230,171,44,0.15)', borderColor: COLORS.gold },
   selectChipText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white70 },
   selectChipTextActive: { color: COLORS.gold, fontFamily: FONTS.bold },
+  dynImagePickBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(230,171,44,0.4)',
+    borderRadius: RADIUS.md,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(230,171,44,0.05)',
+  },
+  dynImagePickIcon: { fontSize: 18 },
+  dynImagePickText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.gold },
+  dynImagePreviewWrap: { alignSelf: 'flex-start' },
+  dynImagePreview: {
+    width: 110,
+    height: 90,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: 'rgba(230,171,44,0.3)',
+  },
+  dynImageClearBtn: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: COLORS.bg,
+    borderWidth: 1,
+    borderColor: COLORS.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dynImageClearText: { fontFamily: FONTS.bold, fontSize: 12, color: COLORS.gold },
   fieldLabel: {
     fontFamily: FONTS.regular,
     fontSize: 13,

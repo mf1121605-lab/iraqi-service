@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -297,6 +297,92 @@ function GlossyButton({
   );
 }
 
+// Owns its own text/image state locally instead of a shared per-post map on
+// the parent — a shared map meant every keystroke in ANY post's comment box
+// changed a value in renderPost's useCallback dependency array, invalidating
+// the FlashList renderItem identity (and re-rendering every visible post)
+// on every single character typed.
+const CommentComposer = memo(function CommentComposer({
+  replyTo,
+  onCancelReply,
+  sending,
+  onSend,
+}: {
+  replyTo: { id: string; name: string } | null;
+  onCancelReply: () => void;
+  sending: boolean;
+  onSend: (text: string, imageUri: string | null) => void;
+}) {
+  const [text, setText] = useState('');
+  const [image, setImage] = useState<string | null>(null);
+
+  async function pickImage() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الصور من إعدادات الجهاز لإرفاق صورة.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
+    if (!result.canceled && result.assets[0]) setImage(result.assets[0].uri);
+  }
+
+  function handleSend() {
+    if (!(text.trim() || image) || sending) return;
+    onSend(text.trim(), image);
+    setText('');
+    setImage(null);
+  }
+
+  return (
+    <>
+      {replyTo && (
+        <View style={styles.replyChip}>
+          <Pressable onPress={onCancelReply}>
+            <Text style={styles.replyChipClose}>✕</Text>
+          </Pressable>
+          <Text style={styles.replyChipText}>الرد على {replyTo.name}</Text>
+        </View>
+      )}
+
+      {image ? (
+        <View style={styles.commentImagePreviewWrap}>
+          <Image source={{ uri: image }} style={styles.commentImagePreview} contentFit="cover" />
+          <Pressable style={styles.removeImage} onPress={() => setImage(null)}>
+            <Text style={styles.removeImageText}>✕</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      <View style={styles.commentInputRow}>
+        <Pressable
+          style={[styles.commentSendBtn, !(text.trim() || image) && styles.commentSendBtnDisabled]}
+          onPress={handleSend}
+          disabled={!(text.trim() || image) || sending}
+        >
+          {sending ? (
+            <ActivityIndicator color="#000" size="small" />
+          ) : (
+            <Text style={styles.commentSendIcon}>↑</Text>
+          )}
+        </Pressable>
+        <TextInput
+          value={text}
+          onChangeText={setText}
+          placeholder={replyTo ? `الرد على ${replyTo.name}...` : 'أضف تعليقاً...'}
+          placeholderTextColor={COLORS.white40}
+          style={styles.commentInput}
+          textAlign="right"
+          multiline
+          maxLength={500}
+        />
+        <Pressable style={styles.commentImageBtn} onPress={pickImage}>
+          <Text style={styles.commentImageBtnIcon}>🖼️</Text>
+        </Pressable>
+      </View>
+    </>
+  );
+});
+
 export default function NewsScreen() {
   const { session, profile } = useAuth();
   const { postId: deepLinkedPostId } = useLocalSearchParams<{ postId?: string }>();
@@ -308,8 +394,6 @@ export default function NewsScreen() {
   const [pickedVideo, setPickedVideo] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
-  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
-  const [commentImages, setCommentImages] = useState<Record<string, string>>({});
   const [replyingTo, setReplyingTo] = useState<Record<string, { id: string; name: string } | null>>({});
   const [sendingComment, setSendingComment] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -530,21 +614,8 @@ export default function NewsScreen() {
     playSound('reaction');
   }
 
-  async function pickCommentImage(postId: string) {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الصور من إعدادات الجهاز لإرفاق صورة.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
-    if (!result.canceled && result.assets[0]) {
-      setCommentImages((prev) => ({ ...prev, [postId]: result.assets[0].uri }));
-    }
-  }
-
-  async function sendComment(postId: string) {
-    const body = commentInputs[postId]?.trim();
-    const localImage = commentImages[postId];
+  async function sendComment(postId: string, bodyText: string, localImage: string | null) {
+    const body = bodyText.trim();
     if ((!body && !localImage) || !session?.user.id) return;
     setSendingComment(postId);
     let imageUrl: string | null = null;
@@ -563,8 +634,6 @@ export default function NewsScreen() {
       image_url: imageUrl,
       parent_comment_id: replyingTo[postId]?.id ?? null,
     });
-    setCommentInputs((prev) => ({ ...prev, [postId]: '' }));
-    setCommentImages((prev) => ({ ...prev, [postId]: '' }));
     setReplyingTo((prev) => ({ ...prev, [postId]: null }));
     setSendingComment(null);
   }
@@ -768,8 +837,6 @@ export default function NewsScreen() {
       ? `${item.author.given_name} ${item.author.family_name}`
       : 'مجهول';
     const commentsExpanded = expandedComments.has(item.id);
-    const commentText = commentInputs[item.id] ?? '';
-    const commentImage = commentImages[item.id];
     const reply = replyingTo[item.id];
     const imageUrls: string[] = Array.isArray(item.image_urls) ? item.image_urls : [];
     const isPlaying = playingVideoId === item.id;
@@ -962,57 +1029,19 @@ export default function NewsScreen() {
               roots.map((c) => renderCommentNode(c, byParent, 0, item.id, item.author?.id ?? null))
             )}
 
-            {reply && (
-              <View style={styles.replyChip}>
-                <Pressable onPress={() => setReplyingTo((prev) => ({ ...prev, [item.id]: null }))}>
-                  <Text style={styles.replyChipClose}>✕</Text>
-                </Pressable>
-                <Text style={styles.replyChipText}>الرد على {reply.name}</Text>
-              </View>
-            )}
-
-            {commentImage ? (
-              <View style={styles.commentImagePreviewWrap}>
-                <Image source={{ uri: commentImage }} style={styles.commentImagePreview} contentFit="cover" />
-                <Pressable style={styles.removeImage} onPress={() => setCommentImages((prev) => ({ ...prev, [item.id]: '' }))}>
-                  <Text style={styles.removeImageText}>✕</Text>
-                </Pressable>
-              </View>
-            ) : null}
-
-            <View style={styles.commentInputRow}>
-              <Pressable
-                style={[styles.commentSendBtn, !(commentText.trim() || commentImage) && styles.commentSendBtnDisabled]}
-                onPress={() => sendComment(item.id)}
-                disabled={!(commentText.trim() || commentImage) || sendingComment === item.id}
-              >
-                {sendingComment === item.id ? (
-                  <ActivityIndicator color="#000" size="small" />
-                ) : (
-                  <Text style={styles.commentSendIcon}>↑</Text>
-                )}
-              </Pressable>
-              <TextInput
-                value={commentText}
-                onChangeText={(t) => setCommentInputs((prev) => ({ ...prev, [item.id]: t }))}
-                placeholder={reply ? `الرد على ${reply.name}...` : 'أضف تعليقاً...'}
-                placeholderTextColor={COLORS.white40}
-                style={styles.commentInput}
-                textAlign="right"
-                multiline
-                maxLength={500}
-              />
-              <Pressable style={styles.commentImageBtn} onPress={() => pickCommentImage(item.id)}>
-                <Text style={styles.commentImageBtnIcon}>🖼️</Text>
-              </Pressable>
-            </View>
+            <CommentComposer
+              replyTo={reply ?? null}
+              onCancelReply={() => setReplyingTo((prev) => ({ ...prev, [item.id]: null }))}
+              sending={sendingComment === item.id}
+              onSend={(text, imageUri) => sendComment(item.id, text, imageUri)}
+            />
           </Animated.View>
         )}
       </GlassCard>
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    session, profile, expandedComments, commentInputs, commentImages, replyingTo,
+    session, profile, expandedComments, replyingTo,
     playingVideoId, mutedVideoId, followingIds, followBusyId, sendingComment,
   ]);
 

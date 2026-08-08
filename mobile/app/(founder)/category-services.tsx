@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
@@ -15,6 +17,26 @@ interface CategoryService {
   label_ckb: string | null;
   sort_order: number;
   is_active: boolean;
+  image_url: string | null;
+}
+
+async function uploadServiceImage(uri: string): Promise<string | null> {
+  try {
+    const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const path = `category-services/${Date.now()}.${ext}`;
+    const response = await fetch(uri);
+    // React Native's Blob polyfill is unreliable for binary upload bodies —
+    // it can report the correct size while silently sending empty/corrupted
+    // data. arrayBuffer() is Supabase's own recommended path for RN.
+    const arrayBuffer = await response.arrayBuffer();
+    const contentType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    const { error } = await supabase.storage.from('site-assets').upload(path, arrayBuffer, { contentType, upsert: false });
+    if (error) { console.error('service image upload failed:', error.message); return null; }
+    const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
+    return data.publicUrl;
+  } catch {
+    return null;
+  }
 }
 
 interface Category {
@@ -31,12 +53,17 @@ export default function CategoryServicesScreen() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [labelAr, setLabelAr] = useState('');
   const [labelCkb, setLabelCkb] = useState('');
+  const [formImageUrl, setFormImageUrl] = useState('');
+  const [formImageUploading, setFormImageUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
   // Which service's staff assignment sheet is open, if any.
   const [assigning, setAssigning] = useState<{ id: string; label: string } | null>(null);
   // Which service's dynamic-sub-questions sheet is open, if any.
   const [editingFields, setEditingFields] = useState<{ id: string; label: string } | null>(null);
+  // Which service's image is currently being replaced, if any — immediate-
+  // write like everything else here, no separate save step.
+  const [uploadingRowId, setUploadingRowId] = useState<string | null>(null);
 
   async function loadAll() {
     const [catRes, svcRes] = await Promise.all([
@@ -58,6 +85,35 @@ export default function CategoryServicesScreen() {
     return () => { supabase.removeChannel(channel); };
   }, [profile]);
 
+  async function pickFormImage() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, allowsEditing: true, aspect: [1, 1],
+    });
+    if (result.canceled || !result.assets[0]) return;
+    setFormImageUploading(true);
+    const url = await uploadServiceImage(result.assets[0].uri);
+    setFormImageUploading(false);
+    if (!url) { Alert.alert('خطأ', 'فشل رفع الصورة، حاول مرة أخرى'); return; }
+    setFormImageUrl(url);
+  }
+
+  async function pickAndReplaceRowImage(svc: CategoryService) {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, allowsEditing: true, aspect: [1, 1],
+    });
+    if (result.canceled || !result.assets[0]) return;
+    setUploadingRowId(svc.id);
+    const url = await uploadServiceImage(result.assets[0].uri);
+    if (url) await supabase.from('category_services').update({ image_url: url }).eq('id', svc.id);
+    setUploadingRowId(null);
+    if (!url) { Alert.alert('خطأ', 'فشل رفع الصورة، حاول مرة أخرى'); return; }
+    await loadAll();
+  }
+
   async function handleAdd() {
     setFormError('');
     if (!selectedCategory) { setFormError('اختر تصنيفاً'); return; }
@@ -70,11 +126,12 @@ export default function CategoryServicesScreen() {
       label_ar: labelAr.trim(),
       label_ckb: labelCkb.trim(),
       sort_order: sortOrder,
+      image_url: formImageUrl || null,
       created_by: profile!.id,
     });
     setSaving(false);
     if (error) { setFormError(error.message); }
-    else { setLabelAr(''); setLabelCkb(''); }
+    else { setLabelAr(''); setLabelCkb(''); setFormImageUrl(''); }
   }
 
   async function toggleActive(svc: CategoryService) {
@@ -139,6 +196,25 @@ export default function CategoryServicesScreen() {
             style={s.input}
             textAlign="right"
           />
+
+          <Text style={s.fieldLabel}>صورة الخدمة (اختياري)</Text>
+          <View style={s.imgPickRow}>
+            {formImageUrl ? (
+              <>
+                <Image source={{ uri: formImageUrl }} style={s.imgPreview} contentFit="cover" />
+                <Pressable onPress={() => setFormImageUrl('')} style={s.imgClearBtn} hitSlop={6}>
+                  <Text style={s.imgClearText}>✕</Text>
+                </Pressable>
+              </>
+            ) : (
+              <Pressable onPress={pickFormImage} style={s.imgPickBtn} disabled={formImageUploading}>
+                {formImageUploading ? <ActivityIndicator color={COLORS.gold} size="small" /> : (
+                  <><Text style={s.imgPickIcon}>🖼️</Text><Text style={s.imgPickText}>إضافة صورة</Text></>
+                )}
+              </Pressable>
+            )}
+          </View>
+
           {formError ? <Text style={s.errorText}>{formError}</Text> : null}
           <Pressable onPress={handleAdd} disabled={saving} style={[s.goldBtn, saving && { opacity: 0.6 }]}>
             <Text style={s.goldBtnText}>{saving ? '...' : '+ إضافة خدمة'}</Text>
@@ -159,6 +235,20 @@ export default function CategoryServicesScreen() {
                   <View key={svc.id} style={s.svcRow}>
                     <Pressable onPress={() => confirmDelete(svc)} style={s.deleteBtn} hitSlop={8}>
                       <Text style={s.deleteBtnText}>✕</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => pickAndReplaceRowImage(svc)}
+                      style={s.svcThumbBtn}
+                      hitSlop={4}
+                      disabled={uploadingRowId === svc.id}
+                    >
+                      {uploadingRowId === svc.id ? (
+                        <ActivityIndicator color={COLORS.gold} size="small" />
+                      ) : svc.image_url ? (
+                        <Image source={{ uri: svc.image_url }} style={s.svcThumb} contentFit="cover" />
+                      ) : (
+                        <View style={[s.svcThumb, s.svcThumbEmpty]}><Text style={s.svcThumbEmoji}>🖼️</Text></View>
+                      )}
                     </Pressable>
                     <Pressable
                       onPress={() => setAssigning({ id: svc.id, label: svc.label_ar })}
@@ -244,4 +334,18 @@ const s = StyleSheet.create({
   activeBadgeText: { fontFamily: FONTS.bold, fontSize: 11 },
   deleteBtn: { backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 8, width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   deleteBtnText: { fontSize: 14, color: '#ef4444' },
+  imgPickRow: { flexDirection: 'row' },
+  imgPickBtn: {
+    width: 90, height: 70, borderRadius: RADIUS.md, borderWidth: 1, borderStyle: 'dashed',
+    borderColor: COLORS.white20, alignItems: 'center', justifyContent: 'center', gap: 4,
+  },
+  imgPickIcon: { fontSize: 16 },
+  imgPickText: { fontFamily: FONTS.regular, fontSize: 10, color: COLORS.muted },
+  imgPreview: { width: 90, height: 70, borderRadius: RADIUS.md, backgroundColor: '#0d1117' },
+  imgClearBtn: { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.65)', alignItems: 'center', justifyContent: 'center' },
+  imgClearText: { color: '#fff', fontSize: 11, lineHeight: 13 },
+  svcThumbBtn: { width: 30, height: 30 },
+  svcThumb: { width: 30, height: 30, borderRadius: 6, backgroundColor: '#0d1117' },
+  svcThumbEmpty: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.white20 },
+  svcThumbEmoji: { fontSize: 12 },
 });

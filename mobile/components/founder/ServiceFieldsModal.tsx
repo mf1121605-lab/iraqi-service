@@ -5,7 +5,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
-type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'date';
+type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'date' | 'image';
 
 const FIELD_TYPES: { key: FieldType; label: string }[] = [
   { key: 'text', label: 'نص قصير' },
@@ -14,6 +14,7 @@ const FIELD_TYPES: { key: FieldType; label: string }[] = [
   { key: 'select', label: 'اختيار من قائمة' },
   { key: 'checkbox', label: 'نعم/لا' },
   { key: 'date', label: 'تاريخ' },
+  { key: 'image', label: 'صورة' },
 ];
 
 interface DynamicFieldRow {

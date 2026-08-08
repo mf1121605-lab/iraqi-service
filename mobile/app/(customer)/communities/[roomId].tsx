@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
 
-  msgText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.white, lineHeight: 22 },
+  msgText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.white, lineHeight: 22, textAlign: 'right', writingDirection: 'rtl' },
   msgTime: { fontFamily: FONTS.regular, fontSize: 10, color: COLORS.muted, textAlign: 'right', marginTop: 3 },
 
   inputRow: {

@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   },
   bubbleMine:    { backgroundColor: 'rgba(230,171,44,0.25)', borderBottomRightRadius: 4 },
   bubbleTheirs:  { backgroundColor: COLORS.bgAlt, borderBottomLeftRadius: 4 },
-  bubbleText:    { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.white, lineHeight: 22 },
+  bubbleText:    { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.white, lineHeight: 22, textAlign: 'right', writingDirection: 'rtl' },
 
   thinkingBubble: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   thinkingText:   { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
