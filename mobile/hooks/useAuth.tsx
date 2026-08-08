@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -62,6 +62,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const profileRef = useRef<Profile | null>(null);
+  profileRef.current = profile;
 
   usePushToken(session?.user.id);
 
@@ -103,6 +105,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ping();
     const interval = setInterval(ping, HEARTBEAT_INTERVAL_MS);
     return () => clearInterval(interval);
+  }, [session?.user.id]);
+
+  // Session/permission hygiene: if the founder suspends this account or
+  // changes its role/admin_level from elsewhere (another device, the web
+  // panel) while this session is still open, that change must take effect
+  // immediately here too — not silently ride along until the next natural
+  // profile refresh. A suspended account gets signed out outright; a
+  // role/admin_level change forces a fresh sign-in so the client never
+  // keeps acting under permissions it was granted a moment ago but no
+  // longer holds.
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`auth-guard-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
+        (payload) => {
+          const next = payload.new as Profile;
+          const prev = profileRef.current;
+          if (next.account_status && next.account_status !== 'active') {
+            signOut();
+            return;
+          }
+          if (prev && (next.role !== prev.role || next.admin_level !== prev.admin_level)) {
+            signOut();
+            return;
+          }
+          setProfile(next);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user.id]);
 
   async function loadProfile(userId: string) {
