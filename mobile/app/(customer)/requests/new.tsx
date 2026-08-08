@@ -44,7 +44,7 @@ const CAT_THEMES: Record<string, { emoji: string; accent: string; colors: [strin
 const DEFAULT_THEME = { emoji: '🔹', accent: '#e6ab2c', colors: ['#1a1a2e', '#0f0f1a'] as [string, string] };
 
 type Category = { key: string; label_ar: string };
-type Service  = { id: string; label_ar: string; description: string | null };
+type Service  = { id: string; label_ar: string; description: string | null; image_url: string | null };
 
 type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'date' | 'image';
 type DynamicField = {
@@ -97,7 +97,7 @@ export default function NewRequest() {
     if (!category) { setServices([]); return; }
     supabase
       .from('category_services')
-      .select('id, label_ar, description')
+      .select('id, label_ar, description, image_url')
       .eq('category_key', category)
       .eq('is_active', true)
       .order('sort_order', { ascending: true })
@@ -281,6 +281,13 @@ export default function NewRequest() {
                         pressed && { opacity: 0.8 },
                       ]}
                     >
+                      {svc.image_url ? (
+                        <Image source={{ uri: svc.image_url }} style={[styles.svcThumb, selected && styles.svcThumbOn]} contentFit="cover" />
+                      ) : (
+                        <View style={[styles.svcThumb, styles.svcThumbEmpty, selected && styles.svcThumbOn]}>
+                          <Text style={styles.svcThumbEmoji}>🧾</Text>
+                        </View>
+                      )}
                       <View style={[styles.svcRadio, selected && styles.svcRadioOn]}>
                         {selected && <View style={styles.svcRadioDot} />}
                       </View>
@@ -501,6 +508,16 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md, paddingHorizontal: 12, paddingVertical: 12,
   },
   svcRowOn: { borderColor: COLORS.gold, backgroundColor: 'rgba(230,171,44,0.10)' },
+  svcThumb: {
+    width: 52, height: 52, borderRadius: RADIUS.md,
+    borderWidth: 1.5, borderColor: 'rgba(230,171,44,0.25)',
+  },
+  svcThumbOn: { borderColor: COLORS.gold },
+  svcThumbEmpty: {
+    backgroundColor: 'rgba(230,171,44,0.08)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  svcThumbEmoji: { fontSize: 22 },
   svcRadio: {
     width: 20, height: 20, borderRadius: 10, borderWidth: 1.5,
     borderColor: COLORS.white40, alignItems: 'center', justifyContent: 'center',
