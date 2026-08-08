@@ -16,6 +16,7 @@ import { ScreenBg } from '@/components/ui/ScreenBg';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { GoldInput } from '@/components/ui/GoldInput';
+import { openTelegramSupport } from '@/utils/telegram';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 const BIO_MAX = 150;
@@ -28,6 +29,18 @@ export default function AccountSettingsScreen() {
   const [signingOut, setSigningOut] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [telegramHandle, setTelegramHandle] = useState<string | null>(null);
+
+  // One-way support deep link only — see mobile/utils/telegram.ts. Fetched
+  // once; if the founder hasn't configured a handle, the button stays hidden.
+  useEffect(() => {
+    supabase
+      .from('founder_settings')
+      .select('support_telegram_username')
+      .eq('id', 1)
+      .single()
+      .then(({ data }) => setTelegramHandle((data as { support_telegram_username: string | null } | null)?.support_telegram_username ?? null));
+  }, []);
 
   // ── Info tab state ──
   const [givenName, setGivenName]   = useState(profile?.given_name  ?? '');
@@ -395,6 +408,24 @@ export default function AccountSettingsScreen() {
             </View>
           )}
 
+          {/* ── Support ── */}
+          {telegramHandle ? (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>الدعم والمساعدة</Text>
+              </View>
+              <View style={{ padding: 14 }}>
+                <Pressable
+                  style={({ pressed }) => [styles.telegramBtn, pressed && { opacity: 0.85 }]}
+                  onPress={() => openTelegramSupport(telegramHandle)}
+                >
+                  <Text style={styles.telegramBtnIcon}>✈️</Text>
+                  <Text style={styles.telegramBtnText}>الدعم عبر تلغرام</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+
           {/* ── App Info Card ── */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -608,6 +639,18 @@ const styles = StyleSheet.create({
   logoutPressed: { opacity: 0.7 },
   logoutIcon:    { fontSize: 18 },
   logoutText:    { fontFamily: FONTS.bold, fontSize: 15, color: COLORS.red },
+
+  // Telegram support
+  telegramBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 10, paddingVertical: 14,
+    borderRadius: RADIUS.md,
+    backgroundColor: 'rgba(41,171,226,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(41,171,226,0.35)',
+  },
+  telegramBtnIcon: { fontSize: 18 },
+  telegramBtnText: { fontFamily: FONTS.bold, fontSize: 15, color: '#29abe2' },
 
   dangerCard: {
     marginTop: 20,

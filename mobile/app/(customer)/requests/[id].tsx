@@ -34,6 +34,7 @@ import { ChatBgTheme, getChatBgTheme, setChatBgTheme } from '@/utils/chatBackgro
 import { StarRating } from '@/components/ui/StarRating';
 import { enqueueOutbox, getOutbox, onReconnect, removeFromOutbox } from '@/utils/offlineOutbox';
 import { CHAT_DOCUMENT_MIME_TYPES } from '@/constants/documentMimeTypes';
+import { openTelegramSupport } from '@/utils/telegram';
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
   submitted:     { label: 'قيد الانتظار',   color: '#f59e0b' },
@@ -141,8 +142,20 @@ export default function RequestDetail() {
   const [ratingComment, setRatingComment] = useState('');
   const [ratingSaving, setRatingSaving] = useState(false);
   const [showBgPicker, setShowBgPicker] = useState(false);
+  const [telegramHandle, setTelegramHandle] = useState<string | null>(null);
 
   useEffect(() => { getChatBgTheme().then(setBgTheme); }, []);
+
+  // One-way Telegram support deep link (see mobile/utils/telegram.ts) — this
+  // never writes anything back to Supabase, purely a client-side link.
+  useEffect(() => {
+    supabase
+      .from('founder_settings')
+      .select('support_telegram_username')
+      .eq('id', 1)
+      .single()
+      .then(({ data }) => setTelegramHandle((data as { support_telegram_username: string | null } | null)?.support_telegram_username ?? null));
+  }, []);
 
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingBroadcast = useRef(0);
@@ -507,6 +520,18 @@ export default function RequestDetail() {
           <Pressable onPress={() => setShowBgPicker(true)} style={styles.infoBtn} hitSlop={12}>
             <Text style={styles.infoBtnText}>🎨</Text>
           </Pressable>
+          {/* Telegram support — one-way deep link, prefilled with a short
+              reference to this request. Hidden entirely if the founder
+              hasn't configured a handle. */}
+          {telegramHandle && (
+            <Pressable
+              onPress={() => openTelegramSupport(telegramHandle, `مرحباً، أستفسر عن الطلب #${req.id.slice(0, 8)}`)}
+              style={styles.infoBtn}
+              hitSlop={12}
+            >
+              <Text style={styles.infoBtnText}>✈️</Text>
+            </Pressable>
+          )}
           {/* Description toggle */}
           <Pressable onPress={() => setShowDesc((v) => !v)} style={styles.infoBtn} hitSlop={12}>
             <Text style={styles.infoBtnText}>ℹ</Text>

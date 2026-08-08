@@ -45,6 +45,9 @@ interface FounderSettings {
   app_font_family: string | null;
   app_text_color: string | null;
   app_font_scale: number | null;
+  // Telegram support deep-link handle — read by account-settings.tsx and
+  // requests/[id].tsx via utils/telegram.ts. No bot/webhook involved.
+  support_telegram_username: string | null;
 }
 
 const TEXT_COLOR_PRESETS = [
@@ -140,6 +143,7 @@ function emptyForm(): Omit<FounderSettings, 'id'> {
     app_font_family: 'Cairo',
     app_text_color: '',
     app_font_scale: 1,
+    support_telegram_username: '',
   };
 }
 
@@ -200,6 +204,7 @@ export default function SettingsScreen() {
           app_font_family: s.app_font_family ?? 'Cairo',
           app_text_color: s.app_text_color ?? '',
           app_font_scale: s.app_font_scale ?? 1,
+          support_telegram_username: s.support_telegram_username ?? '',
         });
       }
       // Load lockdown state
@@ -658,6 +663,27 @@ export default function SettingsScreen() {
                   autoCapitalize="none"
                 />
               </View>
+            </View>
+
+            {/* ── Telegram support link ── */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>📨 الدعم عبر تلغرام</Text>
+              <Text style={s.hint}>
+                رابط أحادي الاتجاه فقط — لا يمر عبر قاعدة بياناتنا ولا يؤثر على الدردشة الداخلية. أدخل اسم المستخدم أو البوت بدون علامة @.
+              </Text>
+              <TextInput
+                value={form.support_telegram_username ?? ''}
+                onChangeText={(v) => setForm((f) => ({ ...f, support_telegram_username: v }))}
+                placeholder="مثال: IraqiServiceSupport"
+                placeholderTextColor={COLORS.white40}
+                style={[s.input, { direction: 'ltr' as never }]}
+                autoCapitalize="none"
+              />
+              <Text style={s.hint}>
+                {form.support_telegram_username
+                  ? `الرابط الحالي: https://t.me/${form.support_telegram_username.trim().replace(/^@/, '')}`
+                  : 'غير مفعّل — أزرار الدعم عبر تلغرام ستكون مخفية عن المستخدمين.'}
+              </Text>
             </View>
 
             {/* ── Announcement toggle ── */}
