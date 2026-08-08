@@ -28,6 +28,7 @@ import { confirmDelete } from '@/lib/confirmDelete';
 import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { uploadMediaSmart } from '@/lib/resumableUpload';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
 import {
@@ -40,27 +41,37 @@ import {
 
 const PAYMENT_METHOD_OPTIONS: PaymentMethod[] = ['mastercard', 'zaincash', 'credit'];
 
-async function uploadAttachment(uri: string, userId: string, kind: 'image' | 'voice' | 'video'): Promise<string | null> {
+async function uploadAttachment(
+  uri: string,
+  userId: string,
+  kind: 'image' | 'voice' | 'video',
+  onProgress?: (pct: number) => void,
+): Promise<string | null> {
   try {
     const ext = kind === 'voice'
       ? 'm4a'
       : (uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg'));
     const path = `chat/${userId}/${Date.now()}.${ext}`;
-    const response = await fetch(uri);
-    // React Native's Blob polyfill is unreliable for binary upload bodies —
-    // it can report the correct size while silently sending empty/corrupted
-    // data. arrayBuffer() is Supabase's own recommended path for RN.
-    const arrayBuffer = await response.arrayBuffer();
     const contentType = kind === 'voice'
       ? 'audio/m4a'
       : kind === 'video'
         ? `video/${ext === 'mov' ? 'quicktime' : ext}`
         : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-    const { error } = await supabase.storage.from('site-assets').upload(path, arrayBuffer, { contentType, upsert: false });
-    if (error) { console.error('upload failed:', error.message); return null; }
-    const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
-    return data.publicUrl;
-  } catch {
+
+    // Dispatches by file size: small images go through a plain single-
+    // request upload; long voice notes and videos go through the chunked,
+    // resumable TUS path — see lib/resumableUpload.ts.
+    let publicUrl: string | null = null;
+    let uploadErr: Error | null = null;
+    await uploadMediaSmart(uri, 'site-assets', path, contentType, {
+      onProgress,
+      onSuccess: (url) => { publicUrl = url; },
+      onError: (err) => { uploadErr = err; },
+    });
+    if (uploadErr) { console.error('upload failed:', uploadErr); return null; }
+    return publicUrl;
+  } catch (err) {
+    console.error('upload failed:', err);
     return null;
   }
 }
@@ -188,6 +199,7 @@ export default function EmployeeDashboard() {
   // Chat input
   const [messageBody, setMessageBody] = useState('');
   const [sending, setSending] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [recording, setRecording] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [loadingChat, setLoadingChat] = useState(false);
@@ -450,7 +462,9 @@ export default function EmployeeDashboard() {
     const asset = result.assets[0];
     const isVideo = asset.type === 'video';
     setSending(true);
-    const url = await uploadAttachment(asset.uri, profile.id, isVideo ? 'video' : 'image');
+    setUploadProgress(0);
+    const url = await uploadAttachment(asset.uri, profile.id, isVideo ? 'video' : 'image', setUploadProgress);
+    setUploadProgress(null);
     if (url) {
       await supabase.from('request_messages').insert({
         request_id: selectedId, sender_id: profile.id, body: isVideo ? '🎬 فيديو' : '📷 صورة',
@@ -468,7 +482,9 @@ export default function EmployeeDashboard() {
     setRecording(false);
     if (durationMs < 800) return;
     setSending(true);
-    const url = await uploadAttachment(uri, profile.id, 'voice');
+    setUploadProgress(0);
+    const url = await uploadAttachment(uri, profile.id, 'voice', setUploadProgress);
+    setUploadProgress(null);
     if (url) {
       await supabase.from('request_messages').insert({
         request_id: selectedId, sender_id: profile.id, body: '🎤 رسالة صوتية',
@@ -910,6 +926,15 @@ export default function EmployeeDashboard() {
             recording ? (
               <VoiceRecorderBar onSend={sendVoice} onCancel={() => setRecording(false)} />
             ) : (
+              <>
+              {uploadProgress !== null && (
+                <View style={uploadBarStyles.row}>
+                  <View style={uploadBarStyles.track}>
+                    <View style={[uploadBarStyles.fill, { width: `${uploadProgress}%` }]} />
+                  </View>
+                  <Text style={uploadBarStyles.text}>{uploadProgress}%</Text>
+                </View>
+              )}
               <View style={styles.inputBar}>
                 <Pressable
                   onPress={() => setShowPaymentForm((v) => !v)}
@@ -953,6 +978,7 @@ export default function EmployeeDashboard() {
                   </Pressable>
                 )}
               </View>
+              </>
             )
           ) : (
             <View style={styles.closedBar}>
@@ -1159,6 +1185,13 @@ export default function EmployeeDashboard() {
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
+
+const uploadBarStyles = StyleSheet.create({
+  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingBottom: 6 },
+  track: { flex: 1, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 3, backgroundColor: COLORS.gold },
+  text: { fontFamily: FONTS.bold, fontSize: 10, color: COLORS.gold, minWidth: 28, textAlign: 'left' },
+});
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },

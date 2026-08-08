@@ -37,6 +37,7 @@ import { SkeletonCard } from '@/components/ui/Skeleton';
 import { Avatar } from '@/components/chat/Avatar';
 import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { uploadMediaSmart } from '@/lib/resumableUpload';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
 
@@ -137,55 +138,24 @@ async function uploadMedia(
   try {
     const ext = uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg');
     const path = `${folder}/${Date.now()}-${Math.round(Math.random() * 1e6)}.${ext}`;
-    const response = await fetch(uri);
-    // React Native's Blob polyfill is unreliable for binary upload bodies —
-    // it can report the correct size while silently sending empty/corrupted
-    // data. arrayBuffer() is Supabase's own recommended path for RN.
-    const arrayBuffer = await response.arrayBuffer();
     const contentType = mimeFor(kind, ext);
 
-    // supabase-js's own .upload() wraps fetch(), which exposes no upload
-    // progress events in React Native — there is no way to report percentage
-    // through it. A raw XMLHttpRequest against the same Storage REST endpoint
-    // (same auth headers the SDK would send) gives real onprogress ticks,
-    // which matters here since video files can take a while on a weak
-    // connection and the composer needs to show real feedback, not a spinner.
-    if (onProgress) {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      if (token && supabaseUrl && anonKey) {
-        const uploadUrl = `${supabaseUrl}/storage/v1/object/site-assets/${path}`;
-        const ok = await new Promise<boolean>((resolve) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open('POST', uploadUrl, true);
-          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-          xhr.setRequestHeader('apikey', anonKey);
-          xhr.setRequestHeader('Content-Type', contentType);
-          xhr.setRequestHeader('x-upsert', 'false');
-          xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
-          };
-          xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
-          xhr.onerror = () => resolve(false);
-          xhr.send(arrayBuffer);
-        });
-        if (!ok) { console.error('upload failed via xhr'); return null; }
-        onProgress(100);
-        const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
-        return data.publicUrl;
-      }
-      // Fall through to the plain SDK path below if session/env lookup failed.
-    }
-
-    const { error } = await supabase.storage.from('site-assets').upload(path, arrayBuffer, { contentType, upsert: false });
-    if (error) { console.error('upload failed:', error.message); return null; }
-    const { data } = supabase.storage.from('site-assets').getPublicUrl(path);
-    return data.publicUrl;
-  } catch {
+    // Dispatches by file size: images and short clips go through a plain
+    // single-request upload; anything at/above 5MB (long videos, voice
+    // recordings) goes through the chunked, resumable TUS path instead —
+    // see lib/resumableUpload.ts for why a plain fetch()/XHR upload alone
+    // isn't enough on a weak connection.
+    let publicUrl: string | null = null;
+    let uploadErr: Error | null = null;
+    await uploadMediaSmart(uri, 'site-assets', path, contentType, {
+      onProgress,
+      onSuccess: (url) => { publicUrl = url; },
+      onError: (err) => { uploadErr = err; },
+    });
+    if (uploadErr) { console.error('upload failed:', uploadErr); return null; }
+    return publicUrl;
+  } catch (err) {
+    console.error('upload failed:', err);
     return null;
   }
 }
