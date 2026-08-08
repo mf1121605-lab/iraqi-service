@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, View,
+  ActivityIndicator, Modal, Pressable, StyleSheet, Text, View,
 } from 'react-native';
+import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 import { Avatar } from '@/components/chat/Avatar';
 import { supabase } from '@/lib/supabase';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
@@ -74,6 +75,22 @@ export function ServiceEmployeesModal({ visible, serviceId, serviceLabel, onClos
     });
   }
 
+  const renderEmployee: ListRenderItem<Employee> = useCallback(({ item }) => {
+    const name = [item.given_name, item.family_name].filter(Boolean).join(' ') || 'موظف';
+    const on = selected.has(item.id);
+    return (
+      <Pressable onPress={() => toggle(item.id)} style={({ pressed }) => [s.row, pressed && { opacity: 0.75 }]}>
+        <View style={[s.box, on && s.boxOn]}>{on && <Text style={s.tick}>✓</Text>}</View>
+        <View style={{ flex: 1 }}>
+          <Text style={s.name} numberOfLines={1}>{name}</Text>
+          {item.specialization ? <Text style={s.spec} numberOfLines={1}>{item.specialization}</Text> : null}
+        </View>
+        <Avatar avatarKey={item.avatar_key} name={name} seed={item.id} size={38} />
+      </Pressable>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
+
   const allSelected = employees.length > 0 && employees.every((e) => selected.has(e.id));
 
   function toggleAll() {
@@ -128,24 +145,12 @@ export function ServiceEmployeesModal({ visible, serviceId, serviceLabel, onClos
           {loading ? (
             <View style={s.center}><ActivityIndicator color={COLORS.gold} size="large" /></View>
           ) : (
-            <FlatList
+            <FlashList
               data={employees}
               keyExtractor={(e) => e.id}
+              estimatedItemSize={60}
               ListEmptyComponent={<Text style={s.empty}>لا يوجد موظفون نشطون</Text>}
-              renderItem={({ item }) => {
-                const name = [item.given_name, item.family_name].filter(Boolean).join(' ') || 'موظف';
-                const on = selected.has(item.id);
-                return (
-                  <Pressable onPress={() => toggle(item.id)} style={({ pressed }) => [s.row, pressed && { opacity: 0.75 }]}>
-                    <View style={[s.box, on && s.boxOn]}>{on && <Text style={s.tick}>✓</Text>}</View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.name} numberOfLines={1}>{name}</Text>
-                      {item.specialization ? <Text style={s.spec} numberOfLines={1}>{item.specialization}</Text> : null}
-                    </View>
-                    <Avatar avatarKey={item.avatar_key} name={name} seed={item.id} size={38} />
-                  </Pressable>
-                );
-              }}
+              renderItem={renderEmployee}
             />
           )}
 

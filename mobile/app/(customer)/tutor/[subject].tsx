@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { GoldButton } from '@/components/ui/GoldButton';
@@ -56,6 +57,20 @@ export default function TutorSubjectSessionsScreen() {
     router.push(`/(customer)/tutor/session/${data.id}`);
   }
 
+  const renderSession: ListRenderItem<Session> = useCallback(({ item }) => (
+    <Pressable
+      style={({ pressed }) => [styles.sessionCard, { marginBottom: 10 }, pressed && { opacity: 0.75 }]}
+      onPress={() => router.push(`/(customer)/tutor/session/${item.id}`)}
+    >
+      <Text style={styles.sessionTitle} numberOfLines={1}>
+        {item.title || 'جلسة بدون عنوان'}
+      </Text>
+      <Text style={styles.sessionDate}>
+        {new Date(item.updated_at).toLocaleString('ar-IQ')}
+      </Text>
+    </Pressable>
+  ), []);
+
   if (!profile || !isValid) return null;
 
   return (
@@ -81,23 +96,12 @@ export default function TutorSubjectSessionsScreen() {
         ) : sessions.length === 0 ? (
           <Text style={styles.empty}>لا توجد جلسات سابقة. ابدأ جلسة جديدة!</Text>
         ) : (
-          <FlatList
+          <FlashList
             data={sessions}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={{ gap: 10, paddingBottom: 32 }}
-            renderItem={({ item }) => (
-              <Pressable
-                style={({ pressed }) => [styles.sessionCard, pressed && { opacity: 0.75 }]}
-                onPress={() => router.push(`/(customer)/tutor/session/${item.id}`)}
-              >
-                <Text style={styles.sessionTitle} numberOfLines={1}>
-                  {item.title || 'جلسة بدون عنوان'}
-                </Text>
-                <Text style={styles.sessionDate}>
-                  {new Date(item.updated_at).toLocaleString('ar-IQ')}
-                </Text>
-              </Pressable>
-            )}
+            contentContainerStyle={{ paddingBottom: 32 }}
+            estimatedItemSize={64}
+            renderItem={renderSession}
           />
         )}
       </View>

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
@@ -132,7 +132,7 @@ export default function DmThread() {
 
   useEffect(() => { getChatBgTheme().then(setBgTheme); }, []);
 
-  const listRef = useRef<FlatList>(null);
+  const listRef = useRef<FlashList<DmMessage>>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingBroadcast = useRef(0);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -314,6 +314,55 @@ export default function DmThread() {
     return Object.entries(counts).map(([emoji, count]) => ({ emoji, count, mine: false }));
   }
 
+  // Stable across renders driven by anything other than messages/profile/
+  // otherUser/replyTo changing.
+  const renderMessage = useCallback(({ item }: { item: DmMessage }) => {
+    const isMine = item.sender_id === profile!.id;
+    const replySource = item.reply_to_id ? messages.find((m) => m.id === item.reply_to_id) : null;
+    const status: MessageStatus = item.read_at ? 'read' : 'sent';
+    return (
+      <ReactionPickerOverlay
+        reactions={buildChatReactions(isMine)}
+        align={isMine ? 'end' : 'start'}
+        onSelectReaction={(key) => {
+          // Reply rides in the bar as a seventh slot so long-press
+          // still offers it, exactly as the old popover did.
+          if (key === REPLY_KEY) setReplyTo(item);
+          else if (key === DELETE_KEY) {
+            confirmDelete({
+              kind: 'message',
+              table: 'direct_messages',
+              id: item.id,
+              // Drop it locally too: the realtime DELETE event is the usual
+              // path, but this keeps the list right if that socket is down.
+              onDeleted: () => setMessages((cur) => cur.filter((m) => m.id !== item.id)),
+            });
+          }
+          else pickReaction(item.id, key);
+        }}
+      >
+        <MessageBubble
+          body={item.body ?? ''}
+          isMine={isMine}
+          senderAvatarKey={!isMine ? otherUser?.avatar_key : undefined}
+          onSenderPress={!isMine && otherUser ? () => router.push({ pathname: '/user/[userId]', params: { userId: otherUser.id } }) : undefined}
+          timestamp={item.created_at}
+          messageType={item.message_type ?? undefined}
+          attachmentUrl={item.attachment_url}
+          attachmentType={
+            item.message_type === 'image' ? 'image' :
+            item.message_type === 'voice' ? 'voice' :
+            item.message_type === 'video' ? 'video' : null
+          }
+          status={isMine ? status : undefined}
+          reactions={summarizeReactions(item.reactions)}
+          replyTo={replySource ? { body: replySource.body ?? '' } : null}
+        />
+      </ReactionPickerOverlay>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, profile, otherUser]);
+
   async function applyTemplate(key: keyof typeof TEMPLATES) {
     setBody(TEMPLATES[key]);
   }
@@ -377,59 +426,13 @@ export default function DmThread() {
         keyboardVerticalOffset={0}
       >
         {/* Messages */}
-        <FlatList
+        <FlashList
           ref={listRef}
           data={messages}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.msgList}
-          removeClippedSubviews
-          maxToRenderPerBatch={8}
-          windowSize={8}
-          renderItem={({ item }) => {
-            const isMine = item.sender_id === profile!.id;
-            const replySource = item.reply_to_id ? messages.find((m) => m.id === item.reply_to_id) : null;
-            const status: MessageStatus = item.read_at ? 'read' : 'sent';
-            return (
-              <ReactionPickerOverlay
-                reactions={buildChatReactions(isMine)}
-                align={isMine ? 'end' : 'start'}
-                onSelectReaction={(key) => {
-                  // Reply rides in the bar as a seventh slot so long-press
-                  // still offers it, exactly as the old popover did.
-                  if (key === REPLY_KEY) setReplyTo(item);
-                  else if (key === DELETE_KEY) {
-                    confirmDelete({
-                      kind: 'message',
-                      table: 'direct_messages',
-                      id: item.id,
-                      // Drop it locally too: the realtime DELETE event is the usual
-                      // path, but this keeps the list right if that socket is down.
-                      onDeleted: () => setMessages((cur) => cur.filter((m) => m.id !== item.id)),
-                    });
-                  }
-                  else pickReaction(item.id, key);
-                }}
-              >
-                <MessageBubble
-                  body={item.body ?? ''}
-                  isMine={isMine}
-                  senderAvatarKey={!isMine ? otherUser?.avatar_key : undefined}
-                  onSenderPress={!isMine && otherUser ? () => router.push({ pathname: '/user/[userId]', params: { userId: otherUser.id } }) : undefined}
-                  timestamp={item.created_at}
-                  messageType={item.message_type ?? undefined}
-                  attachmentUrl={item.attachment_url}
-                  attachmentType={
-                    item.message_type === 'image' ? 'image' :
-                    item.message_type === 'voice' ? 'voice' :
-                    item.message_type === 'video' ? 'video' : null
-                  }
-                  status={isMine ? status : undefined}
-                  reactions={summarizeReactions(item.reactions)}
-                  replyTo={replySource ? { body: replySource.body ?? '' } : null}
-                />
-              </ReactionPickerOverlay>
-            );
-          }}
+          estimatedItemSize={80}
+          renderItem={renderMessage}
           ListEmptyComponent={
             <View style={styles.center}>
               <Text style={styles.emptyText}>لا توجد رسائل بعد</Text>

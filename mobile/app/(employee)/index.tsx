@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -17,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { FlashList } from '@shopify/flash-list';
 import * as ImagePicker from 'expo-image-picker';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { HapticPressable } from '@/components/ui/HapticPressable';
@@ -217,7 +217,7 @@ export default function EmployeeDashboard() {
   const [showBgPicker, setShowBgPicker] = useState(false);
 
   useEffect(() => { getChatBgTheme().then(setBgTheme); }, []);
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlashList<Message>>(null);
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingBroadcast = useRef(0);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -603,6 +603,59 @@ export default function EmployeeDashboard() {
     return Object.entries(counts).map(([emoji, count]) => ({ emoji, count, mine: false }));
   }
 
+  // Stable across renders driven by anything other than messages/profile/
+  // customer changing (payment form toggling, upload progress ticking).
+  const renderMessage = useCallback(({ item, index }: { item: Message; index: number }) => {
+    const isMine = item.sender_id === profile?.id;
+    const prev = messages[index - 1];
+    const bundled = !!(prev && prev.sender_id === item.sender_id &&
+      new Date(item.created_at).getTime() - new Date(prev.created_at).getTime() < 120_000);
+    const replySource = item.reply_to_id ? messages.find((m) => m.id === item.reply_to_id) : null;
+    const status: MessageStatus = item.read_at ? 'read' : 'sent';
+    return (
+      <ReactionPickerOverlay
+        reactions={buildChatReactions(isMine)}
+        align={isMine ? 'end' : 'start'}
+        onSelectReaction={(key) => {
+          // Reply rides in the bar as a seventh slot so long-press
+          // still offers it, exactly as the old popover did.
+          if (key === REPLY_KEY) setReplyTo(item);
+          else if (key === DELETE_KEY) {
+            confirmDelete({
+              kind: 'message',
+              table: 'request_messages',
+              id: item.id,
+              // Drop it locally too: the realtime DELETE event is the usual
+              // path, but this keeps the list right if that socket is down.
+              onDeleted: () => setMessages((cur) => cur.filter((m) => m.id !== item.id)),
+            });
+          }
+          else pickReaction(item.id, key);
+        }}
+      >
+        <MessageBubble
+          body={item.body ?? ''}
+          isMine={isMine}
+          timestamp={item.created_at}
+          messageType={item.message_type ?? undefined}
+          attachmentUrl={item.attachment_url}
+          attachmentType={
+            item.message_type === 'image' ? 'image' :
+            item.message_type === 'voice' ? 'voice' :
+            item.message_type === 'video' ? 'video' : null
+          }
+          senderAvatarKey={!isMine ? customer?.avatar_key : undefined}
+          onSenderPress={!isMine && customer?.id ? () => router.push({ pathname: '/user/[userId]', params: { userId: customer.id } }) : undefined}
+          status={isMine ? status : undefined}
+          reactions={summarizeReactions(item.reactions)}
+          replyTo={replySource ? { body: replySource.body ?? '' } : null}
+          bundled={bundled}
+        />
+      </ReactionPickerOverlay>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, profile, customer]);
+
   async function handleLogPayment() {
     if (!paymentAmount || !selectedId || !profile || !selectedRequest) return;
     setPaymentSaving(true);
@@ -920,12 +973,13 @@ export default function EmployeeDashboard() {
               <ActivityIndicator color={COLORS.gold} />
             </View>
           ) : (
-            <FlatList
+            <FlashList
               ref={flatListRef}
               data={messages}
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.msgList}
               showsVerticalScrollIndicator={false}
+              estimatedItemSize={80}
               onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
               ListEmptyComponent={
                 <View style={styles.emptyChat}>
@@ -933,55 +987,7 @@ export default function EmployeeDashboard() {
                   <Text style={styles.emptyChatText}>لا توجد رسائل بعد — ابدأ المحادثة</Text>
                 </View>
               }
-              renderItem={({ item, index }) => {
-                const isMine = item.sender_id === profile?.id;
-                const prev = messages[index - 1];
-                const bundled = !!(prev && prev.sender_id === item.sender_id &&
-                  new Date(item.created_at).getTime() - new Date(prev.created_at).getTime() < 120_000);
-                const replySource = item.reply_to_id ? messages.find((m) => m.id === item.reply_to_id) : null;
-                const status: MessageStatus = item.read_at ? 'read' : 'sent';
-                return (
-                  <ReactionPickerOverlay
-                    reactions={buildChatReactions(isMine)}
-                    align={isMine ? 'end' : 'start'}
-                    onSelectReaction={(key) => {
-                      // Reply rides in the bar as a seventh slot so long-press
-                      // still offers it, exactly as the old popover did.
-                      if (key === REPLY_KEY) setReplyTo(item);
-                      else if (key === DELETE_KEY) {
-                        confirmDelete({
-                          kind: 'message',
-                          table: 'request_messages',
-                          id: item.id,
-                          // Drop it locally too: the realtime DELETE event is the usual
-                          // path, but this keeps the list right if that socket is down.
-                          onDeleted: () => setMessages((cur) => cur.filter((m) => m.id !== item.id)),
-                        });
-                      }
-                      else pickReaction(item.id, key);
-                    }}
-                  >
-                    <MessageBubble
-                      body={item.body ?? ''}
-                      isMine={isMine}
-                      timestamp={item.created_at}
-                      messageType={item.message_type ?? undefined}
-                      attachmentUrl={item.attachment_url}
-                      attachmentType={
-                        item.message_type === 'image' ? 'image' :
-                        item.message_type === 'voice' ? 'voice' :
-                        item.message_type === 'video' ? 'video' : null
-                      }
-                      senderAvatarKey={!isMine ? customer?.avatar_key : undefined}
-                      onSenderPress={!isMine && customer?.id ? () => router.push({ pathname: '/user/[userId]', params: { userId: customer.id } }) : undefined}
-                      status={isMine ? status : undefined}
-                      reactions={summarizeReactions(item.reactions)}
-                      replyTo={replySource ? { body: replySource.body ?? '' } : null}
-                      bundled={bundled}
-                    />
-                  </ReactionPickerOverlay>
-                );
-              }}
+              renderItem={renderMessage}
             />
           )}
 

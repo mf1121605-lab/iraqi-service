@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
@@ -160,7 +160,7 @@ export default function ChatRoomScreen() {
   const [recording, setRecording] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
 
-  const listRef = useRef<FlatList>(null);
+  const listRef = useRef<FlashList<ChatMessage>>(null);
   const lastTypingBroadcast = useRef(0);
   const typingTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -451,6 +451,80 @@ export default function ChatRoomScreen() {
   const canModerate = (msg: ChatMessage) =>
     isStaff || room?.moderator_id === profile?.id || msg.sender_id === profile?.id;
 
+  // Stable across renders driven by anything other than messages/profile/
+  // reactions changing (sticker panel toggling, bg picker, typing dots,
+  // upload progress ticking) — those no longer force FlashList to tear
+  // down and recreate every visible cell's render function.
+  const renderMessage = useCallback(({ item, index }: { item: ChatMessage; index: number }) => {
+    const isMine = item.sender_id === profile!.id;
+    const prev = messages[index - 1];
+    const bundled = prev && prev.sender_id === item.sender_id &&
+      new Date(item.created_at).getTime() - new Date(prev.created_at).getTime() < 120_000;
+    const msgReactions = reactionsByMessage.get(item.id) ?? [];
+    const reactionCounts: Record<string, number> = {};
+    msgReactions.forEach(r => { reactionCounts[r.emoji] = (reactionCounts[r.emoji] ?? 0) + 1; });
+    const replySource = item.reply_to_id ? messages.find(m => m.id === item.reply_to_id) : null;
+
+    if (item.message_type === 'order_alert') {
+      return <View style={styles.msgRowGap}><OrderAlertCard key={item.id} body={item.body ?? ''} /></View>;
+    }
+
+    return (
+      <ReactionPickerOverlay
+        style={styles.msgRowGap}
+        reactions={buildChatReactions(isMine || hasFounderAccess(profile))}
+        align={isMine ? 'end' : 'start'}
+        onSelectReaction={(key) => {
+          // Reply rides in the bar as a seventh slot so long-press
+          // still offers it, exactly as the old popover did.
+          if (key === REPLY_KEY) setReplyTo(item);
+          else if (key === DELETE_KEY) {
+            confirmDelete({
+              kind: 'message',
+              table: 'chat_messages',
+              id: item.id,
+              // Drop it locally too: the realtime DELETE event is the usual
+              // path, but this keeps the list right if that socket is down.
+              onDeleted: () => setMessages((cur) => cur.filter((m) => m.id !== item.id)),
+            });
+          }
+          else toggleReaction(item.id, key);
+        }}
+      >
+        <MessageBubble
+          body={item.body ?? ''}
+          isMine={isMine}
+          senderName={!isMine && !bundled ? (item.sender_display_name ?? '') : undefined}
+          senderAvatarKey={!isMine ? item.sender_avatar_key : undefined}
+          onSenderPress={!isMine ? () => router.push({ pathname: '/user/[userId]', params: { userId: item.sender_id } }) : undefined}
+          timestamp={item.created_at}
+          messageType={item.message_type ?? undefined}
+          attachmentUrl={item.attachment_url}
+          attachmentType={
+            item.message_type === 'image' ? 'image' :
+            item.message_type === 'voice' ? 'voice' :
+            item.message_type === 'video' ? 'video' : null
+          }
+          reactions={Object.entries(reactionCounts).map(([emoji, count]) => ({ emoji, count, mine: false }))}
+          replyTo={replySource ? { body: replySource.body ?? '', senderName: replySource.sender_display_name ?? undefined } : null}
+          bundled={!!bundled}
+        />
+        {/* Reply / moderation row */}
+        <View style={[styles.msgActions, isMine ? styles.msgActionsRight : styles.msgActionsLeft]}>
+          <Pressable onPress={() => setReplyTo(item)} style={styles.replyActionBtn}>
+            <Text style={styles.replyActionText}>↩ رد</Text>
+          </Pressable>
+          {canModerate(item) && (
+            <Pressable onPress={() => handleHideMessage(item.id)} style={styles.hideBtn}>
+              <Text style={styles.hideBtnText}>✕</Text>
+            </Pressable>
+          )}
+        </View>
+      </ReactionPickerOverlay>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, profile, reactionsByMessage, isStaff, room?.moderator_id]);
+
   if (loading || initializing) {
     return (
       <ScreenBg>
@@ -519,81 +593,13 @@ export default function ChatRoomScreen() {
         keyboardVerticalOffset={0}
       >
         {/* Messages */}
-        <FlatList
+        <FlashList
           ref={listRef}
           data={messages}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.msgList}
-          removeClippedSubviews
-          maxToRenderPerBatch={8}
-          windowSize={8}
-          renderItem={({ item, index }) => {
-            const isMine = item.sender_id === profile!.id;
-            const prev = messages[index - 1];
-            const bundled = prev && prev.sender_id === item.sender_id &&
-              new Date(item.created_at).getTime() - new Date(prev.created_at).getTime() < 120_000;
-            const msgReactions = reactionsByMessage.get(item.id) ?? [];
-            const reactionCounts: Record<string, number> = {};
-            msgReactions.forEach(r => { reactionCounts[r.emoji] = (reactionCounts[r.emoji] ?? 0) + 1; });
-            const replySource = item.reply_to_id ? messages.find(m => m.id === item.reply_to_id) : null;
-
-            if (item.message_type === 'order_alert') {
-              return <OrderAlertCard key={item.id} body={item.body ?? ''} />;
-            }
-
-            return (
-              <ReactionPickerOverlay
-                reactions={buildChatReactions(isMine || hasFounderAccess(profile))}
-                align={isMine ? 'end' : 'start'}
-                onSelectReaction={(key) => {
-                  // Reply rides in the bar as a seventh slot so long-press
-                  // still offers it, exactly as the old popover did.
-                  if (key === REPLY_KEY) setReplyTo(item);
-                  else if (key === DELETE_KEY) {
-                    confirmDelete({
-                      kind: 'message',
-                      table: 'chat_messages',
-                      id: item.id,
-                      // Drop it locally too: the realtime DELETE event is the usual
-                      // path, but this keeps the list right if that socket is down.
-                      onDeleted: () => setMessages((cur) => cur.filter((m) => m.id !== item.id)),
-                    });
-                  }
-                  else toggleReaction(item.id, key);
-                }}
-              >
-                <MessageBubble
-                  body={item.body ?? ''}
-                  isMine={isMine}
-                  senderName={!isMine && !bundled ? (item.sender_display_name ?? '') : undefined}
-                  senderAvatarKey={!isMine ? item.sender_avatar_key : undefined}
-                  onSenderPress={!isMine ? () => router.push({ pathname: '/user/[userId]', params: { userId: item.sender_id } }) : undefined}
-                  timestamp={item.created_at}
-                  messageType={item.message_type ?? undefined}
-                  attachmentUrl={item.attachment_url}
-                  attachmentType={
-                    item.message_type === 'image' ? 'image' :
-                    item.message_type === 'voice' ? 'voice' :
-                    item.message_type === 'video' ? 'video' : null
-                  }
-                  reactions={Object.entries(reactionCounts).map(([emoji, count]) => ({ emoji, count, mine: false }))}
-                  replyTo={replySource ? { body: replySource.body ?? '', senderName: replySource.sender_display_name ?? undefined } : null}
-                  bundled={!!bundled}
-                />
-                {/* Reply / moderation row */}
-                <View style={[styles.msgActions, isMine ? styles.msgActionsRight : styles.msgActionsLeft]}>
-                  <Pressable onPress={() => setReplyTo(item)} style={styles.replyActionBtn}>
-                    <Text style={styles.replyActionText}>↩ رد</Text>
-                  </Pressable>
-                  {canModerate(item) && (
-                    <Pressable onPress={() => handleHideMessage(item.id)} style={styles.hideBtn}>
-                      <Text style={styles.hideBtnText}>✕</Text>
-                    </Pressable>
-                  )}
-                </View>
-              </ReactionPickerOverlay>
-            );
-          }}
+          estimatedItemSize={80}
+          renderItem={renderMessage}
           ListEmptyComponent={
             <View style={styles.center}>
               <Text style={styles.emptyText}>لا توجد رسائل بعد — كن أول من يكتب!</Text>
@@ -765,7 +771,11 @@ const styles = StyleSheet.create({
   },
   bgBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
   bgBtnIcon: { fontSize: 15 },
-  msgList: { paddingVertical: 8, paddingHorizontal: 4, gap: 2 },
+  // gap moved onto each row's own marginBottom — FlashList's
+  // contentContainerStyle doesn't apply `gap` between recycled cells the
+  // way FlatList's did.
+  msgList: { paddingVertical: 8, paddingHorizontal: 4 },
+  msgRowGap: { marginBottom: 2 },
   emptyText: {
     fontFamily: FONTS.regular,
     fontSize: 13,

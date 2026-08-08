@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Modal,
   Pressable,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -214,6 +214,27 @@ export function FollowersModal({ visible, userId, initialTab = 'followers', onCl
     );
   }
 
+  const renderPerson: ListRenderItem<Person> = useCallback(({ item }) => {
+    const name = [item.given_name, item.family_name].filter(Boolean).join(' ') || 'عضو';
+    const sub = item.specialization || item.bio || '';
+    return (
+      <Animated.View entering={FadeIn.duration(160)}>
+        <Pressable
+          onPress={() => openProfile(item.id)}
+          style={({ pressed }) => [s.row, pressed && { opacity: 0.75 }]}
+        >
+          {renderAction(item)}
+          <View style={s.rowText}>
+            <Text style={s.rowName} numberOfLines={1}>{name}</Text>
+            {sub ? <Text style={s.rowSub} numberOfLines={1}>{sub}</Text> : null}
+          </View>
+          <Avatar avatarKey={item.avatar_key} name={name} seed={item.id} size={44} />
+        </Pressable>
+      </Animated.View>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myId, busyId, isOwner, tab, myFollowing]);
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={s.backdrop}>
@@ -251,42 +272,29 @@ export function FollowersModal({ visible, userId, initialTab = 'followers', onCl
           {loading ? (
             <View style={s.center}><ActivityIndicator color={COLORS.gold} size="large" /></View>
           ) : (
-            <FlatList
+            <FlashList
               data={filtered}
               keyExtractor={(p) => p.id}
-              contentContainerStyle={filtered.length === 0 ? s.emptyWrap : s.listPad}
+              contentContainerStyle={s.listPad}
+              estimatedItemSize={68}
               keyboardShouldPersistTaps="handled"
               onEndReached={loadMore}
               onEndReachedThreshold={0.4}
               ListEmptyComponent={
-                <Text style={s.empty}>
-                  {query.trim()
-                    ? 'لا توجد نتائج مطابقة'
-                    : tab === 'followers' ? 'لا يوجد متابِعون بعد' : 'لا يتابع أحداً بعد'}
-                </Text>
+                // FlashList's contentContainerStyle can't center this via
+                // flexGrow the way FlatList's could, so the wrapper does it.
+                <View style={s.emptyWrap}>
+                  <Text style={s.empty}>
+                    {query.trim()
+                      ? 'لا توجد نتائج مطابقة'
+                      : tab === 'followers' ? 'لا يوجد متابِعون بعد' : 'لا يتابع أحداً بعد'}
+                  </Text>
+                </View>
               }
               ListFooterComponent={
                 loadingMore ? <ActivityIndicator color={COLORS.gold} style={{ marginVertical: 14 }} /> : null
               }
-              renderItem={({ item }) => {
-                const name = [item.given_name, item.family_name].filter(Boolean).join(' ') || 'عضو';
-                const sub = item.specialization || item.bio || '';
-                return (
-                  <Animated.View entering={FadeIn.duration(160)}>
-                    <Pressable
-                      onPress={() => openProfile(item.id)}
-                      style={({ pressed }) => [s.row, pressed && { opacity: 0.75 }]}
-                    >
-                      {renderAction(item)}
-                      <View style={s.rowText}>
-                        <Text style={s.rowName} numberOfLines={1}>{name}</Text>
-                        {sub ? <Text style={s.rowSub} numberOfLines={1}>{sub}</Text> : null}
-                      </View>
-                      <Avatar avatarKey={item.avatar_key} name={name} seed={item.id} size={44} />
-                    </Pressable>
-                  </Animated.View>
-                );
-              }}
+              renderItem={renderPerson}
             />
           )}
 
@@ -336,7 +344,7 @@ const s = StyleSheet.create({
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listPad: { paddingBottom: 20 },
-  emptyWrap: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
+  emptyWrap: { alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
   empty: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.muted, textAlign: 'center' },
 
   row: {

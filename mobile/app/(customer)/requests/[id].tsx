@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   ActivityIndicator,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import * as ImagePicker from 'expo-image-picker';
 import { BlurView } from 'expo-blur';
 import { ScreenBg } from '@/components/ui/ScreenBg';
@@ -107,7 +107,7 @@ async function uploadAttachment(
 export default function RequestDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlashList<Message>>(null);
   const inputRef = useRef<TextInput>(null);
 
   const [req, setReq] = useState<RequestDetail | null>(null);
@@ -372,6 +372,55 @@ export default function RequestDetail() {
     return Object.entries(counts).map(([emoji, count]) => ({ emoji, count, mine: false }));
   }
 
+  // Stable across renders driven by anything other than messages/session/req
+  // changing.
+  const renderMessage = useCallback(({ item }: { item: Message }) => {
+    const isMine = item.sender_id === session?.user.id;
+    const replySource = item.reply_to_id ? messages.find((m) => m.id === item.reply_to_id) : null;
+    const status: MessageStatus = item.read_at ? 'read' : 'sent';
+    return (
+      <ReactionPickerOverlay
+        reactions={buildChatReactions(isMine)}
+        align={isMine ? 'end' : 'start'}
+        onSelectReaction={(key) => {
+          // Reply rides in the bar as a seventh slot so long-press
+          // still offers it, exactly as the old popover did.
+          if (key === REPLY_KEY) setReplyTo(item);
+          else if (key === DELETE_KEY) {
+            confirmDelete({
+              kind: 'message',
+              table: 'request_messages',
+              id: item.id,
+              // Drop it locally too: the realtime DELETE event is the usual
+              // path, but this keeps the list right if that socket is down.
+              onDeleted: () => setMessages((cur) => cur.filter((m) => m.id !== item.id)),
+            });
+          }
+          else pickReaction(item.id, key);
+        }}
+      >
+        <MessageBubble
+          isMine={isMine}
+          body={item.body}
+          messageType={item.message_type}
+          attachmentUrl={item.attachment_url}
+          attachmentType={
+            item.message_type === 'image' ? 'image' :
+            item.message_type === 'voice' ? 'voice' :
+            item.message_type === 'video' ? 'video' : null
+          }
+          senderAvatarKey={!isMine ? req?.employee?.avatar_key : undefined}
+          onSenderPress={!isMine && req?.assigned_employee_id ? () => router.push({ pathname: '/user/[userId]', params: { userId: req.assigned_employee_id! } }) : undefined}
+          timestamp={item.created_at}
+          status={isMine ? status : undefined}
+          reactions={summarizeReactions(item.reactions)}
+          replyTo={replySource ? { body: replySource.body } : null}
+        />
+      </ReactionPickerOverlay>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, session, req]);
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -472,60 +521,14 @@ export default function RequestDetail() {
         )}
 
         {/* Messages */}
-        <FlatList
+        <FlashList
           ref={flatListRef}
           data={messages}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.msgList}
           showsVerticalScrollIndicator={false}
-          removeClippedSubviews
-          maxToRenderPerBatch={8}
-          windowSize={8}
-          renderItem={({ item }) => {
-            const isMine = item.sender_id === session?.user.id;
-            const replySource = item.reply_to_id ? messages.find((m) => m.id === item.reply_to_id) : null;
-            const status: MessageStatus = item.read_at ? 'read' : 'sent';
-            return (
-              <ReactionPickerOverlay
-                reactions={buildChatReactions(isMine)}
-                align={isMine ? 'end' : 'start'}
-                onSelectReaction={(key) => {
-                  // Reply rides in the bar as a seventh slot so long-press
-                  // still offers it, exactly as the old popover did.
-                  if (key === REPLY_KEY) setReplyTo(item);
-                  else if (key === DELETE_KEY) {
-                    confirmDelete({
-                      kind: 'message',
-                      table: 'request_messages',
-                      id: item.id,
-                      // Drop it locally too: the realtime DELETE event is the usual
-                      // path, but this keeps the list right if that socket is down.
-                      onDeleted: () => setMessages((cur) => cur.filter((m) => m.id !== item.id)),
-                    });
-                  }
-                  else pickReaction(item.id, key);
-                }}
-              >
-                <MessageBubble
-                  isMine={isMine}
-                  body={item.body}
-                  messageType={item.message_type}
-                  attachmentUrl={item.attachment_url}
-                  attachmentType={
-                    item.message_type === 'image' ? 'image' :
-                    item.message_type === 'voice' ? 'voice' :
-                    item.message_type === 'video' ? 'video' : null
-                  }
-                  senderAvatarKey={!isMine ? req?.employee?.avatar_key : undefined}
-                  onSenderPress={!isMine && req?.assigned_employee_id ? () => router.push({ pathname: '/user/[userId]', params: { userId: req.assigned_employee_id! } }) : undefined}
-                  timestamp={item.created_at}
-                  status={isMine ? status : undefined}
-                  reactions={summarizeReactions(item.reactions)}
-                  replyTo={replySource ? { body: replySource.body } : null}
-                />
-              </ReactionPickerOverlay>
-            );
-          }}
+          estimatedItemSize={80}
+          renderItem={renderMessage}
           ListEmptyComponent={
             <View style={styles.emptyChat}>
               <Text style={styles.emptyChatEmoji}>💬</Text>

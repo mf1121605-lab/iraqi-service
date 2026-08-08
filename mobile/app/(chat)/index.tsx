@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { FlashList, ListRenderItem } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { Avatar } from '@/components/chat/Avatar';
@@ -129,6 +129,41 @@ export default function ChatIndex() {
     [dmThreads, q]
   );
 
+  const renderRoom: ListRenderItem<ChatRoom> = useCallback(({ item }) => (
+    <HapticPressable
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      onPress={() => router.push(`/(chat)/${item.slug}`)}
+    >
+      <View style={styles.roomIcon}>
+        <Text style={styles.roomIconText}>💬</Text>
+      </View>
+      <View style={styles.cardBody}>
+        <Text style={styles.cardTitle}>{item.name_ar}</Text>
+        <Text style={styles.cardSub}>مجموعة خدمات العراق</Text>
+      </View>
+      <Text style={styles.arrow}>›</Text>
+    </HapticPressable>
+  ), []);
+
+  const renderDm: ListRenderItem<DmThread> = useCallback(({ item }) => (
+    <HapticPressable
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      onPress={() => router.push(`/(chat)/dm/${item.id}`)}
+    >
+      <Avatar
+        avatarKey={item.otherUser?.avatar_key}
+        name={item.otherUser?.given_name}
+        seed={item.otherUser?.id}
+        size={44}
+      />
+      <View style={styles.cardBody}>
+        <Text style={styles.cardTitle}>{displayNameFor(item.otherUser)}</Text>
+        <Text style={styles.cardSub}>محادثة خاصة</Text>
+      </View>
+      <Text style={styles.arrow}>›</Text>
+    </HapticPressable>
+  ), []);
+
   if (loading || !profile) {
     return (
       <ScreenBg>
@@ -190,61 +225,24 @@ export default function ChatIndex() {
             ))}
           </View>
         ) : (
-          <FlatList
+          <FlashList
             data={filteredRooms}
             keyExtractor={item => item.id}
             contentContainerStyle={styles.list}
-            removeClippedSubviews
-            maxToRenderPerBatch={8}
-            windowSize={8}
-            initialNumToRender={10}
-            renderItem={({ item }) => (
-              <HapticPressable
-                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-                onPress={() => router.push(`/(chat)/${item.slug}`)}
-              >
-                <View style={styles.roomIcon}>
-                  <Text style={styles.roomIconText}>💬</Text>
-                </View>
-                <View style={styles.cardBody}>
-                  <Text style={styles.cardTitle}>{item.name_ar}</Text>
-                  <Text style={styles.cardSub}>مجموعة خدمات العراق</Text>
-                </View>
-                <Text style={styles.arrow}>›</Text>
-              </HapticPressable>
-            )}
+            estimatedItemSize={72}
+            renderItem={renderRoom}
             ListEmptyComponent={
               <EmptyState emoji="🏘️" title="لا توجد غرف متاحة" subtitle="ستظهر هنا أي غرف محادثة جماعية تنضم إليها" />
             }
           />
         )
       ) : (
-        <FlatList
+        <FlashList
           data={filteredDms}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
-          removeClippedSubviews
-          maxToRenderPerBatch={8}
-          windowSize={8}
-          initialNumToRender={10}
-          renderItem={({ item }) => (
-            <HapticPressable
-              style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-              onPress={() => router.push(`/(chat)/dm/${item.id}`)}
-            >
-              <Avatar
-                avatarKey={item.otherUser?.avatar_key}
-                name={item.otherUser?.given_name}
-                seed={item.otherUser?.id}
-                size={44}
-              />
-              <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>{displayNameFor(item.otherUser)}</Text>
-                <Text style={styles.cardSub}>محادثة خاصة</Text>
-              </View>
-              <Text style={styles.arrow}>›</Text>
-            </HapticPressable>
-          )}
+          estimatedItemSize={72}
+          renderItem={renderDm}
           ListEmptyComponent={
             <EmptyState emoji="💬" title="لا توجد محادثات خاصة" subtitle="ابدأ محادثة من صفحة أي مستخدم لتظهر هنا" />
           }
@@ -312,7 +310,9 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.bold,
     color: COLORS.gold,
   },
-  list: { paddingHorizontal: 16, paddingBottom: 24, gap: 10 },
+  // gap moved onto card's marginBottom — FlashList's contentContainerStyle
+  // doesn't apply `gap` between recycled cells the way FlatList's did.
+  list: { paddingHorizontal: 16, paddingBottom: 24 },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -322,6 +322,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     padding: 14,
     gap: 12,
+    marginBottom: 10,
   },
   cardPressed: { opacity: 0.75 },
   roomIcon: {

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -14,6 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
@@ -631,6 +631,248 @@ export default function NewsScreen() {
     );
   }
 
+  // Stable across renders driven by anything other than the state a post
+  // card actually reads (composer typing, upload progress ticking, etc. no
+  // longer force FlashList to tear down and recreate every visible cell).
+  const renderPost: ListRenderItem<Post> = useCallback(({ item }) => {
+    const myReaction = item.reactions.find((r) => r.user_id === session?.user.id);
+    const authorName = item.author
+      ? `${item.author.given_name} ${item.author.family_name}`
+      : 'مجهول';
+    const commentsExpanded = expandedComments.has(item.id);
+    const commentText = commentInputs[item.id] ?? '';
+    const commentImage = commentImages[item.id];
+    const reply = replyingTo[item.id];
+    const imageUrls: string[] = Array.isArray(item.image_urls) ? item.image_urls : [];
+    const isPlaying = playingVideoId === item.id;
+    const isMuted = mutedVideoId.has(item.id);
+
+    // Top reaction summary: up to 3 most-used emoji + total count
+    const counts: Record<string, number> = {};
+    item.reactions.forEach((r) => { counts[r.reaction_type] = (counts[r.reaction_type] ?? 0) + 1; });
+    const topTypes = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t]) => t);
+
+    const byParent = buildCommentTree(item.comments);
+    const roots = byParent['__root'] ?? [];
+
+    return (
+      <GlassCard style={styles.postCard} noPad borderRadius={18} borderSpeed={4500 + Math.random() * 2000}>
+        {/* Post header */}
+        <View style={styles.postHeader}>
+          <View style={styles.authorCluster}>
+            <Pressable
+              style={styles.authorRow}
+              onPress={() => item.author && router.push({ pathname: '/user/[userId]', params: { userId: item.author.id } })}
+            >
+              {item.author ? (
+                <Avatar avatarKey={item.author.avatar_key} name={authorName} seed={item.author.id} size={38} />
+              ) : (
+                <AvatarCircle name={authorName} size={38} />
+              )}
+              <Text style={styles.authorName}>{authorName}</Text>
+            </Pressable>
+            {item.author && item.author.id !== session?.user.id && (
+              <Pressable
+                style={[styles.followPill, followingIds.has(item.author.id) && styles.followPillActive]}
+                onPress={() => toggleFollow(item.author!.id)}
+                disabled={followBusyId === item.author.id}
+              >
+                {followingIds.has(item.author.id) && <Text style={styles.followPillCheck}>✓</Text>}
+                <Text style={[styles.followPillText, followingIds.has(item.author.id) && styles.followPillTextActive]}>
+                  {followingIds.has(item.author.id) ? 'متابَع' : 'متابعة'}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+          <View style={styles.postHeaderRight}>
+            <Text style={styles.postDate}>{formatDate(item.created_at)}</Text>
+            <Pressable style={styles.postMenuBtn} onPress={() => setMenuPostId(item.id)} hitSlop={8}>
+              <Text style={styles.postMenuDots}>⋯</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Content */}
+        {item.content ? (
+          <Text style={styles.postContent}>{item.content}</Text>
+        ) : null}
+
+        {/* Video */}
+        {item.video_url ? (
+          <Pressable
+            style={styles.videoWrap}
+            onPress={() => setPlayingVideoId(isPlaying ? null : item.id)}
+          >
+            <Video
+              source={{ uri: item.video_url }}
+              style={styles.videoPlayer}
+              resizeMode={ResizeMode.COVER}
+              shouldPlay={isPlaying}
+              isMuted={isMuted}
+              isLooping
+            />
+            <View style={styles.videoOverlay} pointerEvents="none">
+              {!isPlaying && <Text style={styles.videoPlayIcon}>▶️</Text>}
+            </View>
+            <Pressable
+              style={styles.videoMuteBtn}
+              onPress={() => setMutedVideoId((prev) => {
+                const next = new Set(prev);
+                next.has(item.id) ? next.delete(item.id) : next.add(item.id);
+                return next;
+              })}
+            >
+              <Text style={styles.videoMuteIcon}>{isMuted ? '🔇' : '🔊'}</Text>
+            </Pressable>
+          </Pressable>
+        ) : imageUrls.length > 0 ? (
+          <View style={styles.imageGrid}>
+            {imageUrls.slice(0, 4).map((url, i) => {
+              const isLast = i === 3 && imageUrls.length > 4;
+              const single = imageUrls.length === 1;
+              const pair = imageUrls.length === 2;
+              return (
+                <View key={i} style={[
+                  styles.postImageWrap,
+                  single && styles.postImageWrapFull,
+                  pair && styles.postImageWrapHalf,
+                ]}>
+                  <Image source={{ uri: url }} style={styles.postImage} contentFit="cover" cachePolicy="memory-disk" transition={150} />
+                  {isLast && (
+                    <View style={styles.imageMoreOverlay}>
+                      <Text style={styles.imageMoreText}>+{imageUrls.length - 4}</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        ) : null}
+
+        {/* Reaction summary */}
+        {(item.reactions.length > 0 || item.comments.length > 0) && (
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryEmojis}>
+              {topTypes.map((t) => (
+                <Text key={t} style={styles.summaryEmoji}>{REACTION_MAP[t]?.emoji}</Text>
+              ))}
+              {item.reactions.length > 0 && <Text style={styles.summaryCount}>{item.reactions.length}</Text>}
+            </View>
+            {item.comments.length > 0 && (
+              <Text style={styles.summaryComments}>{item.comments.length} تعليقات</Text>
+            )}
+          </View>
+        )}
+
+        {/* Divider */}
+        <View style={styles.divider} />
+
+        {/* Glossy 3D action row: إعجاب / تعليق / مشاركة */}
+        <View style={styles.actionsRow}>
+          <ReactionPickerOverlay
+            style={{ position: 'relative', flex: 1 }}
+            reactions={pickerWithDelete(
+              item.author?.id === session?.user.id || hasFounderAccess(profile),
+            )}
+            align="start"
+            onSelectReaction={(type) => {
+              if (type === DELETE_KEY) {
+                confirmDelete({
+                  kind: 'post',
+                  table: 'social_posts',
+                  id: item.id,
+                  onDeleted: () => setPosts((cur) => cur.filter((p) => p.id !== item.id)),
+                });
+              } else handleReaction(item.id, type);
+            }}
+          >
+            <GlossyButton
+              style={styles.actionBtn}
+              active={!!myReaction}
+              colors={myReaction ? (REACTION_MAP[myReaction.reaction_type]?.colors ?? undefined) : undefined}
+              onPress={() => quickToggleLike(item.id)}
+            >
+              <Text style={styles.actionEmoji}>{myReaction ? REACTION_MAP[myReaction.reaction_type]?.emoji : '👍'}</Text>
+              <Text style={[styles.actionLabel, myReaction && { color: '#fff' }]}>
+                {myReaction ? REACTION_MAP[myReaction.reaction_type]?.label : 'إعجاب'}
+              </Text>
+            </GlossyButton>
+          </ReactionPickerOverlay>
+
+          <GlossyButton style={styles.actionBtn} onPress={() => toggleComments(item.id)}>
+            <Text style={styles.actionEmoji}>💬</Text>
+            <Text style={styles.actionLabel}>تعليق</Text>
+          </GlossyButton>
+
+          <GlossyButton style={styles.actionBtn} onPress={() => sharePost(item)}>
+            <Text style={styles.actionEmoji}>↗️</Text>
+            <Text style={styles.actionLabel}>مشاركة</Text>
+          </GlossyButton>
+        </View>
+
+        {/* Comments section */}
+        {commentsExpanded && (
+          <Animated.View entering={FadeIn.duration(200)} style={styles.commentsSection}>
+            {roots.length === 0 ? (
+              <Text style={styles.noComments}>لا توجد تعليقات بعد</Text>
+            ) : (
+              roots.map((c) => renderCommentNode(c, byParent, 0, item.id, item.author?.id ?? null))
+            )}
+
+            {reply && (
+              <View style={styles.replyChip}>
+                <Pressable onPress={() => setReplyingTo((prev) => ({ ...prev, [item.id]: null }))}>
+                  <Text style={styles.replyChipClose}>✕</Text>
+                </Pressable>
+                <Text style={styles.replyChipText}>الرد على {reply.name}</Text>
+              </View>
+            )}
+
+            {commentImage ? (
+              <View style={styles.commentImagePreviewWrap}>
+                <Image source={{ uri: commentImage }} style={styles.commentImagePreview} contentFit="cover" />
+                <Pressable style={styles.removeImage} onPress={() => setCommentImages((prev) => ({ ...prev, [item.id]: '' }))}>
+                  <Text style={styles.removeImageText}>✕</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            <View style={styles.commentInputRow}>
+              <Pressable
+                style={[styles.commentSendBtn, !(commentText.trim() || commentImage) && styles.commentSendBtnDisabled]}
+                onPress={() => sendComment(item.id)}
+                disabled={!(commentText.trim() || commentImage) || sendingComment === item.id}
+              >
+                {sendingComment === item.id ? (
+                  <ActivityIndicator color="#000" size="small" />
+                ) : (
+                  <Text style={styles.commentSendIcon}>↑</Text>
+                )}
+              </Pressable>
+              <TextInput
+                value={commentText}
+                onChangeText={(t) => setCommentInputs((prev) => ({ ...prev, [item.id]: t }))}
+                placeholder={reply ? `الرد على ${reply.name}...` : 'أضف تعليقاً...'}
+                placeholderTextColor={COLORS.white40}
+                style={styles.commentInput}
+                textAlign="right"
+                multiline
+                maxLength={500}
+              />
+              <Pressable style={styles.commentImageBtn} onPress={() => pickCommentImage(item.id)}>
+                <Text style={styles.commentImageBtnIcon}>🖼️</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+        )}
+      </GlassCard>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    session, profile, expandedComments, commentInputs, commentImages, replyingTo,
+    playingVideoId, mutedVideoId, followingIds, followBusyId, sendingComment,
+  ]);
+
   if (loading) {
     return (
       <ScreenBg>
@@ -645,15 +887,12 @@ export default function NewsScreen() {
 
   return (
     <ScreenBg>
-      <FlatList
+      <FlashList
         data={posts}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
-        removeClippedSubviews
-        maxToRenderPerBatch={6}
-        windowSize={7}
-        initialNumToRender={5}
+        estimatedItemSize={420}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -743,240 +982,7 @@ export default function NewsScreen() {
             <Text style={styles.emptySub}>كن أول من يشارك!</Text>
           </View>
         }
-        renderItem={({ item }) => {
-          const myReaction = item.reactions.find((r) => r.user_id === session?.user.id);
-          const authorName = item.author
-            ? `${item.author.given_name} ${item.author.family_name}`
-            : 'مجهول';
-          const commentsExpanded = expandedComments.has(item.id);
-          const commentText = commentInputs[item.id] ?? '';
-          const commentImage = commentImages[item.id];
-          const reply = replyingTo[item.id];
-          const imageUrls: string[] = Array.isArray(item.image_urls) ? item.image_urls : [];
-          const isPlaying = playingVideoId === item.id;
-          const isMuted = mutedVideoId.has(item.id);
-
-          // Top reaction summary: up to 3 most-used emoji + total count
-          const counts: Record<string, number> = {};
-          item.reactions.forEach((r) => { counts[r.reaction_type] = (counts[r.reaction_type] ?? 0) + 1; });
-          const topTypes = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t]) => t);
-
-          const byParent = buildCommentTree(item.comments);
-          const roots = byParent['__root'] ?? [];
-
-          return (
-            <GlassCard style={styles.postCard} noPad borderRadius={18} borderSpeed={4500 + Math.random() * 2000}>
-              {/* Post header */}
-              <View style={styles.postHeader}>
-                <View style={styles.authorCluster}>
-                  <Pressable
-                    style={styles.authorRow}
-                    onPress={() => item.author && router.push({ pathname: '/user/[userId]', params: { userId: item.author.id } })}
-                  >
-                    {item.author ? (
-                      <Avatar avatarKey={item.author.avatar_key} name={authorName} seed={item.author.id} size={38} />
-                    ) : (
-                      <AvatarCircle name={authorName} size={38} />
-                    )}
-                    <Text style={styles.authorName}>{authorName}</Text>
-                  </Pressable>
-                  {item.author && item.author.id !== session?.user.id && (
-                    <Pressable
-                      style={[styles.followPill, followingIds.has(item.author.id) && styles.followPillActive]}
-                      onPress={() => toggleFollow(item.author!.id)}
-                      disabled={followBusyId === item.author.id}
-                    >
-                      {followingIds.has(item.author.id) && <Text style={styles.followPillCheck}>✓</Text>}
-                      <Text style={[styles.followPillText, followingIds.has(item.author.id) && styles.followPillTextActive]}>
-                        {followingIds.has(item.author.id) ? 'متابَع' : 'متابعة'}
-                      </Text>
-                    </Pressable>
-                  )}
-                </View>
-                <View style={styles.postHeaderRight}>
-                  <Text style={styles.postDate}>{formatDate(item.created_at)}</Text>
-                  <Pressable style={styles.postMenuBtn} onPress={() => setMenuPostId(item.id)} hitSlop={8}>
-                    <Text style={styles.postMenuDots}>⋯</Text>
-                  </Pressable>
-                </View>
-              </View>
-
-              {/* Content */}
-              {item.content ? (
-                <Text style={styles.postContent}>{item.content}</Text>
-              ) : null}
-
-              {/* Video */}
-              {item.video_url ? (
-                <Pressable
-                  style={styles.videoWrap}
-                  onPress={() => setPlayingVideoId(isPlaying ? null : item.id)}
-                >
-                  <Video
-                    source={{ uri: item.video_url }}
-                    style={styles.videoPlayer}
-                    resizeMode={ResizeMode.COVER}
-                    shouldPlay={isPlaying}
-                    isMuted={isMuted}
-                    isLooping
-                  />
-                  <View style={styles.videoOverlay} pointerEvents="none">
-                    {!isPlaying && <Text style={styles.videoPlayIcon}>▶️</Text>}
-                  </View>
-                  <Pressable
-                    style={styles.videoMuteBtn}
-                    onPress={() => setMutedVideoId((prev) => {
-                      const next = new Set(prev);
-                      next.has(item.id) ? next.delete(item.id) : next.add(item.id);
-                      return next;
-                    })}
-                  >
-                    <Text style={styles.videoMuteIcon}>{isMuted ? '🔇' : '🔊'}</Text>
-                  </Pressable>
-                </Pressable>
-              ) : imageUrls.length > 0 ? (
-                <View style={styles.imageGrid}>
-                  {imageUrls.slice(0, 4).map((url, i) => {
-                    const isLast = i === 3 && imageUrls.length > 4;
-                    const single = imageUrls.length === 1;
-                    const pair = imageUrls.length === 2;
-                    return (
-                      <View key={i} style={[
-                        styles.postImageWrap,
-                        single && styles.postImageWrapFull,
-                        pair && styles.postImageWrapHalf,
-                      ]}>
-                        <Image source={{ uri: url }} style={styles.postImage} contentFit="cover" cachePolicy="memory-disk" transition={150} />
-                        {isLast && (
-                          <View style={styles.imageMoreOverlay}>
-                            <Text style={styles.imageMoreText}>+{imageUrls.length - 4}</Text>
-                          </View>
-                        )}
-                      </View>
-                    );
-                  })}
-                </View>
-              ) : null}
-
-              {/* Reaction summary */}
-              {(item.reactions.length > 0 || item.comments.length > 0) && (
-                <View style={styles.summaryRow}>
-                  <View style={styles.summaryEmojis}>
-                    {topTypes.map((t) => (
-                      <Text key={t} style={styles.summaryEmoji}>{REACTION_MAP[t]?.emoji}</Text>
-                    ))}
-                    {item.reactions.length > 0 && <Text style={styles.summaryCount}>{item.reactions.length}</Text>}
-                  </View>
-                  {item.comments.length > 0 && (
-                    <Text style={styles.summaryComments}>{item.comments.length} تعليقات</Text>
-                  )}
-                </View>
-              )}
-
-              {/* Divider */}
-              <View style={styles.divider} />
-
-              {/* Glossy 3D action row: إعجاب / تعليق / مشاركة */}
-              <View style={styles.actionsRow}>
-                <ReactionPickerOverlay
-                  style={{ position: 'relative', flex: 1 }}
-                  reactions={pickerWithDelete(
-                    item.author?.id === session?.user.id || hasFounderAccess(profile),
-                  )}
-                  align="start"
-                  onSelectReaction={(type) => {
-                    if (type === DELETE_KEY) {
-                      confirmDelete({
-                        kind: 'post',
-                        table: 'social_posts',
-                        id: item.id,
-                        onDeleted: () => setPosts((cur) => cur.filter((p) => p.id !== item.id)),
-                      });
-                    } else handleReaction(item.id, type);
-                  }}
-                >
-                  <GlossyButton
-                    style={styles.actionBtn}
-                    active={!!myReaction}
-                    colors={myReaction ? (REACTION_MAP[myReaction.reaction_type]?.colors ?? undefined) : undefined}
-                    onPress={() => quickToggleLike(item.id)}
-                  >
-                    <Text style={styles.actionEmoji}>{myReaction ? REACTION_MAP[myReaction.reaction_type]?.emoji : '👍'}</Text>
-                    <Text style={[styles.actionLabel, myReaction && { color: '#fff' }]}>
-                      {myReaction ? REACTION_MAP[myReaction.reaction_type]?.label : 'إعجاب'}
-                    </Text>
-                  </GlossyButton>
-                </ReactionPickerOverlay>
-
-                <GlossyButton style={styles.actionBtn} onPress={() => toggleComments(item.id)}>
-                  <Text style={styles.actionEmoji}>💬</Text>
-                  <Text style={styles.actionLabel}>تعليق</Text>
-                </GlossyButton>
-
-                <GlossyButton style={styles.actionBtn} onPress={() => sharePost(item)}>
-                  <Text style={styles.actionEmoji}>↗️</Text>
-                  <Text style={styles.actionLabel}>مشاركة</Text>
-                </GlossyButton>
-              </View>
-
-              {/* Comments section */}
-              {commentsExpanded && (
-                <Animated.View entering={FadeIn.duration(200)} style={styles.commentsSection}>
-                  {roots.length === 0 ? (
-                    <Text style={styles.noComments}>لا توجد تعليقات بعد</Text>
-                  ) : (
-                    roots.map((c) => renderCommentNode(c, byParent, 0, item.id, item.author?.id ?? null))
-                  )}
-
-                  {reply && (
-                    <View style={styles.replyChip}>
-                      <Pressable onPress={() => setReplyingTo((prev) => ({ ...prev, [item.id]: null }))}>
-                        <Text style={styles.replyChipClose}>✕</Text>
-                      </Pressable>
-                      <Text style={styles.replyChipText}>الرد على {reply.name}</Text>
-                    </View>
-                  )}
-
-                  {commentImage ? (
-                    <View style={styles.commentImagePreviewWrap}>
-                      <Image source={{ uri: commentImage }} style={styles.commentImagePreview} contentFit="cover" />
-                      <Pressable style={styles.removeImage} onPress={() => setCommentImages((prev) => ({ ...prev, [item.id]: '' }))}>
-                        <Text style={styles.removeImageText}>✕</Text>
-                      </Pressable>
-                    </View>
-                  ) : null}
-
-                  <View style={styles.commentInputRow}>
-                    <Pressable
-                      style={[styles.commentSendBtn, !(commentText.trim() || commentImage) && styles.commentSendBtnDisabled]}
-                      onPress={() => sendComment(item.id)}
-                      disabled={!(commentText.trim() || commentImage) || sendingComment === item.id}
-                    >
-                      {sendingComment === item.id ? (
-                        <ActivityIndicator color="#000" size="small" />
-                      ) : (
-                        <Text style={styles.commentSendIcon}>↑</Text>
-                      )}
-                    </Pressable>
-                    <TextInput
-                      value={commentText}
-                      onChangeText={(t) => setCommentInputs((prev) => ({ ...prev, [item.id]: t }))}
-                      placeholder={reply ? `الرد على ${reply.name}...` : 'أضف تعليقاً...'}
-                      placeholderTextColor={COLORS.white40}
-                      style={styles.commentInput}
-                      textAlign="right"
-                      multiline
-                      maxLength={500}
-                    />
-                    <Pressable style={styles.commentImageBtn} onPress={() => pickCommentImage(item.id)}>
-                      <Text style={styles.commentImageBtnIcon}>🖼️</Text>
-                    </Pressable>
-                  </View>
-                </Animated.View>
-              )}
-            </GlassCard>
-          );
-        }}
+        renderItem={renderPost}
       />
 
       {/* Post options: three-dot menu → Edit / Delete / Report */}
@@ -1086,7 +1092,9 @@ export default function NewsScreen() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: 16, gap: 14, paddingBottom: 32 },
+  // gap moved onto postCard's marginBottom — FlashList's contentContainerStyle
+  // doesn't apply `gap` between recycled cells the way FlatList's did.
+  list: { padding: 16, paddingBottom: 32 },
 
   headerSection: { gap: 12, marginBottom: 4 },
   pageTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'flex-end' },
@@ -1156,7 +1164,7 @@ const styles = StyleSheet.create({
   emptyTitle: { fontFamily: FONTS.bold, fontSize: 16, color: COLORS.white },
   emptySub: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.muted },
 
-  postCard: { minHeight: 60 },
+  postCard: { minHeight: 60, marginBottom: 14 },
   postHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
