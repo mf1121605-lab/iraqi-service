@@ -250,72 +250,54 @@ grant execute on function public.get_active_employee_candidates(text) to authent
 --    founder wants reserved for founder + co_admin only. Read access is
 --    left untouched (a supervisor can still see published news/urgent
 --    items; only the ability to create/edit/moderate them is removed).
+--
+--    Each block is guarded with to_regclass(): a first run of this exact
+--    script failed with "relation hq_service_links does not exist"
+--    because not every migration file in the repo has actually been
+--    applied to the live database yet (schema drift between repo history
+--    and the live project). Guarding every table here means a table that
+--    was never created on this project is silently skipped instead of
+--    aborting the whole script and rolling back everything above it.
 -- ============================================================
 
--- news_links (HQ hub)
-drop policy if exists news_links_write_staff on public.news_links;
-create policy news_links_write_staff
-  on public.news_links for all
-  to authenticated
-  using (public.is_founder() or public.is_co_admin())
-  with check (public.is_founder() or public.is_co_admin());
+do $mig$
+begin
+  if to_regclass('public.news_links') is not null then
+    execute 'drop policy if exists news_links_write_staff on public.news_links';
+    execute $sql$create policy news_links_write_staff on public.news_links for all to authenticated using (public.is_founder() or public.is_co_admin()) with check (public.is_founder() or public.is_co_admin())$sql$;
+  end if;
 
--- hq_service_links
-drop policy if exists hq_service_links_write_staff on public.hq_service_links;
-create policy hq_service_links_write_staff
-  on public.hq_service_links for all
-  to authenticated
-  using (public.is_founder() or public.is_co_admin())
-  with check (public.is_founder() or public.is_co_admin());
+  if to_regclass('public.hq_service_links') is not null then
+    execute 'drop policy if exists hq_service_links_write_staff on public.hq_service_links';
+    execute $sql$create policy hq_service_links_write_staff on public.hq_service_links for all to authenticated using (public.is_founder() or public.is_co_admin()) with check (public.is_founder() or public.is_co_admin())$sql$;
+  end if;
 
--- urgent_news
-drop policy if exists urgent_news_write_staff on public.urgent_news;
-create policy urgent_news_write_staff
-  on public.urgent_news for all
-  to authenticated
-  using (public.is_founder() or public.is_co_admin())
-  with check (public.is_founder() or public.is_co_admin());
+  if to_regclass('public.urgent_news') is not null then
+    execute 'drop policy if exists urgent_news_write_staff on public.urgent_news';
+    execute $sql$create policy urgent_news_write_staff on public.urgent_news for all to authenticated using (public.is_founder() or public.is_co_admin()) with check (public.is_founder() or public.is_co_admin())$sql$;
+  end if;
 
--- quick_requests moderation
-drop policy if exists quick_requests_update_staff on public.quick_requests;
-create policy quick_requests_update_staff
-  on public.quick_requests for update
-  to authenticated
-  using (public.is_founder() or public.is_co_admin())
-  with check (public.is_founder() or public.is_co_admin());
+  if to_regclass('public.quick_requests') is not null then
+    execute 'drop policy if exists quick_requests_update_staff on public.quick_requests';
+    execute $sql$create policy quick_requests_update_staff on public.quick_requests for update to authenticated using (public.is_founder() or public.is_co_admin()) with check (public.is_founder() or public.is_co_admin())$sql$;
+  end if;
 
--- social_posts: unapproved-post visibility and moderation (approve/reject/pin)
-drop policy if exists social_posts_select on public.social_posts;
-create policy social_posts_select on public.social_posts for select to authenticated
-  using (
-    approved = true
-    or public.is_founder()
-    or public.is_co_admin()
-  );
+  if to_regclass('public.social_posts') is not null then
+    execute 'drop policy if exists social_posts_select on public.social_posts';
+    execute $sql$create policy social_posts_select on public.social_posts for select to authenticated using (approved = true or public.is_founder() or public.is_co_admin())$sql$;
+    execute 'drop policy if exists social_posts_update_staff on public.social_posts';
+    execute $sql$create policy social_posts_update_staff on public.social_posts for update to authenticated using (public.is_founder() or public.is_co_admin()) with check (public.is_founder() or public.is_co_admin())$sql$;
+  end if;
 
-drop policy if exists social_posts_update_staff on public.social_posts;
-create policy social_posts_update_staff on public.social_posts for update to authenticated
-  using (public.is_founder() or public.is_co_admin())
-  with check (public.is_founder() or public.is_co_admin());
-
--- post_reports
-drop policy if exists post_reports_select_staff on public.post_reports;
-create policy post_reports_select_staff
-  on public.post_reports for select
-  to authenticated
-  using (public.is_founder() or public.is_co_admin());
-
-drop policy if exists post_reports_update_staff on public.post_reports;
-create policy post_reports_update_staff
-  on public.post_reports for update
-  to authenticated
-  using (public.is_founder() or public.is_co_admin())
-  with check (public.is_founder() or public.is_co_admin());
-
-drop policy if exists post_reports_delete_staff on public.post_reports;
-create policy post_reports_delete_staff
-  on public.post_reports for delete
-  to authenticated
-  using (public.is_founder() or public.is_co_admin());
+  if to_regclass('public.post_reports') is not null then
+    execute 'drop policy if exists post_reports_select_staff on public.post_reports';
+    execute $sql$create policy post_reports_select_staff on public.post_reports for select to authenticated using (public.is_founder() or public.is_co_admin())$sql$;
+    execute 'drop policy if exists post_reports_update_staff on public.post_reports';
+    execute $sql$create policy post_reports_update_staff on public.post_reports for update to authenticated using (public.is_founder() or public.is_co_admin()) with check (public.is_founder() or public.is_co_admin())$sql$;
+    execute 'drop policy if exists post_reports_delete_staff on public.post_reports';
+    execute $sql$create policy post_reports_delete_staff on public.post_reports for delete to authenticated using (public.is_founder() or public.is_co_admin())$sql$;
+  end if;
+end
+$mig$;
 
 notify pgrst, 'reload schema';
