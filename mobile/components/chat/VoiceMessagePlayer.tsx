@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import { COLORS, FONTS } from '@/constants/theme';
 import { clearPlayback, registerPlayback } from '@/utils/voicePlaybackRegistry';
+import { useAmbientMusic } from '@/hooks/useAmbientMusic';
 
 const SPEEDS = [1, 1.5, 2];
 const BAR_COUNT = 26;
@@ -40,12 +41,18 @@ export function VoiceMessagePlayer({ uri, isMine }: Props) {
   const [speedIdx, setSpeedIdx] = useState(0);
   const soundRef = useRef<Audio.Sound | null>(null);
   const heights = useRef(waveformHeights(uri)).current;
+  const { duck, unduck } = useAmbientMusic();
+  // Guards duck()/unduck() so each is called exactly once per playback
+  // span, regardless of which path (finish, pause, unmount) ends it.
+  const duckedRef = useRef(false);
 
   useEffect(() => {
     return () => {
       const s = soundRef.current;
+      if (duckedRef.current) { duckedRef.current = false; unduck(); }
       if (s) { clearPlayback(s); s.unloadAsync().catch(() => {}); }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function onStatusUpdate(status: AVPlaybackStatus) {
@@ -56,6 +63,7 @@ export function VoiceMessagePlayer({ uri, isMine }: Props) {
       setIsPlaying(false);
       setPositionSec(0);
       soundRef.current?.setPositionAsync(0).catch(() => {});
+      if (duckedRef.current) { duckedRef.current = false; unduck(); }
     }
   }
 
@@ -65,6 +73,8 @@ export function VoiceMessagePlayer({ uri, isMine }: Props) {
       soundRef.current = sound;
       registerPlayback(sound);
       setIsPlaying(true);
+      duckedRef.current = true;
+      duck();
       return;
     }
     const status = await soundRef.current.getStatusAsync();
@@ -72,10 +82,13 @@ export function VoiceMessagePlayer({ uri, isMine }: Props) {
     if (status.isPlaying) {
       await soundRef.current.pauseAsync();
       setIsPlaying(false);
+      if (duckedRef.current) { duckedRef.current = false; unduck(); }
     } else {
       registerPlayback(soundRef.current);
       await soundRef.current.playAsync();
       setIsPlaying(true);
+      duckedRef.current = true;
+      duck();
     }
   }
 

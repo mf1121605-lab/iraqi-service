@@ -36,11 +36,21 @@ import { confirmDelete } from '@/lib/confirmDelete';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { Avatar } from '@/components/chat/Avatar';
 import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
+import { useAmbientMusic } from '@/hooks/useAmbientMusic';
 import { supabase } from '@/lib/supabase';
 import { uploadMediaSmart, type UploadHandle } from '@/lib/resumableUpload';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
 
+type AuthorInfo = {
+  id: string;
+  given_name: string;
+  family_name: string;
+  avatar_key: string | null;
+  role: 'founder' | 'employee' | 'customer';
+  admin_level: 'founder' | 'co_admin' | null;
+  is_verified: boolean;
+};
 type CommentReaction = { user_id: string; reaction_type: string };
 type Comment = {
   id: string;
@@ -48,7 +58,7 @@ type Comment = {
   image_url: string | null;
   parent_comment_id: string | null;
   created_at: string;
-  author: { id: string; given_name: string; family_name: string; avatar_key: string | null } | null;
+  author: AuthorInfo | null;
   reactions: CommentReaction[];
 };
 
@@ -58,10 +68,44 @@ type Post = {
   image_urls: string[];
   video_url: string | null;
   created_at: string;
-  author: { id: string; given_name: string; family_name: string; avatar_key: string | null } | null;
+  pinned: boolean;
+  author: AuthorInfo | null;
   reactions: { reaction_type: string; user_id: string }[];
   comments: Comment[];
 };
+
+// A post/comment author with founder-level access (role='founder' or
+// admin_level='co_admin' — same rule as hasFounderAccess() in useAuth.tsx)
+// gets a "مشرف" label; role='founder' specifically gets "المؤسس".
+function moderatorLabel(author: AuthorInfo | null): string | null {
+  if (!author) return null;
+  if (author.role === 'founder') return 'المؤسس';
+  if (author.admin_level === 'co_admin') return 'مشرف';
+  return null;
+}
+
+// Hybrid ranking: pinned posts always lead (newest-pinned first among
+// them), everything else is ordered by a recency-decayed engagement score
+// — the same "hot ranking" gravity shape Reddit/Hacker News use, so a
+// fresh post starts high and a post that keeps collecting reactions/
+// comments gets lifted back up even once its initial recency edge fades.
+// There is no shares_count anywhere in this schema (no share-tracking
+// table exists), so engagement here is reactions + weighted comments only
+// — re-sorted entirely client-side since the feed already fetches every
+// reaction/comment row it needs for this in the one query above.
+function hybridScore(post: Post): number {
+  const ageHours = (Date.now() - new Date(post.created_at).getTime()) / 3_600_000;
+  const engagement = post.reactions.length + post.comments.length * 1.5;
+  return engagement / Math.pow(ageHours + 2, 1.5);
+}
+
+function sortFeed(list: Post[]): Post[] {
+  return [...list].sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    if (a.pinned && b.pinned) return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    return hybridScore(b) - hybridScore(a);
+  });
+}
 
 const REACTIONS: { type: string; emoji: string; label: string; colors: [string, string] }[] = [
   { type: 'like',  emoji: '👍', label: 'إعجاب', colors: ['#5b9dff', '#2f5fd0'] },
@@ -128,6 +172,10 @@ function mimeFor(kind: 'image' | 'video', ext: string): string {
 
 // 5 minutes — matches the Arabic alert shown when a picked video is longer.
 const MAX_VIDEO_DURATION_MS = 5 * 60 * 1000;
+
+// Same fallback used everywhere else in the app (useAuth.tsx, eas.json) —
+// the base URL a share link points at.
+const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://iraqi-service.vercel.app';
 
 async function uploadMedia(
   uri: string,
@@ -235,6 +283,16 @@ export default function NewsScreen() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const [mutedVideoId, setMutedVideoId] = useState<Set<string>>(new Set());
+  const { duck, unduck } = useAmbientMusic();
+
+  // A feed video plays with real sound (isMuted is per-video, defaults to
+  // audible) — duck the ambient track for as long as any one is playing.
+  useEffect(() => {
+    if (!playingVideoId) return;
+    duck();
+    return () => unduck();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playingVideoId]);
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [followBusyId, setFollowBusyId] = useState<string | null>(null);
   const [menuPostId, setMenuPostId] = useState<string | null>(null);
@@ -274,15 +332,15 @@ export default function NewsScreen() {
     const { data } = await supabase
       .from('social_posts')
       .select(`
-        id, content, image_urls, video_url, created_at,
-        author:profiles!author_id(id, given_name, family_name, avatar_key),
+        id, content, image_urls, video_url, created_at, pinned,
+        author:profiles!author_id(id, given_name, family_name, avatar_key, role, admin_level, is_verified),
         reactions:social_reactions(reaction_type, user_id),
-        comments:social_comments(id, content, image_url, parent_comment_id, created_at, author:profiles!author_id(id, given_name, family_name, avatar_key), reactions:social_comment_reactions(user_id, reaction_type))
+        comments:social_comments(id, content, image_url, parent_comment_id, created_at, author:profiles!author_id(id, given_name, family_name, avatar_key, role, admin_level, is_verified), reactions:social_comment_reactions(user_id, reaction_type))
       `)
       .eq('approved', true)
       .order('created_at', { ascending: false })
       .limit(30);
-    if (data) setPosts(data as unknown as Post[]);
+    if (data) setPosts(sortFeed(data as unknown as Post[]));
     setLoading(false);
     setRefreshing(false);
   }, []);
@@ -310,10 +368,10 @@ export default function NewsScreen() {
     supabase
       .from('social_posts')
       .select(`
-        id, content, image_urls, video_url, created_at,
-        author:profiles!author_id(id, given_name, family_name, avatar_key),
+        id, content, image_urls, video_url, created_at, pinned,
+        author:profiles!author_id(id, given_name, family_name, avatar_key, role, admin_level, is_verified),
         reactions:social_reactions(reaction_type, user_id),
-        comments:social_comments(id, content, image_url, parent_comment_id, created_at, author:profiles!author_id(id, given_name, family_name, avatar_key), reactions:social_comment_reactions(user_id, reaction_type))
+        comments:social_comments(id, content, image_url, parent_comment_id, created_at, author:profiles!author_id(id, given_name, family_name, avatar_key, role, admin_level, is_verified), reactions:social_comment_reactions(user_id, reaction_type))
       `)
       .eq('id', deepLinkedPostId)
       .eq('approved', true)
@@ -488,7 +546,15 @@ export default function NewsScreen() {
   }
 
   function sharePost(post: Post) {
-    Share.share({ message: post.content ?? 'منشور من منصة الخدمات العراقية' }).catch(() => {});
+    // Reuses the exact same postId query param the in-app deep-link handler
+    // above already reads (useLocalSearchParams<{ postId }>) — opening this
+    // link inside the app jumps straight to the post. A cold open (app not
+    // installed) just lands on the web app's own handling of that URL.
+    const link = `${APP_URL}/news?postId=${post.id}`;
+    const kind = post.video_url ? 'الفيديو' : 'المنشور';
+    const teaser = `حمّل تطبيق خدماتي لرؤية هذا ${kind} واستكشاف المزيد: ${link}`;
+    const message = post.content ? `${post.content}\n\n${teaser}` : teaser;
+    Share.share({ message }).catch(() => {});
   }
 
   function startEdit(post: Post) {
@@ -510,6 +576,18 @@ export default function NewsScreen() {
     const savedText = editText.trim() || null;
     setPosts((cur) => cur.map((p) => (p.id === editPostId ? { ...p, content: savedText } : p)));
     setEditPostId(null);
+  }
+
+  // Founder/co_admin only (RLS already enforces this — social_posts_update
+  // in the RBAC migration only lets is_founder()/is_co_admin() touch this
+  // row at all, so a rejected attempt from anyone else fails server-side
+  // regardless of this client-side gate too).
+  async function togglePin(post: Post) {
+    setMenuPostId(null);
+    const nextPinned = !post.pinned;
+    const { error } = await supabase.from('social_posts').update({ pinned: nextPinned }).eq('id', post.id);
+    if (error) { Alert.alert('تعذّر التثبيت', error.message); return; }
+    setPosts((cur) => sortFeed(cur.map((p) => (p.id === post.id ? { ...p, pinned: nextPinned } : p))));
   }
 
   function startDelete(post: Post) {
@@ -583,13 +661,31 @@ export default function NewsScreen() {
     return (
       <View key={c.id} style={{ marginRight: depth * 20 }}>
         <Animated.View entering={FadeIn.duration(220)} exiting={FadeOutUp.duration(200)} style={styles.commentRow}>
-          {c.author ? (
-            <Avatar avatarKey={c.author.avatar_key} name={cName} seed={c.author.id} size={depth > 0 ? 24 : 28} />
-          ) : (
-            <AvatarCircle name={cName} size={depth > 0 ? 24 : 28} />
-          )}
+          <Pressable
+            disabled={!c.author}
+            onPress={() => c.author && router.push({ pathname: '/user/[userId]', params: { userId: c.author.id } })}
+          >
+            {c.author ? (
+              <Avatar avatarKey={c.author.avatar_key} name={cName} seed={c.author.id} size={depth > 0 ? 24 : 28} />
+            ) : (
+              <AvatarCircle name={cName} size={depth > 0 ? 24 : 28} />
+            )}
+          </Pressable>
           <View style={styles.commentBubble}>
-            <Text style={styles.commentAuthor}>{cName}</Text>
+            <Pressable
+              disabled={!c.author}
+              onPress={() => c.author && router.push({ pathname: '/user/[userId]', params: { userId: c.author.id } })}
+            >
+              <View style={styles.authorNameRow}>
+                <Text style={styles.commentAuthor}>{cName}</Text>
+                {c.author?.is_verified && <Text style={styles.verifiedBadge}>✔️</Text>}
+                {moderatorLabel(c.author) && (
+                  <Text style={[styles.moderatorLabel, c.author?.role === 'founder' && styles.founderLabel]}>
+                    {moderatorLabel(c.author)}
+                  </Text>
+                )}
+              </View>
+            </Pressable>
             {c.content ? <Text style={styles.commentContent}>{c.content}</Text> : null}
             {c.image_url ? <Image source={{ uri: c.image_url }} style={styles.commentImage} contentFit="cover" cachePolicy="memory-disk" transition={150} /> : null}
             <View style={styles.commentMetaRow}>
@@ -657,6 +753,11 @@ export default function NewsScreen() {
 
     return (
       <GlassCard style={styles.postCard} noPad borderRadius={18} borderSpeed={4500 + Math.random() * 2000}>
+        {item.pinned && (
+          <View style={styles.pinnedBanner}>
+            <Text style={styles.pinnedBannerText}>📌 منشور مثبت</Text>
+          </View>
+        )}
         {/* Post header */}
         <View style={styles.postHeader}>
           <View style={styles.authorCluster}>
@@ -669,7 +770,17 @@ export default function NewsScreen() {
               ) : (
                 <AvatarCircle name={authorName} size={38} />
               )}
-              <Text style={styles.authorName}>{authorName}</Text>
+              <View>
+                <View style={styles.authorNameRow}>
+                  <Text style={styles.authorName}>{authorName}</Text>
+                  {item.author?.is_verified && <Text style={styles.verifiedBadge}>✔️</Text>}
+                </View>
+                {moderatorLabel(item.author) && (
+                  <Text style={[styles.moderatorLabel, item.author?.role === 'founder' && styles.founderLabel]}>
+                    {moderatorLabel(item.author)}
+                  </Text>
+                )}
+              </View>
             </Pressable>
             {item.author && item.author.id !== session?.user.id && (
               <Pressable
@@ -905,6 +1016,11 @@ export default function NewsScreen() {
             <View style={styles.pageTitleRow}>
               <Text style={styles.pageTitle}>آخر الأخبار</Text>
               <Icon3D emoji="📰" size={36} active glowColor={COLORS.gold} animation="float" />
+              {hasFounderAccess(profile) && (
+                <Pressable style={styles.reportsShortcut} onPress={() => router.push('/(hq)/social-posts')}>
+                  <Text style={styles.reportsShortcutText}>🚩 البلاغات</Text>
+                </Pressable>
+              )}
             </View>
 
             {/* Composer */}
@@ -999,6 +1115,11 @@ export default function NewsScreen() {
                   {isMine && (
                     <Pressable style={styles.menuItem} onPress={() => startEdit(post)}>
                       <Text style={styles.menuItemText}>✏️ تعديل المنشور</Text>
+                    </Pressable>
+                  )}
+                  {hasFounderAccess(profile) && (
+                    <Pressable style={styles.menuItem} onPress={() => togglePin(post)}>
+                      <Text style={styles.menuItemText}>{post.pinned ? '📌 إلغاء التثبيت' : '📌 تثبيت المنشور في الأعلى'}</Text>
                     </Pressable>
                   )}
                   {canDelete && (
@@ -1099,6 +1220,16 @@ const styles = StyleSheet.create({
   headerSection: { gap: 12, marginBottom: 4 },
   pageTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'flex-end' },
   pageTitle: { fontFamily: FONTS.bold, fontSize: 22, color: COLORS.gold, textAlign: 'right' },
+  reportsShortcut: {
+    marginStart: 'auto',
+    backgroundColor: 'rgba(239,68,68,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.4)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  reportsShortcutText: { fontFamily: FONTS.bold, fontSize: 11, color: '#ef4444' },
 
   composerCard: { minHeight: 120 },
   composerInput: {
@@ -1240,6 +1371,20 @@ const styles = StyleSheet.create({
   followPillTextActive: { color: COLORS.gold },
   followPillCheck: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold },
   authorName: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.gold },
+  authorNameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  verifiedBadge: { fontSize: 12 },
+  moderatorLabel: { fontFamily: FONTS.bold, fontSize: 10, color: '#4f8bff' },
+  founderLabel: { color: COLORS.gold },
+  pinnedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(230,171,44,0.14)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(230,171,44,0.3)',
+    paddingVertical: 6,
+  },
+  pinnedBannerText: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold },
 
   postContent: {
     fontFamily: FONTS.regular,

@@ -1,5 +1,6 @@
-import { memo, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useAmbientMusic } from '@/hooks/useAmbientMusic';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ResizeMode, Video } from 'expo-av';
@@ -51,6 +52,17 @@ function MessageBubbleImpl({
   attachmentUrl, attachmentType, reactions = [], replyTo, status, onLongPress,
 }: Props) {
   const [fullscreen, setFullscreen] = useState(false);
+  const { duck, unduck } = useAmbientMusic();
+
+  // The fullscreen video modal auto-plays with real sound (useNativeControls,
+  // shouldPlay), so it should compete for attention with the ambient track,
+  // not stack on top of it — ducked only while that specific modal is open.
+  useEffect(() => {
+    if (attachmentType !== 'video' || !fullscreen) return;
+    duck();
+    return () => unduck();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachmentType, fullscreen]);
 
   if (messageType === 'payment_proposal') {
     let parsed: { method?: string; amount?: string | number; notes?: string } = {};

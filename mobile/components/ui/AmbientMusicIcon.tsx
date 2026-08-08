@@ -45,7 +45,7 @@ function clamp(v: number, min: number, max: number) {
 // for the rest of this app session — it only comes back on a fresh app
 // launch, not just by navigating around or un-muting again.
 export function AmbientMusicIcon() {
-  const { isMuted, toggle, hasTrack } = useAmbientMusic();
+  const { isMuted, toggle, hasTrack, muteCountdown } = useAmbientMusic();
   const insets = useSafeAreaInsets();
   const { width: screenW, height: screenH } = useWindowDimensions();
 
@@ -83,6 +83,26 @@ export function AmbientMusicIcon() {
 
   useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current); }, []);
 
+  // Scheduling the post-mute hide off the REAL mute transition (not the tap
+  // itself) matters now that muting takes the full 3s fade — starting the
+  // 5s hide-countdown at the moment of the fade completing, not at the
+  // moment of the press, keeps the button visible for the whole fade.
+  const prevMutedRef = useRef(isMuted);
+  useEffect(() => {
+    if (isMuted && !prevMutedRef.current) {
+      hideTimer.current = setTimeout(() => {
+        opacity.value = withTiming(0, { duration: FADE_MS }, (finished) => {
+          if (finished) runOnJS(setHidden)(true);
+        });
+      }, HIDE_DELAY_MS);
+    } else if (!isMuted && prevMutedRef.current && hideTimer.current) {
+      clearTimeout(hideTimer.current);
+      hideTimer.current = null;
+    }
+    prevMutedRef.current = isMuted;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMuted]);
+
   // Re-clamp if the button was parked somewhere that a rotation or keyboard
   // resize has since put off-screen.
   useEffect(() => {
@@ -114,18 +134,7 @@ export function AmbientMusicIcon() {
   );
 
   function handlePress() {
-    const willMute = !isMuted;
     toggle();
-    if (willMute) {
-      hideTimer.current = setTimeout(() => {
-        opacity.value = withTiming(0, { duration: FADE_MS }, (finished) => {
-          if (finished) runOnJS(setHidden)(true);
-        });
-      }, HIDE_DELAY_MS);
-    } else if (hideTimer.current) {
-      clearTimeout(hideTimer.current);
-      hideTimer.current = null;
-    }
   }
 
   const wrapStyle = useAnimatedStyle(() => ({
@@ -147,7 +156,12 @@ export function AmbientMusicIcon() {
       style={[styles.wrap, { top: insets.top + 12 }, wrapStyle]}
       {...panResponder.panHandlers}
     >
-      <Pressable onPress={handlePress} style={styles.btn} hitSlop={10}>
+      {muteCountdown !== null && (
+        <View style={styles.countdownWrap} pointerEvents="none">
+          <Text style={styles.countdownText}>سيتم التلاشي خلال {muteCountdown}...</Text>
+        </View>
+      )}
+      <Pressable onPress={handlePress} style={styles.btn} hitSlop={10} disabled={muteCountdown !== null}>
         {isMuted ? (
           <Text style={styles.note}>🔇</Text>
         ) : (
@@ -198,6 +212,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   note: { fontSize: 18 },
+  countdownWrap: {
+    position: 'absolute',
+    top: BTN_SIZE + 6,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(13,17,23,0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(230,171,44,0.4)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    minWidth: 140,
+  },
+  countdownText: {
+    fontSize: 10,
+    color: COLORS.gold,
+    textAlign: 'center',
+  },
   bars: {
     flexDirection: 'row',
     alignItems: 'center',
