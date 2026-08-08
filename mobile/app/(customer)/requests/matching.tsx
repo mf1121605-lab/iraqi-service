@@ -13,22 +13,18 @@ const CAT_LABELS: Record<string, string> = {
   general: 'خدمات أخرى',
 };
 
-// The customer can either wait passively (the request sits unassigned in
-// every eligible supervisor's queue and whichever accepts it first takes
-// it) or tap a specific candidate card to request them by name. Either
-// way a supervisor still has the final say: tapping a card only reserves
-// the request for that supervisor (customer_select_employee), it does
-// NOT skip their accept/reject decision — this screen keeps watching the
-// request and only moves on once status actually flips to in_review,
-// which happens exactly when some supervisor (the tapped one, or anyone
-// else if the customer never tapped) explicitly accepts it.
+// The customer never picks an employee directly — they submit the
+// request, it sits unassigned in every available employee's queue
+// (employee/index.tsx's claimRequest), and whichever employee approves
+// it first takes it. This screen is a passive "search animation" while
+// that happens: candidate cards auto-cycle for visual interest, and a
+// realtime listener on the request row navigates to the chat the
+// moment any employee claims it — no tap-to-select here at all.
 export default function MatchingScreen() {
   const { requestId, category, serviceId } = useLocalSearchParams<{ requestId: string; category: string; serviceId?: string }>();
   const [candidates, setCandidates] = useState<EmployeeCandidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [matched, setMatched] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const navigatedRef = useRef(false);
 
   const load = useCallback(async () => {
@@ -63,23 +59,19 @@ export default function MatchingScreen() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Watch the request itself — the moment its status actually flips to
-  // in_review (a supervisor explicitly accepted it, whether picked by
-  // name or claimed organically), jump straight into the chat. Checking
-  // status rather than assigned_employee_id alone matters now: a tapped
-  // pick sets assigned_employee_id first but leaves status='submitted'
-  // until that supervisor accepts, and this screen must keep waiting
-  // through that gap instead of jumping the gun.
+  // Watch the request itself — the moment any employee claims it
+  // (assigned_employee_id goes from null to something, status flips to
+  // in_review), jump straight into the chat.
   useEffect(() => {
     if (!requestId) return;
 
     async function checkAssigned() {
       const { data } = await supabase
         .from('requests')
-        .select('status')
+        .select('assigned_employee_id')
         .eq('id', requestId)
         .maybeSingle();
-      if (data?.status === 'in_review' && !navigatedRef.current) {
+      if (data?.assigned_employee_id && !navigatedRef.current) {
         navigatedRef.current = true;
         setMatched(true);
         setTimeout(() => {
@@ -96,8 +88,8 @@ export default function MatchingScreen() {
         event: 'UPDATE', schema: 'public', table: 'requests',
         filter: `id=eq.${requestId}`,
       }, (payload) => {
-        const updated = payload.new as { status: string };
-        if (updated.status === 'in_review' && !navigatedRef.current) {
+        const updated = payload.new as { assigned_employee_id: string | null };
+        if (updated.assigned_employee_id && !navigatedRef.current) {
           navigatedRef.current = true;
           setMatched(true);
           setTimeout(() => {
@@ -109,18 +101,6 @@ export default function MatchingScreen() {
 
     return () => { supabase.removeChannel(channel); };
   }, [requestId]);
-
-  async function handleSelect(candidate: EmployeeCandidate) {
-    if (!requestId || confirmingId || selectedId) return;
-    setConfirmingId(candidate.id);
-    const { data, error } = await supabase.rpc('customer_select_employee', {
-      p_request_id: requestId,
-      p_employee_id: candidate.id,
-    });
-    setConfirmingId(null);
-    if (error || !data) return; // already claimed by someone else — stays passive, keeps waiting
-    setSelectedId(candidate.id);
-  }
 
   return (
     <ScreenBg>
@@ -165,17 +145,9 @@ export default function MatchingScreen() {
       ) : (
         <View style={styles.carouselScreen}>
           <Text style={styles.listHeader}>
-            {selectedId
-              ? 'بانتظار موافقة المشرف الذي اخترته...'
-              : `طلبك وصل لـ${candidates.length} مشرف متاح — اختر أحدهم أو انتظر موافقة أي منهم`}
+            طلبك وصل لـ{candidates.length} موظف متاح — بانتظار موافقة أحدهم
           </Text>
-          <EmployeeSelectorCarousel
-            candidates={candidates}
-            selectedId={selectedId}
-            confirmingId={confirmingId}
-            onSelect={selectedId ? undefined : handleSelect}
-            autoScroll={!selectedId && !confirmingId}
-          />
+          <EmployeeSelectorCarousel candidates={candidates} autoScroll />
         </View>
       )}
     </ScreenBg>

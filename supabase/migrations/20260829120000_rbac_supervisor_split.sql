@@ -135,10 +135,11 @@ create policy requests_update_staff
 
 -- ============================================================
 -- 5. accept_request / decline_request — the supervisor dashboard's two
---    explicit buttons. Both cover the request whether it arrived
---    unassigned (organic queue) or pre-assigned via
---    customer_select_employee (customer picked this supervisor by name)
---    — in the latter case the supervisor still has the final say.
+--    explicit buttons. The customer never picks a specific supervisor
+--    (confirmed unchanged from the existing system) — every unassigned
+--    request stays in the organic queue, visible to every supervisor
+--    eligible for its category/service, and whichever one accepts it
+--    first takes it.
 --
 --    Accepting does NOT spin up a separate direct_message_threads row —
 --    the customer<->employee chat for a request already exists the
@@ -168,20 +169,11 @@ begin
   end if;
 
   if v_req.assigned_employee_id is null then
-    -- Organic queue: nobody has this one yet.
     if not public.employee_can_serve_request(auth.uid(), v_req.category, v_req.service_id) then
       raise exception 'not permitted for this request';
     end if;
     update public.requests
     set assigned_employee_id = auth.uid(), status = 'in_review'
-    where id = p_request_id
-    returning * into v_req;
-  elsif v_req.status = 'submitted' then
-    -- Pre-assigned via customer_select_employee: the customer named this
-    -- supervisor specifically, but it still needs their explicit accept
-    -- before it counts as taken — this is that transition.
-    update public.requests
-    set status = 'in_review'
     where id = p_request_id
     returning * into v_req;
   end if;
@@ -191,33 +183,6 @@ end;
 $$;
 
 grant execute on function public.accept_request(uuid) to authenticated;
-
--- Re-created: no longer jumps straight to status='in_review'. A customer
--- picking a specific supervisor by name only reserves the request for
--- them — accept_request() above still has to run before it's actually
--- taken, matching the founder's accept/reject requirement uniformly for
--- both the organic queue and a direct pick.
-create or replace function public.customer_select_employee(p_request_id uuid, p_employee_id uuid)
-returns public.requests
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_result public.requests;
-begin
-  update public.requests
-  set assigned_employee_id = p_employee_id
-  where id = p_request_id
-    and customer_id = auth.uid()
-    and assigned_employee_id is null
-  returning * into v_result;
-
-  return v_result;
-end;
-$$;
-
-grant execute on function public.customer_select_employee(uuid, uuid) to authenticated;
 
 create or replace function public.decline_request(p_request_id uuid, p_reason text default null)
 returns void
