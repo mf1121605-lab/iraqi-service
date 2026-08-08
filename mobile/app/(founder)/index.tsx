@@ -46,6 +46,7 @@ const STATUS_COLORS: Record<string, string> = {
 const NAV_ITEMS: { label: string; route: string; icon: string; founderOnly?: boolean }[] = [
   { label: 'الأعضاء', route: '/(founder)/users', icon: '👥' },
   { label: 'الموظفون', route: '/(founder)/employees', icon: '🧑‍💼' },
+  { label: 'المشرفون', route: '/(founder)/supervisors', icon: '🗂️' },
   { label: 'التصنيفات', route: '/(founder)/categories', icon: '🗂️' },
   { label: 'خدمات التصنيف', route: '/(founder)/category-services', icon: '📋' },
   { label: 'المدفوعات', route: '/(founder)/payments', icon: '💰' },

@@ -5,11 +5,13 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -79,6 +81,24 @@ async function uploadAttachment(
   }
 }
 
+// Same upload approach onboarding.tsx uses for a self-avatar photo:
+// arrayBuffer() rather than RN's unreliable Blob polyfill, uploaded to the
+// self-writable avatars/{userId}/ path (site_assets_write_own_avatar).
+async function uploadOwnPhoto(uri: string, userId: string): Promise<string | null> {
+  try {
+    const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const path = `avatars/${userId}/${Date.now()}.${ext}`;
+    const response = await fetch(uri);
+    const arrayBuffer = await response.arrayBuffer();
+    const contentType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    const { error } = await supabase.storage.from('site-assets').upload(path, arrayBuffer, { contentType, upsert: false });
+    if (error) { console.error('avatar upload failed:', error.message); return null; }
+    return path;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ScreenView = 'list' | 'chat' | 'profile';
@@ -87,6 +107,7 @@ type QueueTab = 'requests' | 'quick';
 interface RequestItem {
   id: string;
   title: string;
+  description: string | null;
   category: string;
   status: string;
   assigned_employee_id: string | null;
@@ -94,6 +115,7 @@ interface RequestItem {
   created_at: string;
   service_id: string | null;
   service: { label_ar: string } | null;
+  customer: { given_name: string | null; family_name: string | null; phone: string | null } | null;
 }
 
 interface QuickRequest {
@@ -173,6 +195,7 @@ const pill = StyleSheet.create({
 
 export default function EmployeeDashboard() {
   const { profile, signOut, refreshProfile } = useAuth();
+  const fullName = [profile?.given_name, profile?.family_name].filter(Boolean).join(' ') || 'الموظف';
 
   // Navigation
   const [view, setView] = useState<ScreenView>('list');
@@ -233,10 +256,19 @@ export default function EmployeeDashboard() {
 
   // Profile settings
   const [specialization, setSpecialization] = useState('');
+  const [qualification, setQualification] = useState('');
+  const [isActive, setIsActive] = useState(true);
+  const [avatarKey, setAvatarKey] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [activeServices, setActiveServices] = useState<string[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
+
+  // Accept/reject preview for an unclaimed request
+  const [previewRequest, setPreviewRequest] = useState<RequestItem | null>(null);
+  const [declineReason, setDeclineReason] = useState('');
+  const [decisionSaving, setDecisionSaving] = useState(false);
 
   // ── Load queue ────────────────────────────────────────────────────────────
 
@@ -249,7 +281,7 @@ export default function EmployeeDashboard() {
       // broad category — the founder's dynamic category-services system
       // already captures this at submission time, but the queue never
       // surfaced it before.
-      .select('id, title, category, status, assigned_employee_id, customer_id, created_at, service_id, service:category_services(label_ar)')
+      .select('id, title, description, category, status, assigned_employee_id, customer_id, created_at, service_id, service:category_services(label_ar), customer:profiles!customer_id(given_name, family_name, phone)')
       .order('created_at', { ascending: false });
     setQueue((data ?? []) as unknown as RequestItem[]);
     setRefreshing(false);
@@ -271,12 +303,15 @@ export default function EmployeeDashboard() {
     (async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('specialization, active_services')
+        .select('specialization, active_services, qualification, is_active, avatar_key')
         .eq('id', profile.id)
         .single();
       if (data) {
         setSpecialization(data.specialization ?? '');
         setActiveServices(data.active_services ?? []);
+        setQualification(data.qualification ?? '');
+        setIsActive(data.is_active ?? true);
+        setAvatarKey(data.avatar_key ?? null);
       }
       setProfileLoaded(true);
     })();
@@ -421,12 +456,47 @@ export default function EmployeeDashboard() {
     loadDetail(req.id);
   }
 
-  async function claimRequest(requestId: string) {
-    if (!profile) return;
-    await supabase.from('requests').update({ assigned_employee_id: profile.id, status: 'in_review' }).eq('id', requestId);
+  function openPreview(req: RequestItem) {
+    setPreviewRequest(req);
+    setDeclineReason('');
+  }
+
+  // موافق ✅ — accept_request() does the same claim the old instant button
+  // did (assigned_employee_id + status='in_review'), but only after
+  // verifying eligibility server-side; the customer's chat/notification
+  // are unchanged, they already fire off any status change.
+  async function handleAcceptPreview() {
+    if (!profile || !previewRequest) return;
+    setDecisionSaving(true);
+    const { data, error } = await supabase.rpc('accept_request', { p_request_id: previewRequest.id });
+    setDecisionSaving(false);
+    if (error) {
+      Alert.alert('تعذّر القبول', error.message);
+      return;
+    }
+    const accepted = previewRequest;
+    setPreviewRequest(null);
     await loadQueue();
-    const req = queue?.find((r) => r.id === requestId);
-    if (req) openChat({ ...req, assigned_employee_id: profile.id, status: 'in_review' });
+    openChat({ ...accepted, assigned_employee_id: profile.id, status: (data?.status as string) ?? 'in_review' });
+  }
+
+  // غير موافق ❌ — logs the decline (with an optional reason) and drops
+  // the request out of this supervisor's own queue; it stays visible to
+  // any other supervisor still eligible for its category/service.
+  async function handleDeclinePreview() {
+    if (!previewRequest) return;
+    setDecisionSaving(true);
+    const { error } = await supabase.rpc('decline_request', {
+      p_request_id: previewRequest.id,
+      p_reason: declineReason.trim() || null,
+    });
+    setDecisionSaving(false);
+    if (error) {
+      Alert.alert('تعذّر الرفض', error.message);
+      return;
+    }
+    setPreviewRequest(null);
+    loadQueue();
   }
 
   async function handleStatusUpdate() {
@@ -607,9 +677,37 @@ export default function EmployeeDashboard() {
   async function saveProfile() {
     if (!profile) return;
     setProfileSaving(true);
-    await supabase.from('profiles').update({ specialization }).eq('id', profile.id);
+    await supabase.from('profiles').update({ specialization, qualification: qualification.trim() || null }).eq('id', profile.id);
     setProfileSaving(false);
     refreshProfile();
+  }
+
+  async function toggleActive(value: boolean) {
+    if (!profile) return;
+    setIsActive(value);
+    await supabase.from('profiles').update({ is_active: value }).eq('id', profile.id);
+    refreshProfile();
+  }
+
+  async function handlePickAvatar() {
+    if (!profile) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الصور من إعدادات الجهاز.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, allowsEditing: true, aspect: [1, 1] });
+    if (result.canceled || !result.assets[0]) return;
+    setAvatarUploading(true);
+    const path = await uploadOwnPhoto(result.assets[0].uri, profile.id);
+    if (path) {
+      await supabase.from('profiles').update({ avatar_key: path }).eq('id', profile.id);
+      setAvatarKey(path);
+      refreshProfile();
+    } else {
+      Alert.alert('تعذّر الرفع', 'تعذّر رفع الصورة، حاول مرة أخرى');
+    }
+    setAvatarUploading(false);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -628,6 +726,44 @@ export default function EmployeeDashboard() {
         </View>
         <ScrollView contentContainerStyle={styles.profileScroll}>
           <View style={styles.card}>
+            <Text style={styles.cardTitle}>🖼️ الصورة الشخصية</Text>
+            <View style={avatarStyles.row}>
+              <Avatar avatarKey={avatarKey} name={fullName} seed={profile?.id} size={64} />
+              <Pressable
+                onPress={handlePickAvatar}
+                disabled={avatarUploading}
+                style={({ pressed }) => [avatarStyles.changeBtn, pressed && { opacity: 0.8 }]}
+              >
+                <Text style={avatarStyles.changeBtnText}>{avatarUploading ? '...' : 'تغيير الصورة'}</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <View style={avatarStyles.row}>
+              <Switch
+                value={isActive}
+                onValueChange={toggleActive}
+                thumbColor={isActive ? COLORS.gold : '#888'}
+                trackColor={{ true: 'rgba(230,171,44,0.4)', false: 'rgba(255,255,255,0.1)' }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitle}>{isActive ? '🟢 نشط' : '⚪ غير نشط'}</Text>
+                <Text style={styles.cardSub}>عند إيقاف النشاط لن تظهر ضمن قائمة المشرفين المتاحين للزبائن</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>🎓 الشهادة / التخصص العلمي</Text>
+            <TextInput
+              value={qualification}
+              onChangeText={setQualification}
+              placeholder="مثال: بكالوريوس حقوق"
+              placeholderTextColor={COLORS.white40}
+              style={styles.input}
+              textAlign="right"
+            />
             <Text style={styles.cardTitle}>🎯 التخصص</Text>
             <TextInput
               value={specialization}
@@ -642,7 +778,7 @@ export default function EmployeeDashboard() {
               disabled={profileSaving}
               style={({ pressed }) => [styles.goldBtn, pressed && { opacity: 0.8 }]}
             >
-              <Text style={styles.goldBtnText}>{profileSaving ? '...' : 'حفظ التخصص'}</Text>
+              <Text style={styles.goldBtnText}>{profileSaving ? '...' : 'حفظ'}</Text>
             </Pressable>
           </View>
 
@@ -659,24 +795,6 @@ export default function EmployeeDashboard() {
                   {activeServices.includes(cat.key) && <Text style={styles.checkmark}>✓</Text>}
                 </View>
                 <Text style={styles.serviceLabel}>{cat.label_ar}</Text>
-              </Pressable>
-            ))}
-          </View>
-          {/* HQ tools */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>🛠️ أدوات الموظف</Text>
-            {[
-              { label: '🔗 روابط الأخبار', route: '/(hq)/news-links' },
-              { label: '🚨 أخبار عاجلة', route: '/(hq)/urgent-news' },
-              { label: '📰 المنشورات', route: '/(hq)/social-posts' },
-            ].map((item) => (
-              <Pressable
-                key={item.route}
-                onPress={() => router.push(item.route as never)}
-                style={({ pressed }) => [styles.hqLink, pressed && { opacity: 0.7 }]}
-              >
-                <Text style={styles.hqLinkText}>{item.label}</Text>
-                <Text style={styles.hqArrow}>›</Text>
               </Pressable>
             ))}
           </View>
@@ -1016,7 +1134,6 @@ export default function EmployeeDashboard() {
   // LIST VIEW
   // ─────────────────────────────────────────────────────────────────────────
 
-  const fullName = [profile?.given_name, profile?.family_name].filter(Boolean).join(' ') || 'الموظف';
   const myRequests = queue?.filter((r) => r.assigned_employee_id === profile?.id) ?? [];
   const unclaimedRequests = queue?.filter((r) => !r.assigned_employee_id) ?? [];
   const allVisible = [...unclaimedRequests, ...myRequests.filter((r) => !unclaimedRequests.find((u) => u.id === r.id))];
@@ -1120,11 +1237,11 @@ export default function EmployeeDashboard() {
                 return (
                   <Pressable
                     key={req.id}
-                    onPress={() => isMine ? openChat(req) : null}
+                    onPress={() => isMine ? openChat(req) : openPreview(req)}
                     style={({ pressed }) => [
                       styles.reqCard,
                       isUnclaimed && styles.reqCardUnclaimed,
-                      pressed && isMine && { opacity: 0.75 },
+                      pressed && { opacity: 0.75 },
                     ]}
                   >
                     <View style={[styles.accentBar, { backgroundColor: statusColor }]} />
@@ -1136,10 +1253,10 @@ export default function EmployeeDashboard() {
                       <View style={styles.reqCardBottom}>
                         {isUnclaimed ? (
                           <HapticPressable
-                            onPress={() => claimRequest(req.id)}
+                            onPress={() => openPreview(req)}
                             style={styles.claimBtn}
                           >
-                            <Text style={styles.claimBtnText}>+ استلم الطلب</Text>
+                            <Text style={styles.claimBtnText}>عرض والقرار</Text>
                           </HapticPressable>
                         ) : (
                           <View style={styles.myBadge}>
@@ -1200,6 +1317,61 @@ export default function EmployeeDashboard() {
 
         <View style={{ height: 48 }} />
       </ScrollView>
+
+      {/* Accept / reject preview for an unclaimed request */}
+      <Modal
+        visible={!!previewRequest}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewRequest(null)}
+      >
+        <View style={previewStyles.backdrop}>
+          <View style={previewStyles.card}>
+            <Text style={previewStyles.title} numberOfLines={2}>{previewRequest?.title}</Text>
+            <Text style={previewStyles.meta}>
+              {previewRequest?.service?.label_ar
+                ?? categories.find((c) => c.key === previewRequest?.category)?.label_ar
+                ?? previewRequest?.category}
+            </Text>
+            {previewRequest?.customer && (
+              <Text style={previewStyles.customer}>
+                👤 {[previewRequest.customer.given_name, previewRequest.customer.family_name].filter(Boolean).join(' ') || 'زبون'}
+                {previewRequest.customer.phone ? ` — ${previewRequest.customer.phone}` : ''}
+              </Text>
+            )}
+            {previewRequest?.description ? (
+              <Text style={previewStyles.desc} numberOfLines={5}>{previewRequest.description}</Text>
+            ) : null}
+            <TextInput
+              value={declineReason}
+              onChangeText={setDeclineReason}
+              placeholder="سبب الرفض (اختياري)"
+              placeholderTextColor={COLORS.white40}
+              style={previewStyles.reasonInput}
+              textAlign="right"
+            />
+            <View style={previewStyles.actionsRow}>
+              <Pressable
+                disabled={decisionSaving}
+                onPress={handleAcceptPreview}
+                style={({ pressed }) => [previewStyles.acceptBtn, pressed && { opacity: 0.85 }]}
+              >
+                <Text style={previewStyles.acceptText}>{decisionSaving ? '...' : '✅ موافق'}</Text>
+              </Pressable>
+              <Pressable
+                disabled={decisionSaving}
+                onPress={handleDeclinePreview}
+                style={({ pressed }) => [previewStyles.rejectBtn, pressed && { opacity: 0.85 }]}
+              >
+                <Text style={previewStyles.rejectText}>{decisionSaving ? '...' : '❌ غير موافق'}</Text>
+              </Pressable>
+            </View>
+            <Pressable onPress={() => setPreviewRequest(null)} hitSlop={8} style={previewStyles.closeBtn}>
+              <Text style={previewStyles.closeText}>إغلاق</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ScreenBg>
   );
 }
@@ -1211,6 +1383,32 @@ const uploadBarStyles = StyleSheet.create({
   track: { flex: 1, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 3, backgroundColor: COLORS.gold },
   text: { fontFamily: FONTS.bold, fontSize: 10, color: COLORS.gold, minWidth: 28, textAlign: 'left' },
+});
+
+const avatarStyles = StyleSheet.create({
+  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14 },
+  changeBtn: { backgroundColor: 'rgba(230,171,44,0.12)', borderWidth: 1, borderColor: 'rgba(230,171,44,0.3)', borderRadius: RADIUS.md, paddingHorizontal: 14, paddingVertical: 9 },
+  changeBtnText: { fontFamily: FONTS.bold, fontSize: 12, color: COLORS.gold },
+});
+
+const previewStyles = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.72)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  card: { width: '100%', maxWidth: 400, backgroundColor: '#161b22', borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.goldBorder, padding: 18, gap: 10 },
+  title: { fontFamily: FONTS.bold, fontSize: 17, color: COLORS.white, textAlign: 'right' },
+  meta: { fontFamily: FONTS.bold, fontSize: 13, color: COLORS.gold, textAlign: 'right' },
+  customer: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white70, textAlign: 'right' },
+  desc: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white70, textAlign: 'right', lineHeight: 19 },
+  reasonInput: {
+    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: RADIUS.sm, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 12, paddingVertical: 10, color: COLORS.white, fontFamily: FONTS.regular, fontSize: 13,
+  },
+  actionsRow: { flexDirection: 'row', gap: 10 },
+  acceptBtn: { flex: 1, backgroundColor: 'rgba(34,197,94,0.16)', borderWidth: 1, borderColor: 'rgba(34,197,94,0.5)', borderRadius: RADIUS.md, paddingVertical: 12, alignItems: 'center' },
+  acceptText: { fontFamily: FONTS.bold, fontSize: 14, color: '#22c55e' },
+  rejectBtn: { flex: 1, backgroundColor: 'rgba(239,68,68,0.14)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.5)', borderRadius: RADIUS.md, paddingVertical: 12, alignItems: 'center' },
+  rejectText: { fontFamily: FONTS.bold, fontSize: 14, color: '#ef4444' },
+  closeBtn: { alignItems: 'center', paddingVertical: 6 },
+  closeText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.white40 },
 });
 
 const styles = StyleSheet.create({
@@ -1360,7 +1558,4 @@ const styles = StyleSheet.create({
   serviceCheckboxActive: { backgroundColor: COLORS.gold, borderColor: COLORS.gold },
   checkmark: { fontSize: 13, color: '#000', fontFamily: FONTS.bold },
   serviceLabel: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.white, flex: 1, textAlign: 'right' },
-  hqLink: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.white10 },
-  hqLinkText: { fontFamily: FONTS.bold, fontSize: 14, color: COLORS.white, flex: 1, textAlign: 'right' },
-  hqArrow: { fontSize: 20, color: COLORS.muted },
 });

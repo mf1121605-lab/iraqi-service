@@ -20,6 +20,8 @@ interface Profile {
   bio: string | null;
   is_verified?: boolean;
   onboarding_complete?: boolean | null;
+  qualification?: string | null;
+  is_active?: boolean;
 }
 
 // A co_admin is an employee granted founder-panel access by the founder —
@@ -28,6 +30,14 @@ interface Profile {
 // alone so promoted admins actually get in.
 export function hasFounderAccess(profile: Profile | null): boolean {
   return !!profile && (profile.role === 'founder' || profile.admin_level === 'co_admin');
+}
+
+// A plain employee — no admin_level — gets the simplified supervisor
+// dashboard (assigned-requests queue + accept/reject + own profile) rather
+// than the founder's full control panel. A co_admin is NOT a supervisor in
+// this sense; they already get hasFounderAccess === true above.
+export function isSupervisor(profile: Profile | null): boolean {
+  return !!profile && profile.role === 'employee' && profile.admin_level !== 'co_admin';
 }
 
 interface AuthState {
@@ -108,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, given_name, family_name, phone, role, admin_level, account_status, avatar_key, bio, is_verified, onboarding_complete')
+      .select('id, given_name, family_name, phone, role, admin_level, account_status, avatar_key, bio, is_verified, onboarding_complete, qualification, is_active')
       .eq('id', userId)
       .single();
     // A missing column-level grant makes Postgres reject this whole query

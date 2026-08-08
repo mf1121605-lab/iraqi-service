@@ -28,7 +28,9 @@ export type EmployeeCandidate = {
   family_name: string;
   avatar_key: string | null;
   specialization: string | null;
+  qualification?: string | null;
   is_verified: boolean;
+  is_active?: boolean;
   is_online?: boolean;
   avg_rating?: number | null;
   rating_count?: number | null;
@@ -266,9 +268,21 @@ function CarouselCard({
               )}
             </View>
 
+            {candidate.is_active !== false && (
+              <View style={styles.activeBadge}>
+                <Text style={styles.activeBadgeText}>🟢 نشط</Text>
+              </View>
+            )}
+
+            {candidate.qualification ? (
+              <Text style={styles.qualification} numberOfLines={1}>
+                🎓 {candidate.qualification}
+              </Text>
+            ) : null}
+
             {candidate.specialization ? (
               <Text style={styles.specialization} numberOfLines={1}>
-                🎓 {candidate.specialization}
+                {candidate.specialization}
               </Text>
             ) : null}
 
@@ -368,6 +382,12 @@ const styles = StyleSheet.create({
   },
   verifiedGlyph: { fontSize: 9, color: '#60a5fa', fontFamily: FONTS.bold },
 
+  activeBadge: {
+    backgroundColor: 'rgba(34,197,94,0.14)', borderWidth: 1, borderColor: 'rgba(34,197,94,0.4)',
+    borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2, marginTop: 2,
+  },
+  activeBadgeText: { fontFamily: FONTS.bold, fontSize: 10, color: '#22c55e' },
+  qualification: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold, maxWidth: '100%', marginTop: 3 },
   specialization: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.white50, maxWidth: '100%' },
   rating: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold, marginTop: 2 },
 
