@@ -28,7 +28,7 @@ import { confirmDelete } from '@/lib/confirmDelete';
 import { VoiceRecorderBar } from '@/components/chat/VoiceRecorderBar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import { uploadMediaSmart } from '@/lib/resumableUpload';
+import { uploadMediaSmart, type UploadHandle } from '@/lib/resumableUpload';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
 import {
@@ -46,6 +46,7 @@ async function uploadAttachment(
   userId: string,
   kind: 'image' | 'voice' | 'video',
   onProgress?: (pct: number) => void,
+  onHandle?: (handle: UploadHandle) => void,
 ): Promise<string | null> {
   try {
     const ext = kind === 'voice'
@@ -65,6 +66,7 @@ async function uploadAttachment(
     let uploadErr: Error | null = null;
     await uploadMediaSmart(uri, 'site-assets', path, contentType, {
       onProgress,
+      onHandle,
       onSuccess: (url) => { publicUrl = url; },
       onError: (err) => { uploadErr = err; },
     });
@@ -200,9 +202,18 @@ export default function EmployeeDashboard() {
   const [messageBody, setMessageBody] = useState('');
   const [sending, setSending] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const uploadHandleRef = useRef<UploadHandle | null>(null);
   const [recording, setRecording] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [loadingChat, setLoadingChat] = useState(false);
+
+  // This screen never unmounts between the queue/chat/profile sub-views —
+  // `view`/`selectedId` just switch which JSX the same component returns —
+  // so a plain unmount-only cleanup would miss "tapped back to the queue
+  // mid-upload" or "opened a different request's chat mid-upload". Keying
+  // the effect on both means it also re-fires (and aborts) on those
+  // transitions, on top of covering the real unmount case.
+  useEffect(() => () => { uploadHandleRef.current?.abort(); }, [view, selectedId]);
 
   // Status update
   const [showStatusForm, setShowStatusForm] = useState(false);
@@ -463,7 +474,11 @@ export default function EmployeeDashboard() {
     const isVideo = asset.type === 'video';
     setSending(true);
     setUploadProgress(0);
-    const url = await uploadAttachment(asset.uri, profile.id, isVideo ? 'video' : 'image', setUploadProgress);
+    const url = await uploadAttachment(
+      asset.uri, profile.id, isVideo ? 'video' : 'image', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; },
+    );
+    uploadHandleRef.current = null;
     setUploadProgress(null);
     if (url) {
       await supabase.from('request_messages').insert({
@@ -483,7 +498,11 @@ export default function EmployeeDashboard() {
     if (durationMs < 800) return;
     setSending(true);
     setUploadProgress(0);
-    const url = await uploadAttachment(uri, profile.id, 'voice', setUploadProgress);
+    const url = await uploadAttachment(
+      uri, profile.id, 'voice', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; },
+    );
+    uploadHandleRef.current = null;
     setUploadProgress(null);
     if (url) {
       await supabase.from('request_messages').insert({

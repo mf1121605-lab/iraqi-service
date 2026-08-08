@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -37,7 +37,7 @@ import { SkeletonCard } from '@/components/ui/Skeleton';
 import { Avatar } from '@/components/chat/Avatar';
 import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import { uploadMediaSmart } from '@/lib/resumableUpload';
+import { uploadMediaSmart, type UploadHandle } from '@/lib/resumableUpload';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
 
@@ -134,6 +134,7 @@ async function uploadMedia(
   folder: string,
   kind: 'image' | 'video',
   onProgress?: (pct: number) => void,
+  onHandle?: (handle: UploadHandle) => void,
 ): Promise<string | null> {
   try {
     const ext = uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg');
@@ -149,6 +150,7 @@ async function uploadMedia(
     let uploadErr: Error | null = null;
     await uploadMediaSmart(uri, 'site-assets', path, contentType, {
       onProgress,
+      onHandle,
       onSuccess: (url) => { publicUrl = url; },
       onError: (err) => { uploadErr = err; },
     });
@@ -242,6 +244,11 @@ export default function NewsScreen() {
   const [reportPostId, setReportPostId] = useState<string | null>(null);
   const [reportReason, setReportReason] = useState('');
   const [reportSubmitting, setReportSubmitting] = useState(false);
+  const uploadHandleRef = useRef<UploadHandle | null>(null);
+
+  // Stops an in-flight upload if the user navigates away mid-upload —
+  // otherwise it keeps running against a screen that's already gone.
+  useEffect(() => () => { uploadHandleRef.current?.abort(); }, []);
 
   const loadFollowing = useCallback(async () => {
     if (!session?.user.id) return;
@@ -364,7 +371,14 @@ export default function NewsScreen() {
     let videoUrl: string | null = null;
     if (pickedVideo) {
       setUploadProgress(0);
-      videoUrl = await uploadMedia(pickedVideo, `social/${session.user.id}`, 'video', setUploadProgress);
+      videoUrl = await uploadMedia(
+        pickedVideo,
+        `social/${session.user.id}`,
+        'video',
+        setUploadProgress,
+        (h) => { uploadHandleRef.current = h; },
+      );
+      uploadHandleRef.current = null;
       setUploadProgress(null);
       if (!videoUrl) {
         setPosting(false);

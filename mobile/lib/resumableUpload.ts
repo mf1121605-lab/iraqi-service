@@ -16,16 +16,26 @@ const CHUNK_SIZE = 6 * 1024 * 1024;
 // faster and Postgres/Storage handles it in one request.
 const SMALL_FILE_THRESHOLD = 5 * 1024 * 1024;
 
+export interface UploadHandle {
+  /** Aborts the in-flight upload. Genuinely cancels the TUS transfer
+   *  mid-chunk; on the small-file fast path it can only stop the request
+   *  before it's sent (or suppress the completion callbacks if it's already
+   *  in flight) — see uploadMediaFast's comment for why. */
+  abort: () => void;
+}
+
 export interface ResumableUploadHandlers {
   onProgress?: (pct: number) => void;
   onError?: (err: Error) => void;
   onSuccess?: (publicUrl: string) => void;
-}
-
-export interface UploadHandle {
-  /** Aborts the in-flight upload. No-op (nothing to cancel mid-flight) on
-   *  the small-file fast path, which is a single already-sent request. */
-  abort: () => void;
+  /**
+   * Fires as soon as an abortable handle exists — immediately for the TUS
+   * path (before the first byte is sent), best-effort for the fast path.
+   * Callers store this (e.g. in a ref) and call .abort() from a screen's
+   * unmount cleanup, so navigating away mid-upload actually stops it
+   * instead of leaving it running against a component that's gone.
+   */
+  onHandle?: (handle: UploadHandle) => void;
 }
 
 interface TusFileInput {
@@ -75,6 +85,10 @@ function expoFileReader() {
  * chunked, retried on network blips (retryDelays), and — via
  * AsyncStorageUrlStorage — resumable even after the app is killed and
  * reopened mid-upload, not just across a transient disconnect.
+ *
+ * Resolves once the upload finishes, fails, or is aborted — never throws;
+ * every outcome is reported through `handlers` so callers don't need a
+ * try/catch around this specific call.
  */
 export async function uploadMediaResumable(
   fileUri: string,
@@ -82,19 +96,32 @@ export async function uploadMediaResumable(
   path: string,
   contentType: string,
   handlers: ResumableUploadHandlers = {},
-): Promise<UploadHandle> {
+): Promise<void> {
   const info = await FileSystem.getInfoAsync(fileUri, { size: true });
-  if (!info.exists) throw new Error('الملف غير موجود');
+  if (!info.exists) { handlers.onError?.(new Error('الملف غير موجود')); return; }
 
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
-  if (!token) throw new Error('يرجى تسجيل الدخول أولاً');
+  if (!token) { handlers.onError?.(new Error('يرجى تسجيل الدخول أولاً')); return; }
 
   const fileInput: TusFileInput = { uri: fileUri, name: path.split('/').pop() ?? path, size: info.size };
 
+  // The setup above (file stat + session lookup) is itself async, so a
+  // screen could already have unmounted and called abort() before there's
+  // even a tus.Upload instance to abort — `aborted` covers that gap, since
+  // the handle handed to the caller is otherwise a no-op until tusUpload
+  // exists.
+  let aborted = false;
   let tusUpload: InstanceType<typeof tus.Upload> | null = null;
+  handlers.onHandle?.({
+    abort: () => {
+      aborted = true;
+      tusUpload?.abort();
+    },
+  });
+  if (aborted) return;
 
-  await new Promise<void>((resolve, reject) => {
+  await new Promise<void>((resolve) => {
     tusUpload = new tus.Upload(fileInput as unknown as File, {
       endpoint: TUS_ENDPOINT,
       chunkSize: CHUNK_SIZE,
@@ -119,27 +146,25 @@ export async function uploadMediaResumable(
       },
       onError(error) {
         handlers.onError?.(error instanceof Error ? error : new Error(String(error)));
-        reject(error);
+        resolve();
       },
       onSuccess() {
+        const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+        handlers.onSuccess?.(data.publicUrl);
         resolve();
       },
     });
 
+    if (aborted) { resolve(); return; }
+
     // Resume a previous attempt for this exact file if one was interrupted
     // (app killed, network dropped mid-chunk) instead of starting over.
     tusUpload.findPreviousUploads().then((previous) => {
+      if (aborted) { resolve(); return; }
       if (previous.length > 0) tusUpload!.resumeFromPreviousUpload(previous[0]);
       tusUpload!.start();
     });
   });
-
-  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-  handlers.onSuccess?.(data.publicUrl);
-
-  return {
-    abort: () => { tusUpload?.abort(); },
-  };
 }
 
 async function uploadMediaFast(
@@ -148,20 +173,39 @@ async function uploadMediaFast(
   path: string,
   contentType: string,
   handlers: ResumableUploadHandlers = {},
-): Promise<UploadHandle> {
+): Promise<void> {
+  // fetch() on a local file:// URI is effectively instant regardless of
+  // file size (it's a disk read, not a network request) — the abort
+  // controller only meaningfully covers the network upload step below.
+  const controller = new AbortController();
+  let aborted = false;
+  handlers.onHandle?.({
+    abort: () => {
+      aborted = true;
+      controller.abort();
+    },
+  });
+
   try {
-    const response = await fetch(fileUri);
+    const response = await fetch(fileUri, { signal: controller.signal });
     const arrayBuffer = await response.arrayBuffer();
+    // supabase-js's storage.upload() in the version this app pins takes no
+    // abort signal — once called, the request itself can't be cancelled.
+    // Checking `aborted` right before and after is a best-effort guard so
+    // an unmounted screen at least doesn't act on a stale result (a
+    // progress update or success callback into state that no longer
+    // exists), even though the bytes may still finish uploading server-side.
+    if (aborted) return;
     const { error } = await supabase.storage.from(bucket).upload(path, arrayBuffer, { contentType, upsert: true });
-    if (error) throw error;
+    if (aborted) return;
+    if (error) { handlers.onError?.(new Error(error.message)); return; }
     handlers.onProgress?.(100);
     const { data } = supabase.storage.from(bucket).getPublicUrl(path);
     handlers.onSuccess?.(data.publicUrl);
   } catch (err) {
+    if (aborted) return;
     handlers.onError?.(err instanceof Error ? err : new Error(String(err)));
-    throw err;
   }
-  return { abort: () => {} };
 }
 
 /**
@@ -177,7 +221,7 @@ export async function uploadMediaSmart(
   path: string,
   contentType: string,
   handlers: ResumableUploadHandlers = {},
-): Promise<UploadHandle> {
+): Promise<void> {
   const info = await FileSystem.getInfoAsync(fileUri, { size: true });
   const size = info.exists ? info.size : 0;
   return size >= SMALL_FILE_THRESHOLD

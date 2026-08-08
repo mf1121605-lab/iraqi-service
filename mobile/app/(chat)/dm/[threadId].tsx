@@ -24,7 +24,7 @@ import { ChatBackgroundLayer } from '@/components/chat/ChatBackgroundLayer';
 import { ChatBackgroundPicker } from '@/components/chat/ChatBackgroundPicker';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import { uploadMediaSmart } from '@/lib/resumableUpload';
+import { uploadMediaSmart, type UploadHandle } from '@/lib/resumableUpload';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
 import { ChatBgTheme, getChatBgTheme, setChatBgTheme } from '@/utils/chatBackgroundPrefs';
@@ -59,6 +59,7 @@ async function uploadAttachment(
   userId: string,
   kind: 'image' | 'voice' | 'video',
   onProgress?: (pct: number) => void,
+  onHandle?: (handle: UploadHandle) => void,
 ): Promise<string | null> {
   try {
     const ext = kind === 'voice'
@@ -78,6 +79,7 @@ async function uploadAttachment(
     let uploadErr: Error | null = null;
     await uploadMediaSmart(uri, 'site-assets', path, contentType, {
       onProgress,
+      onHandle,
       onSuccess: (url) => { publicUrl = url; },
       onError: (err) => { uploadErr = err; },
     });
@@ -107,6 +109,11 @@ export default function DmThread() {
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const uploadHandleRef = useRef<UploadHandle | null>(null);
+
+  // Stops an in-flight upload if the user navigates away mid-upload —
+  // otherwise it keeps running against a screen that's already gone.
+  useEffect(() => () => { uploadHandleRef.current?.abort(); }, []);
   const [notFound, setNotFound] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [recording, setRecording] = useState(false);
@@ -241,7 +248,11 @@ export default function DmThread() {
     const isVideo = asset.type === 'video';
     setSending(true);
     setUploadProgress(0);
-    const url = await uploadAttachment(asset.uri, profile.id, isVideo ? 'video' : 'image', setUploadProgress);
+    const url = await uploadAttachment(
+      asset.uri, profile.id, isVideo ? 'video' : 'image', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; },
+    );
+    uploadHandleRef.current = null;
     setUploadProgress(null);
     if (url) {
       await supabase.from('direct_messages').insert({
@@ -261,7 +272,11 @@ export default function DmThread() {
     if (durationMs < 800) return;
     setSending(true);
     setUploadProgress(0);
-    const url = await uploadAttachment(uri, profile.id, 'voice', setUploadProgress);
+    const url = await uploadAttachment(
+      uri, profile.id, 'voice', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; },
+    );
+    uploadHandleRef.current = null;
     setUploadProgress(null);
     if (url) {
       await supabase.from('direct_messages').insert({

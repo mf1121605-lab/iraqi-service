@@ -17,7 +17,7 @@ import { ScreenBg } from '@/components/ui/ScreenBg';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import { uploadMediaSmart } from '@/lib/resumableUpload';
+import { uploadMediaSmart, type UploadHandle } from '@/lib/resumableUpload';
 import { MessageBubble, MessageStatus } from '@/components/chat/MessageBubble';
 import { ReactionPickerOverlay } from '@/components/ui/ReactionPickerOverlay';
 import { buildChatReactions, DELETE_KEY, REPLY_KEY } from '@/constants/chatReactions';
@@ -72,6 +72,7 @@ async function uploadAttachment(
   userId: string,
   kind: 'image' | 'voice' | 'video',
   onProgress?: (pct: number) => void,
+  onHandle?: (handle: UploadHandle) => void,
 ): Promise<string | null> {
   try {
     const ext = kind === 'voice'
@@ -91,6 +92,7 @@ async function uploadAttachment(
     let uploadErr: Error | null = null;
     await uploadMediaSmart(uri, 'site-assets', path, contentType, {
       onProgress,
+      onHandle,
       onSuccess: (url) => { publicUrl = url; },
       onError: (err) => { uploadErr = err; },
     });
@@ -113,6 +115,11 @@ export default function RequestDetail() {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const uploadHandleRef = useRef<UploadHandle | null>(null);
+
+  // Stops an in-flight upload if the user navigates away mid-upload —
+  // otherwise it keeps running against a screen that's already gone.
+  useEffect(() => () => { uploadHandleRef.current?.abort(); }, []);
   const [loading, setLoading] = useState(true);
   const [showDesc, setShowDesc] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -307,7 +314,11 @@ export default function RequestDetail() {
     const isVideo = asset.type === 'video';
     setSending(true);
     setUploadProgress(0);
-    const url = await uploadAttachment(asset.uri, session.user.id, isVideo ? 'video' : 'image', setUploadProgress);
+    const url = await uploadAttachment(
+      asset.uri, session.user.id, isVideo ? 'video' : 'image', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; },
+    );
+    uploadHandleRef.current = null;
     setUploadProgress(null);
     if (url) {
       await supabase.from('request_messages').insert({
@@ -327,7 +338,11 @@ export default function RequestDetail() {
     if (durationMs < 800) return; // too short to be intentional
     setSending(true);
     setUploadProgress(0);
-    const url = await uploadAttachment(uri, session.user.id, 'voice', setUploadProgress);
+    const url = await uploadAttachment(
+      uri, session.user.id, 'voice', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; },
+    );
+    uploadHandleRef.current = null;
     setUploadProgress(null);
     if (url) {
       await supabase.from('request_messages').insert({
