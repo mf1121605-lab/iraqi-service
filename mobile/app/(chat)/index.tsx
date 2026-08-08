@@ -193,6 +193,10 @@ export default function ChatIndex() {
             data={filteredRooms}
             keyExtractor={item => item.id}
             contentContainerStyle={styles.list}
+            removeClippedSubviews
+            maxToRenderPerBatch={8}
+            windowSize={8}
+            initialNumToRender={10}
             renderItem={({ item }) => (
               <Pressable
                 style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
@@ -218,6 +222,10 @@ export default function ChatIndex() {
           data={filteredDms}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
+          removeClippedSubviews
+          maxToRenderPerBatch={8}
+          windowSize={8}
+          initialNumToRender={10}
           renderItem={({ item }) => (
             <Pressable
               style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}

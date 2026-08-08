@@ -196,22 +196,17 @@ export default function CustomerDashboard() {
             <View style={styles.headerActions}>
               <Pressable
                 onPress={() => router.push('/(customer)/notifications')}
-                style={({ pressed }) => [styles.searchBtn, pressed && { opacity: 0.7 }]}
+                style={({ pressed }) => pressed && { opacity: 0.7 }}
                 hitSlop={8}
               >
-                <Text style={styles.searchIcon}>🔔</Text>
-                {unreadCount > 0 && (
-                  <View style={styles.bellBadge}>
-                    <Text style={styles.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-                  </View>
-                )}
+                <Icon3D emoji="🔔" size={40} badge={unreadCount} animation={unreadCount > 0 ? 'pulse' : 'none'} />
               </Pressable>
               <Pressable
                 onPress={() => router.push('/(customer)/search')}
-                style={({ pressed }) => [styles.searchBtn, pressed && { opacity: 0.7 }]}
+                style={({ pressed }) => pressed && { opacity: 0.7 }}
                 hitSlop={8}
               >
-                <Text style={styles.searchIcon}>🔍</Text>
+                <Icon3D emoji="🔍" size={40} animation="none" />
               </Pressable>
             </View>
           </View>
@@ -371,20 +366,6 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   logoRow:   { flexDirection: 'row', alignItems: 'center', gap: 12 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  searchBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(230,171,44,0.1)',
-    borderWidth: 1, borderColor: 'rgba(230,171,44,0.3)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  searchIcon: { fontSize: 18 },
-  bellBadge: {
-    position: 'absolute', top: -3, right: -3,
-    minWidth: 16, height: 16, borderRadius: 8,
-    backgroundColor: '#ef4444', alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 3, borderWidth: 1.5, borderColor: COLORS.bg,
-  },
-  bellBadgeText: { fontFamily: FONTS.bold, fontSize: 9, color: '#fff' },
   logoBadge: {
     width: 52, height: 52, borderRadius: 26,
     backgroundColor: 'rgba(230,171,44,0.12)',
