@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { MessageBubble } from '@/components/chat/MessageBubble';
@@ -33,6 +35,7 @@ import { setActiveChat } from '@/lib/activeChatTracker';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
 import { ChatBgTheme, getChatBgTheme, setChatBgTheme, themeForRoomSlug } from '@/utils/chatBackgroundPrefs';
+import { CHAT_DOCUMENT_MIME_TYPES } from '@/constants/documentMimeTypes';
 
 const TYPING_TIMEOUT_MS = 3000;
 const TYPING_BROADCAST_INTERVAL_MS = 2000;
@@ -79,20 +82,26 @@ function displayNameFor(profile: { given_name?: string | null; family_name?: str
 async function uploadAttachment(
   uri: string,
   userId: string,
-  kind: 'image' | 'voice' | 'video',
+  kind: 'image' | 'voice' | 'video' | 'file',
   onProgress?: (pct: number) => void,
   onHandle?: (handle: UploadHandle) => void,
+  fileName?: string,
+  mimeType?: string,
 ): Promise<string | null> {
   try {
     const ext = kind === 'voice'
       ? 'm4a'
-      : (uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg'));
+      : kind === 'file'
+        ? (fileName?.split('.').pop()?.toLowerCase() ?? 'bin')
+        : (uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg'));
     const path = `chat/${userId}/${Date.now()}.${ext}`;
     const contentType = kind === 'voice'
       ? 'audio/m4a'
       : kind === 'video'
         ? `video/${ext === 'mov' ? 'quicktime' : ext}`
-        : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+        : kind === 'file'
+          ? (mimeType ?? 'application/octet-stream')
+          : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
 
     // Dispatches by file size: small images go through a plain single-
     // request upload; long voice notes and videos go through the chunked,
@@ -181,8 +190,6 @@ export default function ChatRoomScreen() {
     }
     return map;
   }, [reactions]);
-
-  const isStaff = profile?.role === 'founder' || profile?.role === 'employee';
 
   // Load room and subscribe to realtime
   useEffect(() => {
@@ -407,6 +414,32 @@ export default function ChatRoomScreen() {
     setSending(false);
   }
 
+  async function pickAndSendDocument() {
+    if (!room || !profile) return;
+    const result = await DocumentPicker.getDocumentAsync({ type: CHAT_DOCUMENT_MIME_TYPES, copyToCacheDirectory: true });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    setSending(true);
+    setUploadProgress(0);
+    const url = await uploadAttachment(
+      asset.uri, profile.id, 'file', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; }, asset.name, asset.mimeType,
+    );
+    uploadHandleRef.current = null;
+    setUploadProgress(null);
+    if (url) {
+      await supabase.from('chat_messages').insert({
+        room_id: room.id, sender_id: profile.id,
+        sender_display_name: displayNameFor(profile), sender_avatar_key: profile.avatar_key, sender_role: profile.role,
+        body: `📎 ${asset.name}`, message_type: 'file', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+      });
+      setReplyTo(null);
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع الملف، حاول مرة أخرى.');
+    }
+    setSending(false);
+  }
+
   async function sendVoice(uri: string, durationMs: number) {
     if (!room || !profile) return;
     setRecording(false);
@@ -431,10 +464,6 @@ export default function ChatRoomScreen() {
     setSending(false);
   }
 
-  async function handleHideMessage(messageId: string) {
-    await supabase.from('chat_messages').update({ is_hidden: true }).eq('id', messageId);
-  }
-
   async function toggleReaction(messageId: string, emoji: string) {
     if (!profile) return;
     const existing = reactions.find(r => r.message_id === messageId && r.user_id === profile.id);
@@ -448,8 +477,6 @@ export default function ChatRoomScreen() {
   }
 
   const typingNames = Object.values(typingUsers).map(u => u.name);
-  const canModerate = (msg: ChatMessage) =>
-    isStaff || room?.moderator_id === profile?.id || msg.sender_id === profile?.id;
 
   // Stable across renders driven by anything other than messages/profile/
   // reactions changing (sticker panel toggling, bg picker, typing dots,
@@ -503,7 +530,8 @@ export default function ChatRoomScreen() {
           attachmentType={
             item.message_type === 'image' ? 'image' :
             item.message_type === 'voice' ? 'voice' :
-            item.message_type === 'video' ? 'video' : null
+            item.message_type === 'video' ? 'video' :
+            item.message_type === 'file' ? 'file' : null
           }
           reactions={Object.entries(reactionCounts).map(([emoji, count]) => ({ emoji, count, mine: false }))}
           replyTo={replySource ? { body: replySource.body ?? '', senderName: replySource.sender_display_name ?? undefined } : null}
@@ -514,16 +542,11 @@ export default function ChatRoomScreen() {
           <Pressable onPress={() => setReplyTo(item)} style={styles.replyActionBtn}>
             <Text style={styles.replyActionText}>↩ رد</Text>
           </Pressable>
-          {canModerate(item) && (
-            <Pressable onPress={() => handleHideMessage(item.id)} style={styles.hideBtn}>
-              <Text style={styles.hideBtnText}>✕</Text>
-            </Pressable>
-          )}
         </View>
       </ReactionPickerOverlay>
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, profile, reactionsByMessage, isStaff, room?.moderator_id]);
+  }, [messages, profile, reactionsByMessage]);
 
   if (loading || initializing) {
     return (
@@ -694,6 +717,9 @@ export default function ChatRoomScreen() {
               textAlign="right"
               onSubmitEditing={handleSend}
             />
+            <Pressable style={styles.mediaBtn} onPress={pickAndSendDocument} disabled={sending}>
+              <Text style={styles.mediaBtnIcon}>📎</Text>
+            </Pressable>
             <Pressable style={styles.mediaBtn} onPress={pickAndSendImage} disabled={sending}>
               <Text style={styles.mediaBtnIcon}>🖼️</Text>
             </Pressable>
@@ -703,7 +729,7 @@ export default function ChatRoomScreen() {
                 disabled={sending}
                 style={({ pressed }) => [styles.sendBtn, sending && styles.sendBtnDisabled, pressed && styles.sendBtnPressed]}
               >
-                <Text style={styles.sendIcon}>↑</Text>
+                {sending ? <ActivityIndicator color="#000" size="small" /> : <Ionicons name="arrow-up" size={20} color="#000" />}
               </Pressable>
             ) : (
               <Pressable style={styles.micBtn} onPress={() => setRecording(true)} disabled={sending}>
@@ -799,15 +825,6 @@ const styles = StyleSheet.create({
   msgActionsLeft: { justifyContent: 'flex-start' },
   replyActionBtn: { paddingHorizontal: 4 },
   replyActionText: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.muted },
-  hideBtn: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(239,68,68,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hideBtnText: { fontSize: 10, color: COLORS.red },
   typingRow: {
     paddingHorizontal: 16,
     paddingVertical: 4,

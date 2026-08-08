@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { MessageBubble, MessageStatus } from '@/components/chat/MessageBubble';
@@ -29,6 +31,7 @@ import { setActiveChat } from '@/lib/activeChatTracker';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { playSound } from '@/utils/soundFX';
 import { ChatBgTheme, getChatBgTheme, setChatBgTheme } from '@/utils/chatBackgroundPrefs';
+import { CHAT_DOCUMENT_MIME_TYPES } from '@/constants/documentMimeTypes';
 
 interface OtherUser {
   id: string;
@@ -58,20 +61,26 @@ function displayNameFor(p: OtherUser | null): string {
 async function uploadAttachment(
   uri: string,
   userId: string,
-  kind: 'image' | 'voice' | 'video',
+  kind: 'image' | 'voice' | 'video' | 'file',
   onProgress?: (pct: number) => void,
   onHandle?: (handle: UploadHandle) => void,
+  fileName?: string,
+  mimeType?: string,
 ): Promise<string | null> {
   try {
     const ext = kind === 'voice'
       ? 'm4a'
-      : (uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg'));
+      : kind === 'file'
+        ? (fileName?.split('.').pop()?.toLowerCase() ?? 'bin')
+        : (uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg'));
     const path = `chat/${userId}/${Date.now()}.${ext}`;
     const contentType = kind === 'voice'
       ? 'audio/m4a'
       : kind === 'video'
         ? `video/${ext === 'mov' ? 'quicktime' : ext}`
-        : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+        : kind === 'file'
+          ? (mimeType ?? 'application/octet-stream')
+          : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
 
     // Dispatches by file size: small images go through a plain single-
     // request upload; long voice notes and videos go through the chunked,
@@ -274,6 +283,31 @@ export default function DmThread() {
     setSending(false);
   }
 
+  async function pickAndSendDocument() {
+    if (!profile || !threadId) return;
+    const result = await DocumentPicker.getDocumentAsync({ type: CHAT_DOCUMENT_MIME_TYPES, copyToCacheDirectory: true });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    setSending(true);
+    setUploadProgress(0);
+    const url = await uploadAttachment(
+      asset.uri, profile.id, 'file', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; }, asset.name, asset.mimeType,
+    );
+    uploadHandleRef.current = null;
+    setUploadProgress(null);
+    if (url) {
+      await supabase.from('direct_messages').insert({
+        thread_id: threadId, sender_id: profile.id, body: `📎 ${asset.name}`,
+        message_type: 'file', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+      });
+      setReplyTo(null);
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع الملف، حاول مرة أخرى.');
+    }
+    setSending(false);
+  }
+
   async function sendVoice(uri: string, durationMs: number) {
     if (!profile || !threadId) return;
     setRecording(false);
@@ -352,7 +386,8 @@ export default function DmThread() {
           attachmentType={
             item.message_type === 'image' ? 'image' :
             item.message_type === 'voice' ? 'voice' :
-            item.message_type === 'video' ? 'video' : null
+            item.message_type === 'video' ? 'video' :
+            item.message_type === 'file' ? 'file' : null
           }
           status={isMine ? status : undefined}
           reactions={summarizeReactions(item.reactions)}
@@ -487,7 +522,7 @@ export default function DmThread() {
                 disabled={sending}
                 style={({ pressed }) => [styles.sendBtn, sending && styles.sendBtnDisabled, pressed && styles.sendBtnPressed]}
               >
-                <Text style={styles.sendIcon}>↑</Text>
+                {sending ? <ActivityIndicator color="#000" size="small" /> : <Ionicons name="arrow-up" size={22} color="#000" />}
               </Pressable>
             ) : (
               <Pressable style={styles.micBtn} onPress={() => setRecording(true)} disabled={sending}>
@@ -503,6 +538,9 @@ export default function DmThread() {
               multiline
               textAlign="right"
             />
+            <Pressable style={styles.imageBtn} onPress={pickAndSendDocument} disabled={sending}>
+              <Text style={styles.imageBtnIcon}>📎</Text>
+            </Pressable>
             <Pressable style={styles.imageBtn} onPress={pickAndSendImage} disabled={sending}>
               <Text style={styles.imageBtnIcon}>🖼️</Text>
             </Pressable>

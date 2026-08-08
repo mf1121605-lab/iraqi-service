@@ -26,7 +26,9 @@ export const CHAT_REACTIONS: ReactionOption[] = [
   { key: '😢', emoji: '😢', label: 'حزين' },
   { key: '🙏', emoji: '🙏', label: 'شكراً' },
   { key: '😡', emoji: '😡', label: 'غاضب' },
-  { key: REPLY_KEY, emoji: '↩️', label: 'رد' },
+  // divider: true sets this apart from the plain reactions above it — a
+  // hairline before the slot, purely visual (see ReactionPickerOverlay).
+  { key: REPLY_KEY, emoji: '↩️', label: 'رد', divider: true },
 ];
 
 /**
@@ -36,6 +38,6 @@ export const CHAT_REACTIONS: ReactionOption[] = [
  */
 export function buildChatReactions(canDelete: boolean): ReactionOption[] {
   return canDelete
-    ? [...CHAT_REACTIONS, { key: DELETE_KEY, emoji: '🗑️', label: 'حذف', tone: 'danger' as const }]
+    ? [...CHAT_REACTIONS, { key: DELETE_KEY, emoji: '🗑️', label: 'حذف', tone: 'danger' as const, divider: true }]
     : CHAT_REACTIONS;
 }

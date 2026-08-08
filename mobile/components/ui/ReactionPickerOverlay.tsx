@@ -23,6 +23,10 @@ export interface ReactionOption {
   /** 'danger' renders the slot on a red pill — used for destructive actions
    *  such as delete, so they never read as just another reaction. */
   tone?: 'default' | 'danger';
+  /** Renders a thin separator before this slot — used to set special
+   *  trailing actions (reply, delete) visually apart from the plain
+   *  reaction emoji, without changing any slot's width or touch geometry. */
+  divider?: boolean;
 }
 
 interface Props {
@@ -226,6 +230,7 @@ export function ReactionPickerOverlay({
                       emoji={r.emoji}
                       width={itemW}
                       danger={r.tone === 'danger'}
+                      divider={r.divider}
                     />
                   ))}
                 </View>
@@ -244,12 +249,14 @@ function ReactionItem({
   emoji,
   width,
   danger,
+  divider,
 }: {
   index: number;
   activeIndex: Animated.SharedValue<number>;
   emoji: string;
   width: number;
   danger?: boolean;
+  divider?: boolean;
 }) {
   const style = useAnimatedStyle(() => {
     // Distance from the finger drives both scale and lift, so neighbours ease
@@ -266,7 +273,7 @@ function ReactionItem({
   });
 
   return (
-    <Animated.View style={[styles.slot, { width }, style]}>
+    <Animated.View style={[styles.slot, { width }, divider && styles.slotDivider, style]}>
       <View style={danger ? styles.dangerPill : undefined}>
         <Text style={styles.emoji}>{emoji}</Text>
       </View>
@@ -302,6 +309,11 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   slot: { alignItems: 'center', justifyContent: 'center' },
+  // A hairline + inset padding drawn INSIDE the slot's own fixed width, so
+  // it never shifts itemW/rowW — the drag-to-index math (indexAt) stays
+  // untouched. Purely a visual break before "special" trailing actions
+  // (reply/delete) so they don't read as just more reaction emoji.
+  slotDivider: { borderStartWidth: 1, borderStartColor: 'rgba(255,255,255,0.18)', paddingStart: 6 },
   emoji: { fontSize: EMOJI_SIZE },
 
   labelAnchor: { position: 'absolute', bottom: ROW_H + 6, left: 0, width: 0, alignItems: 'center' },

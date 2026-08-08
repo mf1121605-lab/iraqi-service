@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ResizeMode, Video } from 'expo-av';
@@ -22,7 +22,7 @@ interface Props {
   timestamp?: string;
   messageType?: string;
   attachmentUrl?: string | null;
-  attachmentType?: 'image' | 'voice' | 'video' | null;
+  attachmentType?: 'image' | 'voice' | 'video' | 'file' | null;
   reactions?: ReactionSummary[];
   replyTo?: { body: string; senderName?: string } | null;
   status?: MessageStatus;
@@ -134,7 +134,16 @@ function MessageBubbleImpl({
             <VoiceMessagePlayer uri={attachmentUrl} isMine={isMine} />
           )}
 
-          {body && messageType !== 'sticker' ? (
+          {attachmentType === 'file' && attachmentUrl && (
+            <Pressable onPress={() => Linking.openURL(attachmentUrl)} style={styles.fileAttachment}>
+              <Text style={styles.fileIcon}>📄</Text>
+              <Text style={[styles.fileName, isMine ? styles.textMine : styles.textTheirs]} numberOfLines={2}>
+                {body.replace(/^📎\s*/, '') || 'ملف مرفق'}
+              </Text>
+            </Pressable>
+          )}
+
+          {body && messageType !== 'sticker' && messageType !== 'file' ? (
             <Text style={[styles.text, isMine ? styles.textMine : styles.textTheirs]}>{body}</Text>
           ) : messageType === 'sticker' ? (
             hasTwemojiSticker(body) ? (
@@ -308,6 +317,19 @@ const styles = StyleSheet.create({
   replyQuoteBody: { fontFamily: FONTS.regular, fontSize: 12, color: 'rgba(255,255,255,0.75)', textAlign: 'right' },
 
   attachmentImage: { width: 200, height: 200, borderRadius: 12, marginBottom: 6 },
+  fileAttachment: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 4,
+    maxWidth: 220,
+  },
+  fileIcon: { fontSize: 22 },
+  fileName: { fontFamily: FONTS.regular, fontSize: 13, flexShrink: 1, textAlign: 'right' },
   videoThumbWrap: { position: 'relative' },
   playOverlay: {
     position: 'absolute',

@@ -18,6 +18,8 @@ import {
 import { Image } from 'expo-image';
 import { FlashList } from '@shopify/flash-list';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { ScreenBg } from '@/components/ui/ScreenBg';
 import { HapticPressable } from '@/components/ui/HapticPressable';
 import { Avatar } from '@/components/chat/Avatar';
@@ -41,26 +43,33 @@ import {
   PaymentMethod,
   creditFinalAmount,
 } from '@/utils/paymentMethods';
+import { CHAT_DOCUMENT_MIME_TYPES } from '@/constants/documentMimeTypes';
 
 const PAYMENT_METHOD_OPTIONS: PaymentMethod[] = ['mastercard', 'zaincash', 'credit'];
 
 async function uploadAttachment(
   uri: string,
   userId: string,
-  kind: 'image' | 'voice' | 'video',
+  kind: 'image' | 'voice' | 'video' | 'file',
   onProgress?: (pct: number) => void,
   onHandle?: (handle: UploadHandle) => void,
+  fileName?: string,
+  mimeType?: string,
 ): Promise<string | null> {
   try {
     const ext = kind === 'voice'
       ? 'm4a'
-      : (uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg'));
+      : kind === 'file'
+        ? (fileName?.split('.').pop()?.toLowerCase() ?? 'bin')
+        : (uri.split('.').pop()?.toLowerCase() ?? (kind === 'video' ? 'mp4' : 'jpg'));
     const path = `chat/${userId}/${Date.now()}.${ext}`;
     const contentType = kind === 'voice'
       ? 'audio/m4a'
       : kind === 'video'
         ? `video/${ext === 'mov' ? 'quicktime' : ext}`
-        : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+        : kind === 'file'
+          ? (mimeType ?? 'application/octet-stream')
+          : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
 
     // Dispatches by file size: small images go through a plain single-
     // request upload; long voice notes and videos go through the chunked,
@@ -563,6 +572,31 @@ export default function EmployeeDashboard() {
     setSending(false);
   }
 
+  async function pickAndSendDocument() {
+    if (!profile || !selectedId) return;
+    const result = await DocumentPicker.getDocumentAsync({ type: CHAT_DOCUMENT_MIME_TYPES, copyToCacheDirectory: true });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    setSending(true);
+    setUploadProgress(0);
+    const url = await uploadAttachment(
+      asset.uri, profile.id, 'file', setUploadProgress,
+      (h) => { uploadHandleRef.current = h; }, asset.name, asset.mimeType,
+    );
+    uploadHandleRef.current = null;
+    setUploadProgress(null);
+    if (url) {
+      await supabase.from('request_messages').insert({
+        request_id: selectedId, sender_id: profile.id, body: `📎 ${asset.name}`,
+        message_type: 'file', attachment_url: url, reply_to_id: replyTo?.id ?? null,
+      });
+      setReplyTo(null);
+    } else {
+      Alert.alert('تعذّر الإرسال', 'حدث خطأ أثناء رفع الملف، حاول مرة أخرى.');
+    }
+    setSending(false);
+  }
+
   async function sendVoice(uri: string, durationMs: number) {
     if (!profile || !selectedId) return;
     setRecording(false);
@@ -642,7 +676,8 @@ export default function EmployeeDashboard() {
           attachmentType={
             item.message_type === 'image' ? 'image' :
             item.message_type === 'voice' ? 'voice' :
-            item.message_type === 'video' ? 'video' : null
+            item.message_type === 'video' ? 'video' :
+            item.message_type === 'file' ? 'file' : null
           }
           senderAvatarKey={!isMine ? customer?.avatar_key : undefined}
           onSenderPress={!isMine && customer?.id ? () => router.push({ pathname: '/user/[userId]', params: { userId: customer.id } }) : undefined}
@@ -1097,6 +1132,9 @@ export default function EmployeeDashboard() {
                   textAlign="right"
                   maxLength={2000}
                 />
+                <Pressable style={styles.toolBtn} onPress={pickAndSendDocument} disabled={sending} hitSlop={6}>
+                  <Text style={styles.toolBtnIcon}>📎</Text>
+                </Pressable>
                 <Pressable style={styles.toolBtn} onPress={pickAndSendImage} disabled={sending} hitSlop={6}>
                   <Text style={styles.toolBtnIcon}>🖼️</Text>
                 </Pressable>
@@ -1113,7 +1151,7 @@ export default function EmployeeDashboard() {
                     {sending ? (
                       <ActivityIndicator color="#000" size="small" />
                     ) : (
-                      <Text style={styles.sendIcon}>↑</Text>
+                      <Ionicons name="arrow-up" size={20} color="#000" />
                     )}
                   </Pressable>
                 ) : (

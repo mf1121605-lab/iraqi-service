@@ -29,7 +29,7 @@
         "backgroundColor": "#0d1117"
       },
       "package": "com.iraqiservice.app",
-      "versionCode": 39,
+      "versionCode": 40,
       "permissions": [
         "NOTIFICATIONS",
         "RECEIVE_BOOT_COMPLETED",
