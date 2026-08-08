@@ -5,6 +5,7 @@ import { ScreenBg } from '@/components/ui/ScreenBg';
 import { hasFounderAccess, useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { ServiceEmployeesModal } from '@/components/founder/ServiceEmployeesModal';
+import { ServiceFieldsModal } from '@/components/founder/ServiceFieldsModal';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 interface CategoryService {
@@ -34,6 +35,8 @@ export default function CategoryServicesScreen() {
   const [formError, setFormError] = useState('');
   // Which service's staff assignment sheet is open, if any.
   const [assigning, setAssigning] = useState<{ id: string; label: string } | null>(null);
+  // Which service's dynamic-sub-questions sheet is open, if any.
+  const [editingFields, setEditingFields] = useState<{ id: string; label: string } | null>(null);
 
   async function loadAll() {
     const [catRes, svcRes] = await Promise.all([
@@ -165,6 +168,13 @@ export default function CategoryServicesScreen() {
                       <Text style={s.assignBtnText}>👥 الموظفون</Text>
                     </Pressable>
                     <Pressable
+                      onPress={() => setEditingFields({ id: svc.id, label: svc.label_ar })}
+                      style={s.fieldsBtn}
+                      hitSlop={6}
+                    >
+                      <Text style={s.fieldsBtnText}>⚙️ أسئلة فرعية</Text>
+                    </Pressable>
+                    <Pressable
                       onPress={() => toggleActive(svc)}
                       style={[s.activeBadge, { backgroundColor: svc.is_active ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.1)' }]}
                     >
@@ -186,6 +196,12 @@ export default function CategoryServicesScreen() {
         serviceId={assigning?.id ?? null}
         serviceLabel={assigning?.label ?? ''}
         onClose={() => setAssigning(null)}
+      />
+      <ServiceFieldsModal
+        visible={editingFields !== null}
+        serviceId={editingFields?.id ?? null}
+        serviceLabel={editingFields?.label ?? ''}
+        onClose={() => setEditingFields(null)}
       />
     </ScreenBg>
   );
@@ -217,6 +233,11 @@ const s = StyleSheet.create({
     borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 5,
   },
   assignBtnText: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.gold },
+  fieldsBtn: {
+    backgroundColor: 'rgba(79,139,255,0.12)', borderWidth: 1, borderColor: 'rgba(79,139,255,0.35)',
+    borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 5,
+  },
+  fieldsBtnText: { fontFamily: FONTS.bold, fontSize: 11, color: '#4f8bff' },
   svcRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.cardBorder, borderRadius: RADIUS.sm, padding: 10, marginBottom: 6, gap: 8 },
   svcLabel: { flex: 1, fontFamily: FONTS.bold, fontSize: 13, color: COLORS.white, textAlign: 'right' },
   activeBadge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },

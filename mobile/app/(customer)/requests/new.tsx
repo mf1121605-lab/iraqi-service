@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -18,6 +19,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { GoldInput } from '@/components/ui/GoldInput';
 import { FireGlowWrap } from '@/components/ui/FireGlowWrap';
+import { AnimatedGoldBorder } from '@/components/ui/AnimatedGoldBorder';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
 const CAT_THEMES: Record<string, { emoji: string; accent: string; colors: [string, string] }> = {
@@ -30,6 +32,17 @@ const DEFAULT_THEME = { emoji: '🔹', accent: '#e6ab2c', colors: ['#1a1a2e', '#
 
 type Category = { key: string; label_ar: string };
 type Service  = { id: string; label_ar: string; description: string | null };
+
+type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'date';
+type DynamicField = {
+  id: string;
+  field_key: string;
+  label_ar: string;
+  field_type: FieldType;
+  options: { value: string; label_ar: string }[] | null;
+  is_required: boolean;
+};
+type DynamicAnswer = string | boolean;
 
 export default function NewRequest() {
   const { session } = useAuth();
@@ -46,6 +59,11 @@ export default function NewRequest() {
   // Services belonging to the chosen category, and which one was picked.
   const [services, setServices] = useState<Service[]>([]);
   const [serviceId, setServiceId] = useState('');
+
+  // The interactive third level: sub-questions that belong to whichever
+  // service is currently selected, and the customer's answers to them.
+  const [dynamicFields, setDynamicFields] = useState<DynamicField[]>([]);
+  const [answers, setAnswers] = useState<Record<string, DynamicAnswer>>({});
 
   const loadCategories = useCallback(async () => {
     const { data } = await supabase
@@ -72,11 +90,38 @@ export default function NewRequest() {
       .then(({ data }) => setServices((data ?? []) as Service[]));
   }, [category]);
 
+  // The interactive third level: whichever service is picked may carry its
+  // own founder-defined sub-questions (e.g. "تقديم ذوي الاحتياجات الخاصة"
+  // asking for disability type). Re-fetched fresh every time the service
+  // changes, and answers reset so a stale answer from a previous service
+  // never rides along into the submission.
+  useEffect(() => {
+    setAnswers({});
+    if (!serviceId) { setDynamicFields([]); return; }
+    supabase
+      .from('service_dynamic_fields')
+      .select('id, field_key, label_ar, field_type, options, is_required')
+      .eq('service_id', serviceId)
+      .order('sort_order', { ascending: true })
+      .then(({ data }) => setDynamicFields((data ?? []) as DynamicField[]));
+  }, [serviceId]);
+
+  function setAnswer(key: string, value: DynamicAnswer) {
+    setAnswers((prev) => ({ ...prev, [key]: value }));
+  }
+
   async function handleSubmit() {
     setError('');
     if (!category) { setError('يرجى اختيار نوع الخدمة'); return; }
     if (!title.trim()) { setError('يرجى كتابة عنوان للطلب'); return; }
     if (!session?.user.id) { setError('يرجى تسجيل الدخول أولاً'); return; }
+
+    const missing = dynamicFields.find((f) => {
+      if (!f.is_required) return false;
+      const v = answers[f.field_key];
+      return f.field_type === 'checkbox' ? v !== true : !String(v ?? '').trim();
+    });
+    if (missing) { setError(`يرجى تعبئة: ${missing.label_ar}`); return; }
 
     setLoading(true);
     const { data, error: dbErr } = await supabase
@@ -90,6 +135,7 @@ export default function NewRequest() {
         service_id: serviceId || null,
         title: title.trim(),
         description: description.trim() || null,
+        dynamic_answers: dynamicFields.length > 0 ? answers : null,
         status: 'submitted',
       })
       .select('id')
@@ -215,13 +261,93 @@ export default function NewRequest() {
             </View>
           )}
 
-          {/* Form section */}
+          {/* Interactive sub-questions — only appear once a service that
+              actually carries any (founder-configured per service) is
+              chosen. This is the compound/interactive third level on top
+              of category -> service. */}
+          {dynamicFields.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>معلومات إضافية</Text>
+                <Text style={styles.sectionIcon}>❓</Text>
+              </View>
+              <View style={[styles.formCard, styles.formCardBorder]}>
+                {dynamicFields.map((f) => (
+                  <View key={f.id}>
+                    <Text style={styles.fieldLabel}>
+                      {f.label_ar}{f.is_required ? ' *' : ''}
+                    </Text>
+                    {f.field_type === 'checkbox' ? (
+                      <View style={styles.checkboxRow}>
+                        <Switch
+                          value={answers[f.field_key] === true}
+                          onValueChange={(v) => setAnswer(f.field_key, v)}
+                          thumbColor={answers[f.field_key] === true ? COLORS.gold : '#888'}
+                          trackColor={{ true: 'rgba(230,171,44,0.4)', false: 'rgba(255,255,255,0.1)' }}
+                        />
+                        <Text style={styles.checkboxLabel}>
+                          {answers[f.field_key] === true ? 'نعم' : 'لا'}
+                        </Text>
+                      </View>
+                    ) : f.field_type === 'select' ? (
+                      <View style={styles.selectRow}>
+                        {(f.options ?? []).map((opt) => {
+                          const on = answers[f.field_key] === opt.value;
+                          return (
+                            <Pressable
+                              key={opt.value}
+                              onPress={() => setAnswer(f.field_key, opt.value)}
+                              style={[styles.selectChip, on && styles.selectChipActive]}
+                            >
+                              <Text style={[styles.selectChipText, on && styles.selectChipTextActive]}>
+                                {opt.label_ar}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    ) : f.field_type === 'textarea' ? (
+                      <TextInput
+                        value={(answers[f.field_key] as string) ?? ''}
+                        onChangeText={(t) => setAnswer(f.field_key, t)}
+                        placeholderTextColor={COLORS.white40}
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
+                        style={styles.textarea}
+                        textAlign="right"
+                      />
+                    ) : (
+                      <TextInput
+                        value={(answers[f.field_key] as string) ?? ''}
+                        onChangeText={(t) => setAnswer(f.field_key, t)}
+                        placeholder={f.field_type === 'date' ? 'YYYY-MM-DD' : undefined}
+                        placeholderTextColor={COLORS.white40}
+                        keyboardType={f.field_type === 'number' ? 'numeric' : 'default'}
+                        style={styles.input}
+                        textAlign="right"
+                      />
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Form section — wrapped in a live animated gold border, the
+              whole request-submission box, not just the submit button. */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>تفاصيل الطلب</Text>
               <Text style={styles.sectionIcon}>📝</Text>
             </View>
-            <View style={styles.formCard}>
+            <AnimatedGoldBorder
+              borderRadius={RADIUS.lg}
+              borderWidth={1.5}
+              innerBg="#161b22"
+              fillHeight={false}
+              innerStyle={styles.formCard}
+            >
               <GoldInput
                 label="عنوان الطلب"
                 value={title}
@@ -270,7 +396,7 @@ export default function NewRequest() {
                   </LinearGradient>
                 </Pressable>
               </FireGlowWrap>
-            </View>
+            </AnimatedGoldBorder>
           </View>
 
           <View style={{ height: 32 }} />
@@ -366,11 +492,41 @@ const styles = StyleSheet.create({
   formCard: {
     backgroundColor: '#161b22',
     borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(230,171,44,0.15)',
     padding: 16,
     gap: 14,
   },
+  // Applied on top of formCard only where it's used as a plain View (not
+  // inside AnimatedGoldBorder, which already draws its own Skia border) —
+  // e.g. the "معلومات إضافية" dynamic-fields section.
+  formCardBorder: {
+    borderWidth: 1,
+    borderColor: 'rgba(230,171,44,0.15)',
+  },
+  input: {
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: 'rgba(230,171,44,0.3)',
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: COLORS.white,
+    fontFamily: FONTS.regular,
+    fontSize: 14,
+  },
+  checkboxRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  checkboxLabel: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white },
+  selectRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  selectChip: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  selectChipActive: { backgroundColor: 'rgba(230,171,44,0.15)', borderColor: COLORS.gold },
+  selectChipText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.white70 },
+  selectChipTextActive: { color: COLORS.gold, fontFamily: FONTS.bold },
   fieldLabel: {
     fontFamily: FONTS.regular,
     fontSize: 13,
